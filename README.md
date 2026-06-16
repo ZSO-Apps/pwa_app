@@ -13,11 +13,11 @@ A self-hostable PWA for civil-protection / ZSO organizations: public offline con
 
 ```bash
 npm install
-npm run seed-users   # writes data/users.yaml — only needed the first time
+npm run seed-users   # writes local data/users.yaml — only needed the first time
 npm start            # serves on http://localhost:8080
 ```
 
-Default users (all password `ZSO1234` — change before deploying!):
+Default users from `data/users.example.yaml` (all password `ZSO1234` — change before deploying!):
 
 | Username | Role           |
 |----------|----------------|
@@ -33,7 +33,7 @@ Override the port with `PORT=80 npm start`. Set `SESSION_SECRET=<32+ random char
 1. Install Node ≥ 18 (`apt install nodejs npm` or the official Node ARM build).
 2. Copy this folder to the device (`rsync`, USB stick, `git clone`).
 3. Production install: `npm ci --omit=dev`.
-4. Seed users once: `npm run seed-users`, then **edit `data/users.yaml`** to change passwords.
+4. Seed users once: `npm run seed-users`, then **edit the local `data/users.yaml`** to change passwords. This runtime file is intentionally not committed.
 5. Run: `npm start`. Open from another LAN device at `http://<pi-ip>:8080`.
 6. (Optional) Make it a systemd service:
 
@@ -85,13 +85,15 @@ Adding things is meant to be drop-in.
   ```
   Supported field types: `text`, `textarea`, `number`, `date`, `time`, `email`, `radio` (with `options`), `select` (with `options`). Add `"correct": "..."` on a `radio` field to auto-score in the results view (quiz mode).
 
-- **Add a user / change passwords**: edit `data/users.yaml`. Generate a bcrypt hash with `node scripts/hash.js <password>`. Restart the server.
+- **Add a user / change passwords**: edit the local `data/users.yaml`. Generate a bcrypt hash with `node scripts/hash.js <password>`. Restart the server. Use `data/users.example.yaml` only as the committed template.
 
 - **Sub-Kacheln (groups)**: a Kachel can act as a category — leave out `content` and let forms attach themselves via `submitKachel`. (See `wk-foo` and `wk-admin` in `layout.yaml`.)
 
 ## How offline works
 
-The service worker (`/service-worker.js`, generated dynamically) precaches everything under `/content/` plus the home/login/CSS/JS. Cache version is a hash of the precache list, so any change in `content/` invalidates the old cache on next visit. Protected content is **not** cached — it requires a live connection to the LAN server (that's the whole point: works offline-only-on-the-org-WLAN).
+The service worker (`/service-worker.js`, generated dynamically) precaches `/`, the public `/k/...` pages, everything under `/content/`, PDFs, images and static client assets. Navigation is network-first; successful page loads are cached as the last online state. A user who was signed in can therefore still see the previously loaded role-visible pages while offline.
+
+Write actions such as opening/submitting forms require a live connection to the local server and are greyed out when the browser is offline.
 
 A timestamp at the top of every page (`Offline-Inhalte aktualisiert: …`) shows when the service worker last completed a precache pass.
 
@@ -103,7 +105,8 @@ A timestamp at the top of every page (`Offline-Inhalte aktualisiert: …`) shows
 /content        public markdown + PDFs (offline-cached)
 /protected      markdown for Soldat/Uof/Of/admin (LAN-only)
 /forms          form definitions (JSON)
-/data           users.yaml + per-form submissions
+/data           local runtime data, not committed
+/data/users.example.yaml committed template for local users.yaml
 /layout.yaml    Kachel tree + access levels
 ```
 

@@ -6,7 +6,7 @@ import { loadLayout, findKachel, getForm } from './layout.js';
 import { sessionMiddleware, checkLogin, setSessionCookie, clearSessionCookie, hasAccess } from './auth.js';
 import { listDir, renderMarkdown, safeResolve, mimeOf } from './content.js';
 import { renderHome, renderListing, renderMarkdownPage, renderLogin, renderChildren, renderOffline, renderError } from './templates/index.js';
-import { renderForm, submitForm, renderResults } from './forms.js';
+import { readSubmissions, renderForm, submitForm, renderResults } from './forms.js';
 import { buildServiceWorker } from './sw.js';
 
 const PORT = process.env.PORT ? Number(process.env.PORT) : 8080;
@@ -57,6 +57,34 @@ app.post('/login', async (req, res) => {
 });
 app.all('/logout', (_req, res) => { clearSessionCookie(res); res.redirect('/'); });
 
+function kachelDashboard(req, kachel) {
+  const role = req.user?.role || 'public';
+  const visibleChildren = (kachel.children || [])
+    .filter((child) => hasAccess(role, child.access || 'public'));
+
+  const actions = visibleChildren
+    .filter((child) => child.form)
+    .map((child) => ({
+      title: child.title,
+      url: `/forms/${child.form}`,
+    }));
+
+  const resultSections = visibleChildren
+    .filter((child) => child.formResults)
+    .map((child) => {
+      const def = getForm(child.formResults);
+      if (!def) return null;
+      return {
+        title: child.title,
+        def,
+        submissions: readSubmissions(child.formResults),
+      };
+    })
+    .filter(Boolean);
+
+  return { actions, resultSections };
+}
+
 // Kachel router: /k/:id (recursive)
 app.get('/k/:id', (req, res) => {
   const k = findKachel(req.params.id);
@@ -68,7 +96,7 @@ app.get('/k/:id', (req, res) => {
   }
   if (k.form) return renderForm(req, res, k.form);
   if (k.formResults) return renderResults(req, res, k.formResults);
-  if (k.children?.length) return res.send(renderChildren(req, k));
+  if (k.children?.length) return res.send(renderChildren(req, k, kachelDashboard(req, k)));
   if (k.content) {
     const dir = safeResolve(k.content);
     if (!fs.existsSync(dir)) return res.status(404).send(renderError(req, 404, 'Inhalt nicht gefunden'));

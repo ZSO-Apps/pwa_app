@@ -75,7 +75,8 @@ function renderKachel(k, req) {
   const href = kachelHref(k, req);
   const title = displayTitle(k, req);
   const color = k.color || '#444';
-  return `<a class="kachel" href="${esc(href)}" style="--c:${esc(color)}">
+  const onlineOnly = k.form ? ' data-online-only="true"' : '';
+  return `<a class="kachel" href="${esc(href)}" style="--c:${esc(color)}"${onlineOnly}>
     <span class="k-title">${esc(title)}</span>
   </a>`;
 }
@@ -128,15 +129,62 @@ export function renderMarkdownPage(req, kachel, contentHtml, parentUrl) {
   return layout(req, { title: kachel.title, body });
 }
 
-export function renderChildren(req, kachel) {
+function renderResultsTable(def, submissions) {
+  const cols = (def.fields || []).map((f) => f.name);
+  const headers = (def.fields || []).map((f) => f.label || f.name);
+  const rows = submissions.map((s) => `<tr>
+      <td>${esc(s._meta?.submittedAt || '')}</td>
+      <td>${esc(s._meta?.submittedBy || '')}</td>
+      ${cols.map((c) => `<td>${esc(s[c] ?? '')}</td>`).join('')}
+    </tr>`).join('');
+
+  let quizSummary = '';
+  if ((def.fields || []).some((f) => f.correct !== undefined)) {
+    const totals = submissions.map((s) => {
+      let correct = 0, total = 0;
+      for (const f of def.fields) if (f.correct !== undefined) { total++; if (s[f.name] === f.correct) correct++; }
+      return { correct, total, name: s._meta?.submittedBy || '?' };
+    });
+    quizSummary = `<h2>Quiz-Zusammenfassung</h2>
+      <ul class="quiz-summary">${totals.map((t) => `<li>${esc(t.name)}: ${t.correct}/${t.total}</li>`).join('')}</ul>`;
+  }
+
+  return `
+    <p>${submissions.length} Eingabe(n)</p>
+    ${quizSummary}
+    ${submissions.length ? `
+    <div class="tablewrap"><table class="results">
+      <thead><tr><th>Datum</th><th>Benutzer</th>${headers.map((h) => `<th>${esc(h)}</th>`).join('')}</tr></thead>
+      <tbody>${rows}</tbody>
+    </table></div>` : '<p><em>Noch keine Eingaben.</em></p>'}`;
+}
+
+export function renderChildren(req, kachel, { actions = [], resultSections = [] } = {}) {
   const role = req.user?.role || 'public';
-  const children = (kachel.children || []).filter((c) => hasAccess(role, c.access || 'public'));
+  const children = (kachel.children || [])
+    .filter((c) => hasAccess(role, c.access || 'public'))
+    .filter((c) => !c.form && !c.formResults);
+  const actionButtons = actions.map((action) => (
+    `<a class="button" href="${esc(action.url)}" data-online-only="true">+ ${esc(action.title)}</a>`
+  )).join('');
+  const results = resultSections.map((section) => `
+    <section class="dashboard-section">
+      <h2>${esc(section.title)}</h2>
+      ${renderResultsTable(section.def, section.submissions)}
+    </section>
+  `).join('');
+  const childrenGrid = children.length
+    ? `<section class="kacheln">${children.map((c) => renderKachel(c, req)).join('\n')}</section>`
+    : '';
   const body = `
   <article class="content">
-    <h1>${esc(kachel.title)}</h1>
-    <section class="kacheln">
-      ${children.map((c) => renderKachel(c, req)).join('\n')}
-    </section>
+    <div class="content-header">
+      <h1>${esc(kachel.title)}</h1>
+      ${actionButtons ? `<div class="actions">${actionButtons}</div>` : ''}
+    </div>
+    ${actionButtons ? '<p class="offline-hint">Offline: Formulare können nur mit Verbindung zum Server erstellt oder gesendet werden.</p>' : ''}
+    ${results}
+    ${childrenGrid}
     <p><a href="/" class="back">← Zurück</a></p>
   </article>`;
   return layout(req, { title: kachel.title, body });
@@ -195,35 +243,10 @@ export function renderFormPage(req, def, { submitted = false } = {}) {
 }
 
 export function renderResultsPage(req, def, submissions) {
-  const cols = (def.fields || []).map((f) => f.name);
-  const headers = (def.fields || []).map((f) => f.label || f.name);
-  const rows = submissions.map((s) => `<tr>
-      <td>${esc(s._meta?.submittedAt || '')}</td>
-      <td>${esc(s._meta?.submittedBy || '')}</td>
-      ${cols.map((c) => `<td>${esc(s[c] ?? '')}</td>`).join('')}
-    </tr>`).join('');
-
-  let quizSummary = '';
-  if ((def.fields || []).some((f) => f.correct !== undefined)) {
-    const totals = submissions.map((s) => {
-      let correct = 0, total = 0;
-      for (const f of def.fields) if (f.correct !== undefined) { total++; if (s[f.name] === f.correct) correct++; }
-      return { correct, total, name: s._meta?.submittedBy || '?' };
-    });
-    quizSummary = `<h2>Quiz-Zusammenfassung</h2>
-      <ul class="quiz-summary">${totals.map((t) => `<li>${esc(t.name)}: ${t.correct}/${t.total}</li>`).join('')}</ul>`;
-  }
-
   const body = `
   <article class="content">
     <h1>Auswertung — ${esc(def.title || def.id)}</h1>
-    <p>${submissions.length} Eingabe(n)</p>
-    ${quizSummary}
-    ${submissions.length ? `
-    <div class="tablewrap"><table class="results">
-      <thead><tr><th>Datum</th><th>Benutzer</th>${headers.map((h) => `<th>${esc(h)}</th>`).join('')}</tr></thead>
-      <tbody>${rows}</tbody>
-    </table></div>` : '<p><em>Noch keine Eingaben.</em></p>'}
+    ${renderResultsTable(def, submissions)}
     <p><a href="/" class="back">← Zurück</a></p>
   </article>`;
   return layout(req, { title: 'Auswertung', body });

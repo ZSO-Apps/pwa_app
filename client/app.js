@@ -28,6 +28,24 @@ function updateSyncLabel() {
 }
 updateSyncLabel();
 
+function updateOnlineActions() {
+  const offline = navigator.onLine === false;
+  document.body.classList.toggle('is-offline', offline);
+  document.querySelectorAll('[data-online-only]').forEach((el) => {
+    el.setAttribute('aria-disabled', String(offline));
+    el.classList.toggle('is-disabled', offline);
+  });
+}
+updateOnlineActions();
+window.addEventListener('online', updateOnlineActions);
+window.addEventListener('offline', updateOnlineActions);
+document.addEventListener('click', (event) => {
+  const action = event.target.closest?.('[data-online-only]');
+  if (!action || navigator.onLine !== false) return;
+  event.preventDefault();
+  window.alert('Diese Funktion benötigt eine Verbindung zum Server.');
+});
+
 // Service worker
 if ('serviceWorker' in navigator) {
   navigator.serviceWorker.register('/service-worker.js').catch((e) => console.warn('SW register failed', e));
