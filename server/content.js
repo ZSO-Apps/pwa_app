@@ -22,18 +22,27 @@ export function listDir(absDir, urlPrefix) {
     .filter((e) => {
       if (e.isDirectory()) return true;
       const ext = path.extname(e.name).toLowerCase();
-      return ext === '.md' || ext === '.pdf';
+      return ext === '.md' || ext === '.pdf' || ext === '.url';
     })
     .sort((a, b) => a.name.localeCompare(b.name, 'de'));
   return entries.map((e) => {
-    const url = urlPrefix.replace(/\/$/, '') + '/' + encodeURIComponent(e.name) + (e.isDirectory() ? '/' : '');
     const ext = path.extname(e.name).toLowerCase();
-    const label = e.name.replace(/\.md$/, '').replace(/_/g, ' ');
+    const label = e.name.replace(/\.(md|url)$/i, '').replace(/_/g, ' ');
     let kind = 'file';
+    let url = urlPrefix.replace(/\/$/, '') + '/' + encodeURIComponent(e.name) + (e.isDirectory() ? '/' : '');
+    let external = false;
     if (e.isDirectory()) kind = 'dir';
     else if (ext === '.md') kind = 'md';
     else if (ext === '.pdf') kind = 'pdf';
-    return { name: e.name, label, url, kind };
+    else if (ext === '.url') {
+      kind = 'url';
+      external = true;
+      const raw = fs.readFileSync(path.join(absDir, e.name), 'utf8').trim();
+      // Support both plain "https://..." files and Windows .url INI format
+      const iniMatch = raw.match(/^URL=(.+)$/im);
+      url = iniMatch ? iniMatch[1].trim() : raw.split(/\r?\n/)[0].trim();
+    }
+    return { name: e.name, label, url, kind, external };
   });
 }
 
@@ -57,6 +66,7 @@ export function listPublicAssets(contentDir = path.resolve('content')) {
       const childAbs = path.join(abs, e.name);
       const childUrl = urlBase.replace(/\/$/, '') + '/' + encodeURIComponent(e.name);
       if (e.isDirectory()) walk(childAbs, childUrl + '/');
+      else if (path.extname(e.name).toLowerCase() === '.url') continue; // external link, not a file to cache
       else urls.push(childUrl);
     }
   };

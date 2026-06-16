@@ -26,6 +26,7 @@ kacheln:
   - id: wk-foo
     title: "WK Foo"
     access: Soldat
+    content: protected/wk-foo
     color: "#9b7bd4"
     # children appended at startup from /forms/*.json (submitKachel/resultsKachel == wk-foo)
 

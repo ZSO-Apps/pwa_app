@@ -103,8 +103,9 @@ export function renderKachelView(req, kachel, contentHtml) {
 
 export function renderListing(req, kachel, entries, breadcrumbs) {
   const items = entries.map((e) => {
-    const icon = { dir: '📁', md: '📄', pdf: '📕', img: '🖼️', file: '📄' }[e.kind] || '📄';
-    return `<li><a href="${esc(e.url)}"><span class="ic">${icon}</span> ${esc(e.label)}</a></li>`;
+    const icon = { dir: '📁', md: '📄', pdf: '📕', img: '🖼️', url: '🔗', file: '📄' }[e.kind] || '📄';
+    const attrs = e.external ? ' target="_blank" rel="noopener noreferrer"' : '';
+    return `<li><a href="${esc(e.url)}"${attrs}><span class="ic">${icon}</span> ${esc(e.label)}</a></li>`;
   }).join('');
   const crumb = breadcrumbs.map((b, i) =>
     i === breadcrumbs.length - 1 ? `<span>${esc(b.label)}</span>` : `<a href="${esc(b.url)}">${esc(b.label)}</a>`
