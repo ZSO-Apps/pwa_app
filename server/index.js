@@ -5,9 +5,10 @@ import fs from 'node:fs';
 import { loadLayout, findKachel, getForm } from './layout.js';
 import { sessionMiddleware, checkLogin, setSessionCookie, clearSessionCookie, hasAccess } from './auth.js';
 import { listDir, renderMarkdown, safeResolve, mimeOf } from './content.js';
-import { renderHome, renderListing, renderMarkdownPage, renderLogin, renderChildren, renderOffline, renderError } from './templates/index.js';
-import { readSubmissions, renderForm, submitForm, renderResults } from './forms.js';
+import { renderHome, renderListing, renderMarkdownPage, renderLogin, renderChildren, renderOffline, renderError, renderWkCreatePage, renderWkDetailPage, renderWkListPage } from './templates/index.js';
+import { readSubmissions, renderForm, submitForm, renderResults, renderSubmission } from './forms.js';
 import { buildServiceWorker } from './sw.js';
+import { createWk, getWk, listWks } from './wk.js';
 
 const PORT = process.env.PORT ? Number(process.env.PORT) : 8080;
 const ROOT = path.resolve('.');
@@ -57,6 +58,17 @@ app.post('/login', async (req, res) => {
 });
 app.all('/logout', (_req, res) => { clearSessionCookie(res); res.redirect('/'); });
 
+function requireMinimumRole(req, res, minRole) {
+  const role = req.user?.role || 'public';
+  if (hasAccess(role, minRole)) return true;
+  if (!req.user) {
+    res.redirect('/login?next=' + encodeURIComponent(req.originalUrl));
+    return false;
+  }
+  res.status(403).send(renderError(req, 403, 'Zugriff verweigert'));
+  return false;
+}
+
 function kachelDashboard(req, kachel) {
   const role = req.user?.role || 'public';
   const visibleChildren = (kachel.children || [])
@@ -94,6 +106,13 @@ app.get('/k/:id', (req, res) => {
   if (!hasAccess(role, k.access || 'public')) {
     if (!req.user) return res.redirect('/login?next=' + encodeURIComponent(req.originalUrl));
     return res.status(403).send(renderError(req, 403, 'Zugriff verweigert'));
+  }
+  if (k.module === 'wk') {
+    return res.send(renderWkListPage(req, {
+      kachel: k,
+      wks: listWks(),
+      canCreate: hasAccess(role, 'Offizier'),
+    }));
   }
   if (k.form) return renderForm(req, res, k.form);
   if (k.formResults) return renderResults(req, res, k.formResults);
@@ -167,9 +186,36 @@ app.get(/^\/content\/.+/, (req, res) => {
   res.sendFile(abs);
 });
 
+// WK
+app.get('/wk/new', (req, res) => {
+  if (!requireMinimumRole(req, res, 'Offizier')) return;
+  res.send(renderWkCreatePage(req));
+});
+
+app.post('/wk', (req, res) => {
+  if (!requireMinimumRole(req, res, 'Offizier')) return;
+  try {
+    const wk = createWk(req.body || {}, req.user);
+    res.redirect(303, `/wk/${wk.id}`);
+  } catch (error) {
+    res.status(400).send(renderWkCreatePage(req, {
+      error: error.message,
+      values: req.body || {},
+    }));
+  }
+});
+
+app.get('/wk/:id', (req, res) => {
+  if (!requireMinimumRole(req, res, 'Unteroffizier')) return;
+  const wk = getWk(req.params.id);
+  if (!wk) return res.status(404).send(renderError(req, 404, 'WK nicht gefunden'));
+  res.send(renderWkDetailPage(req, wk));
+});
+
 // Forms
 app.get('/forms/:id', (req, res) => renderForm(req, res, req.params.id));
 app.post('/forms/:id', (req, res) => submitForm(req, res, req.params.id));
+app.get('/forms/:id/results/:submissionId', (req, res) => renderSubmission(req, res, req.params.id, req.params.submissionId));
 app.get('/forms/:id/results', (req, res) => renderResults(req, res, req.params.id));
 
 app.use((req, res) => res.status(404).send(renderError(req, 404, `Nicht gefunden: ${req.path}`)));

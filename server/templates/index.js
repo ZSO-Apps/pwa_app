@@ -130,10 +130,27 @@ export function renderMarkdownPage(req, kachel, contentHtml, parentUrl) {
   return layout(req, { title: kachel.title, body });
 }
 
+function submissionTitle(def, submission) {
+  const fields = def.fields || [];
+  const preferredNames = ['titel', 'title', 'name', 'betreff', 'thema', 'sender'];
+  const preferred = preferredNames
+    .map((name) => fields.find((field) => field.name === name))
+    .find(Boolean);
+  const fallback = preferred || fields[0];
+  const value = fallback ? submission[fallback.name] : '';
+  return value || submission._meta?.submittedBy || submission._meta?.submittedAt || 'Eintrag';
+}
+
+function submissionUrl(def, submission) {
+  const id = submission._meta?.submissionId;
+  return id ? '/forms/' + encodeURIComponent(def.id) + '/results/' + encodeURIComponent(id) : '#';
+}
+
 function renderResultsTable(def, submissions) {
   const cols = (def.fields || []).map((f) => f.name);
   const headers = (def.fields || []).map((f) => f.label || f.name);
   const rows = submissions.map((s) => `<tr>
+      <td><a href="${esc(submissionUrl(def, s))}">${esc(submissionTitle(def, s))}</a></td>
       <td>${esc(s._meta?.submittedAt || '')}</td>
       <td>${esc(s._meta?.submittedBy || '')}</td>
       ${cols.map((c) => `<td>${esc(s[c] ?? '')}</td>`).join('')}
@@ -155,7 +172,7 @@ function renderResultsTable(def, submissions) {
     ${quizSummary}
     ${submissions.length ? `
     <div class="tablewrap"><table class="results">
-      <thead><tr><th>Datum</th><th>Benutzer</th>${headers.map((h) => `<th>${esc(h)}</th>`).join('')}</tr></thead>
+      <thead><tr><th>Name / Titel</th><th>Datum</th><th>Benutzer</th>${headers.map((h) => `<th>${esc(h)}</th>`).join('')}</tr></thead>
       <tbody>${rows}</tbody>
     </table></div>` : '<p><em>Noch keine Eingaben.</em></p>'}`;
 }
@@ -255,6 +272,136 @@ export function renderResultsPage(req, def, submissions) {
   </article>`;
   return layout(req, { title: 'Auswertung', body });
 }
+
+export function renderSubmissionPage(req, def, submission) {
+  const title = submissionTitle(def, submission);
+  const rows = (def.fields || []).map((field) => '<tr><th>' + esc(field.label || field.name) + '</th><td>' + esc(submission[field.name] ?? '') + '</td></tr>').join('');
+  const body = '<article class="content">' +
+    '<nav class="crumbs"><a href="/forms/' + esc(def.id) + '/results">Auswertung</a> / <span>' + esc(title) + '</span></nav>' +
+    '<h1>' + esc(title) + '</h1>' +
+    '<p class="muted">Gesendet am: ' + esc(submission._meta?.submittedAt || '') + '<br>Gesendet von: ' + esc(submission._meta?.submittedBy || '') + '</p>' +
+    '<div class="tablewrap"><table class="results"><tbody>' + (rows || '<tr><td><em>Keine Felder</em></td></tr>') + '</tbody></table></div>' +
+    '<p><a href="/forms/' + esc(def.id) + '/results" class="back">← Zurück zur Auswertung</a></p>' +
+    '</article>';
+  return layout(req, { title, body });
+}
+
+function fieldValue(values, name, fallback = '') {
+  return values?.[name] ?? fallback;
+}
+
+export function renderWkListPage(req, { kachel, wks, canCreate }) {
+  const rows = wks.map((wk) => `<tr>
+    <td><a href="/wk/${esc(wk.id)}">${esc(wk.name)}</a></td>
+    <td>${esc(wk.nummer)}</td>
+    <td>${esc(wk.datum)}</td>
+    <td>${esc(wk.ort)}</td>
+    <td>${esc(wk.tenue)}</td>
+    <td>${esc(wk.appellStatus)}</td>
+  </tr>`).join('');
+  const body = `
+  <article class="content">
+    <div class="content-header">
+      <h1>${esc(kachel.title)}</h1>
+      ${canCreate ? `<div class="actions"><a class="action-button" href="/wk/new" data-online-only="true">
+        <span class="action-icon" aria-hidden="true">+</span>
+        <span class="action-copy"><strong>Neuer WK</strong><small>WK erfassen</small></span>
+      </a></div>` : ''}
+    </div>
+    ${canCreate ? '<p class="offline-hint">Offline: WKs können nur mit Verbindung zum Server erstellt werden.</p>' : ''}
+    <div class="tablewrap"><table class="results">
+      <thead><tr><th>Name / Titel</th><th>Nummer</th><th>Datum</th><th>Ort</th><th>Tenue</th><th>Appell</th></tr></thead>
+      <tbody>${rows || '<tr><td colspan="6"><em>Noch keine WKs erstellt.</em></td></tr>'}</tbody>
+    </table></div>
+    <p><a href="/" class="back">← Zurück</a></p>
+  </article>`;
+  return layout(req, { title: kachel.title, body });
+}
+
+export function renderWkCreatePage(req, { error, values = {} } = {}) {
+  const body = `
+  <article class="content">
+    <div class="content-header">
+      <h1>WK erstellen</h1>
+    </div>
+    ${error ? `<p class="err">${esc(error)}</p>` : ''}
+    <form method="POST" action="/wk" class="genform wide">
+      <h2>Grunddaten</h2>
+      <div class="field-row">
+        <div class="field"><label for="nummer">Nummer *</label><input id="nummer" name="nummer" required value="${esc(fieldValue(values, 'nummer'))}"></div>
+        <div class="field"><label for="name">Name *</label><input id="name" name="name" required value="${esc(fieldValue(values, 'name'))}"></div>
+      </div>
+      <label class="field" for="platzhalter">Hinweis / Platzhalter<textarea id="platzhalter" name="platzhalter" rows="3">${esc(fieldValue(values, 'platzhalter', 'Platzhalter — bitte vor Beginn des WK durch Kdo aktualisieren.'))}</textarea></label>
+
+      <h2>Eckdaten</h2>
+      <div class="field-row">
+        <div class="field"><label for="datum">Datum</label><input id="datum" name="datum" value="${esc(fieldValue(values, 'datum', 'TBD'))}"></div>
+        <div class="field"><label for="ort">Ort</label><input id="ort" name="ort" value="${esc(fieldValue(values, 'ort', 'TBD'))}"></div>
+        <div class="field"><label for="tenue">Tenue</label><input id="tenue" name="tenue" value="${esc(fieldValue(values, 'tenue', 'TBD'))}"></div>
+      </div>
+
+      <h2>Tagesablauf</h2>
+      <div class="field-row day-row">
+        <div class="field"><label for="tag_mo">Mo</label><input id="tag_mo" name="tag_mo" value="${esc(fieldValue(values, 'tag_mo', 'Einrücken, Material'))}"></div>
+        <div class="field"><label for="tag_di">Di</label><input id="tag_di" name="tag_di" value="${esc(fieldValue(values, 'tag_di', 'Ausbildung'))}"></div>
+        <div class="field"><label for="tag_mi">Mi</label><input id="tag_mi" name="tag_mi" value="${esc(fieldValue(values, 'tag_mi', 'Ausbildung'))}"></div>
+        <div class="field"><label for="tag_do">Do</label><input id="tag_do" name="tag_do" value="${esc(fieldValue(values, 'tag_do', 'Übung'))}"></div>
+        <div class="field"><label for="tag_fr">Fr</label><input id="tag_fr" name="tag_fr" value="${esc(fieldValue(values, 'tag_fr', 'Abrüsten'))}"></div>
+      </div>
+
+      <h2>Persönliche Ausrüstung</h2>
+      <label class="field" for="ausruestung">Ein Eintrag pro Zeile<textarea id="ausruestung" name="ausruestung" rows="5">${esc(fieldValue(values, 'ausruestung', 'Persönliche Waffe & Munition gemäss Marschbefehl\nIdentitätskarte / Dienstbüchlein\nTenue gemäss Befehl\nHygieneartikel, Schreibzeug'))}</textarea></label>
+
+      <h2>Kontakt</h2>
+      <div class="field-row">
+        <div class="field"><label for="kdoWk">Kdo WK</label><input id="kdoWk" name="kdoWk" value="${esc(fieldValue(values, 'kdoWk', 'TBD'))}"></div>
+        <div class="field"><label for="verpflegungLogistik">Verpflegung / Logistik</label><input id="verpflegungLogistik" name="verpflegungLogistik" value="${esc(fieldValue(values, 'verpflegungLogistik', 'TBD'))}"></div>
+      </div>
+
+      <p class="muted">Kader, Mannschaft und Appell werden auf Basis dieser WK-Datei später ergänzt. Ein Appell ist erst sinnvoll, wenn Kader und Mannschaft eingetragen sind.</p>
+      <button type="submit">WK speichern</button>
+    </form>
+    <p><a href="/k/wk-information" class="back">← Zurück zur WK-Übersicht</a></p>
+  </article>`;
+  return layout(req, { title: 'WK erstellen', body });
+}
+
+export function renderWkDetailPage(req, wk) {
+  const tagesablauf = (wk.tagesablauf || []).map((row) => `<tr><td>${esc(row.tag)}</td><td>${esc(row.aktivitaet)}</td></tr>`).join('');
+  const ausruestung = (wk.ausruestung || []).map((item) => `<li>${esc(item)}</li>`).join('');
+  const body = `
+  <article class="content prose">
+    <nav class="crumbs"><a href="/k/wk-information">WK Information</a> / <span>${esc(wk.name || wk.id)}</span></nav>
+    <h1>${esc(wk.name || wk.id)}</h1>
+    <p class="muted">Nummer: ${esc(wk.nummer || '')}</p>
+    <blockquote>${esc(wk.platzhalter || 'Platzhalter — bitte vor Beginn des WK durch Kdo aktualisieren.')}</blockquote>
+
+    <h2>Eckdaten</h2>
+    <ul>
+      <li><strong>Datum:</strong> ${esc(wk.eckdaten?.datum || 'TBD')}</li>
+      <li><strong>Ort:</strong> ${esc(wk.eckdaten?.ort || 'TBD')}</li>
+      <li><strong>Tenue:</strong> ${esc(wk.eckdaten?.tenue || 'TBD')}</li>
+    </ul>
+
+    <h2>Tagesablauf (Übersicht)</h2>
+    <table><thead><tr><th>Tag</th><th>Aktivität</th></tr></thead><tbody>${tagesablauf || '<tr><td colspan="2"><em>Keine Einträge</em></td></tr>'}</tbody></table>
+
+    <h2>Persönliche Ausrüstung</h2>
+    <ul>${ausruestung || '<li><em>Keine Einträge</em></li>'}</ul>
+
+    <h2>Kontakt</h2>
+    <ul>
+      <li><strong>Kdo WK:</strong> ${esc(wk.kontakt?.kdoWk || 'TBD')}</li>
+      <li><strong>Verpflegung / Logistik:</strong> ${esc(wk.kontakt?.verpflegungLogistik || 'TBD')}</li>
+    </ul>
+
+    <h2>Appell</h2>
+    <p>Status: ${esc(wk.appell?.status || 'nicht bereit')}</p>
+    <p><a href="/k/wk-information" class="back">← Zurück zur WK-Übersicht</a></p>
+  </article>`;
+  return layout(req, { title: wk.name || 'WK', body });
+}
+
 
 export function renderOffline(req) {
   const body = `

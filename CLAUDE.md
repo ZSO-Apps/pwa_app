@@ -48,6 +48,7 @@ organizations can deploy too. Goals, in priority order:
 /forms/<form-id>.json  form definitions (schema, access levels, target Kachel)
 /data/
   users.yaml           user accounts (bcrypt hashes + role), hand/admin-edited
+  wk/<wk-id>.yaml      one file per WK with number, name, roster and Appell
   forms/<form-id>/
     <timestamp>-<uuid>.json   one file per form submission (append-only)
 /server/               Node/Express app
@@ -162,6 +163,33 @@ kacheln:
   ]
 }
 ```
+
+### WK files and Appell
+
+- Each WK is represented by one YAML file under `data/wk/<wk-id>.yaml`.
+  This keeps WK data inspectable and gives later forms a stable `wkId`
+  reference.
+- Every WK has at least an `id`, `nummer`, `name`, optional date range,
+  `kader` and `mannschaft`.
+- "Eingetragen" means the user or group account is present in the WK file in
+  either `kader` or `mannschaft`. It is not inferred from login alone and is
+  not a self-check-in unless an admin/officer later adds that workflow.
+- The WK Information module renders a table of existing WK files. The WK
+  name/title is the read-only detail link. Reading WK entries requires
+  `Unteroffizier` or higher.
+- Creating a WK from the GUI requires `Offizier` or higher. The creation mask
+  captures Nummer, Name, Hinweis, Eckdaten, Tagesablauf, persönliche
+  Ausrüstung and Kontakt.
+- An Appell can be created once Kader and Mannschaft are entered. The Appell is
+  stored in the same WK file and records per-person status plus comments.
+- Real WK files are runtime data and are ignored by Git. The repository tracks
+  only `data/wk/*.example.yaml` templates.
+
+### Handkarten
+
+- Handkarten are normal Markdown/PDF content.
+- They are public and offline-capable like the other public content Kacheln.
+- The app name remains "ZSO App".
 
 ### Forms
 

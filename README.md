@@ -4,7 +4,7 @@ A self-hostable PWA for civil-protection / ZSO organizations: public offline con
 
 ## What's inside
 
-- **Public Kacheln** (no login, fully offline-cached): `FU Lage`, `FU Telematik`, `Notfall-Treffpunkt`, `Unterstützung`.
+- **Public Kacheln** (no login, fully offline-cached): `FU Lage`, `FU Telematik`, `Notfall-Treffpunkt`, `Unterstützung`, `Handkarten`.
 - **Protected Kacheln** (require login on the org's LAN): `WK Foo` (Soldat+), `WK Information` (Uof+), `WK Admin` (Of+).
 - **Forms**: not public; quiz (Soldat submits, Uof+ sees results), Essensbestellung (Of-only) and a planned Standard Formular category.
 - 5 role levels: `admin > Offizier > Unteroffizier > Soldat > public`.
@@ -89,6 +89,12 @@ Adding things is meant to be drop-in.
 
 - **Sub-Kacheln (groups)**: a Kachel can act as a category — leave out `content` and let forms attach themselves via `submitKachel`. (See `wk-foo` and `wk-admin` in `layout.yaml`.)
 
+## WK files
+
+Jeder WK wird als eigene YAML-Datei unter `data/wk/<wk-id>.yaml` gespeichert. Ein WK hat mindestens Nummer, Name, Kader, Mannschaft und Appell-Daten. Ein Benutzer gilt als "eingetragen", wenn sein Benutzer- oder Gruppenaccount in dieser WK-Datei aufgeführt ist. Spätere Formulare können einen WK über dessen `id` referenzieren. `Offizier` und höher können WKs über die GUI erstellen; `Unteroffizier` und höher können WK-Einträge aus der WK-Information read-only öffnen. Formular-Auswertungen zeigen ebenfalls eine klickbare Spalte "Name / Titel", welche die gesendete Eingabe read-only öffnet.
+
+Echte WK-Dateien sind lokale Laufzeitdaten. `data/wk/wk-2026-001.example.yaml` dient als Vorlage.
+
 ## How offline works
 
 The service worker (`/service-worker.js`, generated dynamically) precaches `/`, the public `/k/...` pages, everything under `/content/`, PDFs, images and static client assets. Navigation is network-first; successful page loads are cached as the last online state. A user who was signed in can therefore still see the previously loaded role-visible pages while offline.
@@ -107,6 +113,7 @@ A timestamp at the top of every page (`Offline-Inhalte aktualisiert: …`) shows
 /forms          form definitions (JSON)
 /data           local runtime data, not committed
 /data/users.example.yaml committed template for local users.yaml
+/data/wk/*.example.yaml committed templates for one-file-per-WK data
 /layout.yaml    Kachel tree + access levels
 ```
 

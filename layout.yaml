@@ -23,6 +23,12 @@ kacheln:
     content: content/Unterstützung
     color: "#3aa0e0"
 
+  - id: handkarten
+    title: "Handkarten"
+    access: public
+    content: content/Handkarten
+    color: "#2f80ed"
+
   - id: wk-foo
     title: "WK Foo"
     access: Soldat
@@ -33,7 +39,7 @@ kacheln:
   - id: wk-information
     title: "WK Information"
     access: Unteroffizier
-    content: protected/WK-Information
+    module: wk
     color: "#4a90a4"
 
   - id: wk-admin
