@@ -9,6 +9,11 @@ const FORMS_DIR = path.resolve('forms');
 let _layout = null;
 let _forms = null;
 
+function formSubmitAccess(def) {
+  const access = def.submitAccess || 'Soldat';
+  return access === 'public' ? 'Soldat' : access;
+}
+
 export function loadForms() {
   const map = {};
   if (!fs.existsSync(FORMS_DIR)) return map;
@@ -40,7 +45,7 @@ export function loadLayout() {
       host.children.push({
         id: `form-${def.id}`,
         title: def.submitLabel || `Formular ${def.title || def.id}`,
-        access: def.submitAccess || 'public',
+        access: formSubmitAccess(def),
         form: def.id,
         color: host.color,
       });

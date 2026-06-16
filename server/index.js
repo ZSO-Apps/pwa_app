@@ -66,6 +66,7 @@ function kachelDashboard(req, kachel) {
     .filter((child) => child.form)
     .map((child) => ({
       title: child.title,
+      detail: child.title.replace(/^Formular\s+/i, ''),
       url: `/forms/${child.form}`,
     }));
 

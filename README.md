@@ -6,7 +6,7 @@ A self-hostable PWA for civil-protection / ZSO organizations: public offline con
 
 - **Public Kacheln** (no login, fully offline-cached): `FU Lage`, `FU Telematik`, `Notfall-Treffpunkt`, `Unterstützung`.
 - **Protected Kacheln** (require login on the org's LAN): `WK Foo` (Soldat+), `WK Information` (Uof+), `WK Admin` (Of+).
-- **Forms**: quiz (Soldat submits, Uof+ sees results) + Essensbestellung (Of-only).
+- **Forms**: not public; quiz (Soldat submits, Uof+ sees results), Essensbestellung (Of-only) and a planned Standard Formular category.
 - 5 role levels: `admin > Offizier > Unteroffizier > Soldat > public`.
 
 ## Run it
@@ -93,7 +93,7 @@ Adding things is meant to be drop-in.
 
 The service worker (`/service-worker.js`, generated dynamically) precaches `/`, the public `/k/...` pages, everything under `/content/`, PDFs, images and static client assets. Navigation is network-first; successful page loads are cached as the last online state. A user who was signed in can therefore still see the previously loaded role-visible pages while offline.
 
-Write actions such as opening/submitting forms require a live connection to the local server and are greyed out when the browser is offline.
+Write actions such as opening/submitting forms require a live connection to the local server and are greyed out when the browser is offline. Public users do not see or submit forms.
 
 A timestamp at the top of every page (`Offline-Inhalte aktualisiert: …`) shows when the service worker last completed a precache pass.
 

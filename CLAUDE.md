@@ -20,8 +20,8 @@ organizations can deploy too. Goals, in priority order:
      service worker.
    - All other levels require login; content is only available when the
      device can reach the local server (LAN).
-   - Forms can also live in the `public` access level, but then (obviously)
-     require connectivity to submit — they are not offline-capable.
+   - Forms are never public. Public users must not see form Kacheln and must
+     not be able to create or submit forms.
 4. **Easy for other orgs to fork/contribute** — single language (TypeScript
    everywhere), readable code, file-based content and data (no database
    server to install).
@@ -175,12 +175,14 @@ kacheln:
   - **`resultsAccess`**: minimum role required to view results (e.g.
     `Unteroffizier` — Unteroffizier and above can view submissions), and
     optionally which Kachel the results view appears in
-- Forms can be attached to a `public` Kachel too, but then submission
-  requires connectivity (forms are never offline-capable, regardless of
-  the Kachel's own access level).
+- Forms are not available to `public`. The minimum submit role defaults to
+  `Soldat` if omitted, and a configured `public` submit role is treated as
+  `Soldat`.
 - A form host Kachel can render its result table directly. Example:
   `/k/wk-admin` shows the Essensbestellung results inline and exposes a
-  `+ Formular Essensbestellung` button that opens `/forms/essensbestellung`.
+  "Neue Eingabe / Essensbestellung" action that opens `/forms/essensbestellung`.
+- The planned general form categories are: Essensbestellung, Quiz and
+  Standard Formular. Categories may minimally adjust the rendered form UI.
 - Generic server-side renderer turns the schema into an HTML form; the
   server checks `submitAccess` before rendering/accepting submissions, and
   `resultsAccess` before rendering the results view.
@@ -247,6 +249,11 @@ These resolve the previously open questions and reflect the current code.
   login icon in the top-right when anonymous and a logout icon (POST
   form) when signed in. The hamburger top-left opens the side nav with
   all role-visible Kacheln.
+- **Accounts**: individual users and group accounts are both supported via
+  `data/users.yaml`. The signed role remains valid until logout, even if
+  `users.yaml` changes while the user is signed in.
+- **Admin UI**: user/form/layout management will be exposed through an admin
+  interface that only the `admin` role can edit.
 - **Sync indicator**: timestamp `Offline-Inhalte aktualisiert: …` shown
   in small text under the top bar, written by the SW via `postMessage`
   on activate and persisted in `localStorage.lastSync`.
@@ -269,3 +276,6 @@ These resolve the previously open questions and reflect the current code.
 - Aggregating multiple content sources under one Kachel (current model:
   one Kachel = one `content` folder, optionally plus auto-attached form
   children).
+- ToDos: targets can be roles and/or individual users. ToDos need comment
+  fields for addressing specific people inside roles. Completed ToDos remain
+  visible, are struck through, and are sorted after open ToDos.

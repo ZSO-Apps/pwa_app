@@ -75,11 +75,13 @@ self.addEventListener('fetch', (event) => {
         }
         return fresh;
       } catch {
-        return await cache.match(req)
-          || await cache.match(url.pathname)
-          || await cache.match('/')
-          || await cache.match('/offline')
-          || new Response('Offline', { status: 503 });
+        const exact = await cache.match(req) || await cache.match(url.pathname);
+        if (exact) return exact;
+        if (url.pathname === '/') {
+          const home = await cache.match('/');
+          if (home) return home;
+        }
+        return await cache.match('/offline') || new Response('Offline', { status: 503 });
       }
     })());
     return;

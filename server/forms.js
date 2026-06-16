@@ -7,11 +7,16 @@ import { renderFormPage, renderResultsPage } from './templates/index.js';
 
 const DATA_DIR = path.resolve('data/forms');
 
+function submitAccessFor(def) {
+  const access = def.submitAccess || 'Soldat';
+  return access === 'public' ? 'Soldat' : access;
+}
+
 export function renderForm(req, res, formId) {
   const def = getForm(formId);
   if (!def) return res.status(404).send('Formular nicht gefunden');
   const role = req.user?.role || 'public';
-  if (!hasAccess(role, def.submitAccess || 'public')) {
+  if (!hasAccess(role, submitAccessFor(def))) {
     if (!req.user) return res.redirect('/login?next=' + encodeURIComponent(req.originalUrl));
     return res.status(403).send('Zugriff verweigert');
   }
@@ -22,7 +27,7 @@ export function submitForm(req, res, formId) {
   const def = getForm(formId);
   if (!def) return res.status(404).send('Formular nicht gefunden');
   const role = req.user?.role || 'public';
-  if (!hasAccess(role, def.submitAccess || 'public')) return res.status(403).send('Zugriff verweigert');
+  if (!hasAccess(role, submitAccessFor(def))) return res.status(403).send('Zugriff verweigert');
 
   const submission = { _meta: { formId, submittedAt: new Date().toISOString(), submittedBy: req.user?.username || null } };
   for (const f of def.fields) {

@@ -165,7 +165,10 @@ export function renderChildren(req, kachel, { actions = [], resultSections = [] 
     .filter((c) => hasAccess(role, c.access || 'public'))
     .filter((c) => !c.form && !c.formResults);
   const actionButtons = actions.map((action) => (
-    `<a class="button" href="${esc(action.url)}" data-online-only="true">+ ${esc(action.title)}</a>`
+    `<a class="action-button" href="${esc(action.url)}" data-online-only="true">
+      <span class="action-icon" aria-hidden="true">+</span>
+      <span class="action-copy"><strong>Neue Eingabe</strong><small>${esc(action.detail || action.title)}</small></span>
+    </a>`
   )).join('');
   const results = resultSections.map((section) => `
     <section class="dashboard-section">
