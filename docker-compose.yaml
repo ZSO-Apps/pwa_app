@@ -11,11 +11,20 @@ services:
       - proxy-network
     labels:
       - "traefik.enable=true"
-      # Hier wird die Variable aus der .env Datei eingesetzt:
-      - "traefik.http.routers.pwa.rule=Host(`${APP_DOMAIN}`)"
-      - "traefik.http.routers.pwa.entrypoints=websecure"
-      - "traefik.http.routers.pwa.tls.certresolver=myresolver"
-      - "traefik.http.services.pwa.loadbalancer.server.port=8080"
+      
+      # HTTP Router
+      - "traefik.http.routers.pwa-http.entrypoints=web"
+      - "traefik.http.routers.pwa-http.rule=Host(`${APP_DOMAIN}`)"
+      - "traefik.http.routers.pwa-service=pwa-service"
+      
+      # HTTPS Router
+      - "traefik.http.routers.pwa-secure.entrypoints=websecure"
+      - "traefik.http.routers.pwa-secure.rule=Host(`${APP_DOMAIN}`)"
+      - "traefik.http.routers.pwa-secure.tls=true"
+      - "traefik.http.routers.pwa-secure.service=pwa-service"
+      
+      # Interner Container-Port
+      - "traefik.http.services.pwa-service.loadbalancer.server.port=8080"
 
 networks:
   proxy-network:
