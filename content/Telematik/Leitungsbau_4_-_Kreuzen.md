@@ -1,4 +1,3 @@
-<br>
 ## Strassenkreuzung
 
 <a href="SKR.PNG?origin=Telematik/Leitungsbau_-_4_Kreuzen.md"><img style="width: 100%;" src="SKR.PNG"/></a>
@@ -22,7 +21,6 @@ Rückmeldung von Verkehrshelfer: "**Strasse frei!**"
 * Faltsignale nur mit müssen einen Abstand von **50m** innerorts und **150-250m** ausserorts aufweisen
 * Faltsignale dürfen nur mit einen Fuss auf der Strasse stehen, die beiden anderen müssen auf dem Trottoir stehen
 
-<br>
 ## Kreuzen von Fusswegen
 
 ### Hochbau
@@ -37,7 +35,6 @@ Beim **Kreuzen von Strassen** und **Wegen** ist das Kabel
 
 Beim Kreuzen von Fusswegen und beim Bau über freies Gelände ist das Kabel so zu verlegen, dass **keine Stoplerdrähte** entstehen.
 
-<br>
 ## Kreuzen von Bahnanlagen
 
 ### Hochbau
@@ -52,16 +49,11 @@ Beim Kreuzen von Fusswegen und beim Bau über freies Gelände ist das Kabel so z
 
 Der Bahnbetreiber **muss** vorgängig informiert werden. Die Kreuzungsstelle muss **beidseitig** markiert werden.
 
-<br>
 ## Kreuzen von Autobahnen
 
 <a href="KRZ_Autobahn.PNG?origin=Telematik/Leitungsbau_-_4_Kreuzen.md"><img style="width: 100%;" src="KRZ_Autobahn.PNG"/></a>
 
 Autobahnen **müssen** bei Unter- oder Überführungen gekreuzt werden.
 <br>
-<br>
-<br>
-<br>
-
 
 

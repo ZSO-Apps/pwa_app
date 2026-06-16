@@ -1,4 +1,3 @@
-<br>
 
 <a href="orte.png?origin=NTP/Standorte.md"><img style="width: 100%;" src="orte.png"/></a>
 

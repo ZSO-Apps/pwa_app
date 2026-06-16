@@ -1,5 +1,3 @@
-<br>
-
 ### 1. Route BLAU - PTF 1 (9 AdZS / 5 NTP)
 <a href="https://goo.gl/maps/tZ7YAcfjz9jn286BA">Google Maps Link</a>
 <a href="routen_1a.PNG?origin=NTP/Routen.md"><img style="width: 100%;" src="routen_1a.PNG"/></a>

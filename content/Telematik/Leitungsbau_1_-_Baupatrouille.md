@@ -1,4 +1,3 @@
-<br>
 ## Standardorganisation
 
 Der Leitungsbau hat gegenüber andern Telefoniemöglichkeiten den Vorteil, dass die Verbindungen ohne Abhängigkeit von einem Anbieter selber
@@ -66,7 +65,4 @@ oder ausgefallen ist.
 <br>
 <a href="UBS.jpg?origin=Telematik/Leitungsbau_1_-_Grundlagen.md"><img style="width: 100%;" src="UBS.jpg"/></a>
 
-<br>
-<br>
-<br>
 <br>

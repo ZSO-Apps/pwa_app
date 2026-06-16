@@ -1,4 +1,3 @@
-<br>
 ### TPH900 Anleitungen
 
 <a href="Folie1.JPG?origin=NTP/TPH900_Anleitungen.md"><img style="width: 100%;" src="Folie1.JPG"/></a>

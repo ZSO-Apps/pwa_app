@@ -1,4 +1,3 @@
-<br>
 ## Fachbereich Telematik
 
 ### Funktionsübersicht
@@ -85,8 +84,3 @@ Siehe entsprechende Rubrik in der ZSO-App:
 <a href="MZ.PNG?origin=Telematik/Funktions-_und_Aufgabenbehelf_-_Telematik.md"><img style="width: 100%;" src="MZ.png"/></a>
 
 <br>
-<br>
-<br>
-<br>
-
-
