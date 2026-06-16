@@ -149,7 +149,11 @@ a { color: inherit; }
 
 /* Forms */
 .loginform, .genform { display: flex; flex-direction: column; gap: .8rem; max-width: 420px; }
+.genform.wide { max-width: 900px; }
 .loginform label, .genform .field { display: flex; flex-direction: column; gap: .25rem; font-weight: 600; font-size: .9rem; }
+.field-row { display: grid; grid-template-columns: repeat(auto-fit, minmax(160px, 1fr)); gap: .75rem; }
+.day-row { grid-template-columns: repeat(auto-fit, minmax(130px, 1fr)); }
+.muted { color: var(--muted); }
 .loginform input, .genform input:not([type=radio]), .genform select, .genform textarea {
   font: inherit; padding: .55rem .65rem; border: 1px solid #cdd3da; border-radius: 6px; background: #fff;
 }
@@ -164,5 +168,7 @@ a { color: inherit; }
 .tablewrap { overflow-x: auto; }
 .results { border-collapse: collapse; width: 100%; font-size: .9rem; }
 .results th, .results td { border: 1px solid #d8dee5; padding: .4rem .55rem; text-align: left; }
+.results a { color: #0b5f8a; font-weight: 700; text-decoration: none; }
+.results a:hover { text-decoration: underline; }
 .results thead { background: #eef2f6; }
 .quiz-summary { padding-left: 1.1rem; }

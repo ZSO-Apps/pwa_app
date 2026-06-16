@@ -3,13 +3,32 @@ import path from 'node:path';
 import crypto from 'node:crypto';
 import { getForm } from './layout.js';
 import { hasAccess } from './auth.js';
-import { renderFormPage, renderResultsPage } from './templates/index.js';
+import { renderFormPage, renderResultsPage, renderSubmissionPage } from './templates/index.js';
 
 const DATA_DIR = path.resolve('data/forms');
 
 function submitAccessFor(def) {
   const access = def.submitAccess || 'Soldat';
   return access === 'public' ? 'Soldat' : access;
+}
+
+function safeSubmissionId(id) {
+  return /^[A-Za-z0-9][A-Za-z0-9._-]*$/.test(id || '');
+}
+
+function canReadResults(req, res, def) {
+  if (!def || !def.resultsAccess) {
+    res.status(404).send('Auswertung nicht verfügbar');
+    return false;
+  }
+  const role = req.user?.role || 'public';
+  if (hasAccess(role, def.resultsAccess)) return true;
+  if (!req.user) {
+    res.redirect('/login?next=' + encodeURIComponent(req.originalUrl));
+    return false;
+  }
+  res.status(403).send('Zugriff verweigert');
+  return false;
 }
 
 export function renderForm(req, res, formId) {
@@ -57,7 +76,9 @@ export function readSubmissions(formId) {
     .sort()
     .map((f) => {
       try {
-        return JSON.parse(fs.readFileSync(path.join(dir, f), 'utf8'));
+        const parsed = JSON.parse(fs.readFileSync(path.join(dir, f), 'utf8'));
+        parsed._meta = { ...(parsed._meta || {}), submissionId: path.basename(f, '.json') };
+        return parsed;
       } catch {
         return null;
       }
@@ -65,13 +86,31 @@ export function readSubmissions(formId) {
     .filter(Boolean);
 }
 
+export function readSubmission(formId, submissionId) {
+  const def = getForm(formId);
+  if (!def || !safeSubmissionId(submissionId)) return null;
+  const filePath = path.join(DATA_DIR, def.id, submissionId + '.json');
+  if (!filePath.startsWith(path.join(DATA_DIR, def.id) + path.sep)) return null;
+  if (!fs.existsSync(filePath)) return null;
+  try {
+    const parsed = JSON.parse(fs.readFileSync(filePath, 'utf8'));
+    parsed._meta = { ...(parsed._meta || {}), submissionId };
+    return parsed;
+  } catch {
+    return null;
+  }
+}
+
 export function renderResults(req, res, formId) {
   const def = getForm(formId);
-  if (!def || !def.resultsAccess) return res.status(404).send('Auswertung nicht verfügbar');
-  const role = req.user?.role || 'public';
-  if (!hasAccess(role, def.resultsAccess)) {
-    if (!req.user) return res.redirect('/login?next=' + encodeURIComponent(req.originalUrl));
-    return res.status(403).send('Zugriff verweigert');
-  }
+  if (!canReadResults(req, res, def)) return;
   res.send(renderResultsPage(req, def, readSubmissions(formId)));
+}
+
+export function renderSubmission(req, res, formId, submissionId) {
+  const def = getForm(formId);
+  if (!canReadResults(req, res, def)) return;
+  const submission = readSubmission(formId, submissionId);
+  if (!submission) return res.status(404).send('Eingabe nicht gefunden');
+  res.send(renderSubmissionPage(req, def, submission));
 }
