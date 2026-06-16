@@ -1,0 +1,31 @@
+services:
+  pwa-app:
+    build: .
+    container_name: pwa_app
+    ports:
+      - "8080:8080"
+    volumes:
+      - ./data:/app/data:z
+    restart: unless-stopped
+    networks:
+      - proxy-network
+    labels:
+      - "traefik.enable=true"
+      
+      # HTTP Router
+      - "traefik.http.routers.pwa-http.entrypoints=web"
+      - "traefik.http.routers.pwa-http.rule=Host(`${APP_DOMAIN}`)"
+      - "traefik.http.routers.pwa-service=pwa-service"
+      
+      # HTTPS Router
+      - "traefik.http.routers.pwa-secure.entrypoints=websecure"
+      - "traefik.http.routers.pwa-secure.rule=Host(`${APP_DOMAIN}`)"
+      - "traefik.http.routers.pwa-secure.tls=true"
+      - "traefik.http.routers.pwa-secure.service=pwa-service"
+      
+      # Interner Container-Port
+      - "traefik.http.services.pwa-service.loadbalancer.server.port=8080"
+
+networks:
+  proxy-network:
+    external: true
