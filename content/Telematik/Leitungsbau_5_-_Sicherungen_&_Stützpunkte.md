@@ -1,4 +1,3 @@
-<br>
 ## Sicherungen
 Bei Sicherungen sind Richtungswechsel **erlaubt**!
 
@@ -51,7 +50,6 @@ Bei Sicherungen sind Richtungswechsel **erlaubt**!
 
 <a href="HB2.PNG?origin=Telematik/Leitungsbau_5_-_Sicherungen_&_Stützpunkte.md"><img style="width: 80%;" src="HB2.PNG"/></a>
 
-<br>
 ## Stützpunkte
 
 Bei Stützpunkten sind Richtungswechsel **nicht erlaubt**!
@@ -96,7 +94,4 @@ Bei der Linienkontrolle ruft die Baupatrouille die Anfangsstation auf. Funktioni
 * Zeit
 * Standort
 
-<br>
-<br>
-<br>
 <br>

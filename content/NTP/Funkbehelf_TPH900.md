@@ -1,4 +1,3 @@
-<br>
 ### Funkbehelf TPH 900
 
 **Legende**

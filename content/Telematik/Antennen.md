@@ -1,4 +1,3 @@
-<br>
 ## Sicherheitsvorschriften Antennen
 
 <a href="ANT1.PNG?origin=Telematik/Antennen.md"><img style="width: 60%;" src="ANT1.PNG"/></a>
@@ -9,7 +8,7 @@
 
 Das Verhalten von Personen bei Arbeiten mit mobilen Sende-Empfansanlagen im Bereich von Starkstromanlagen wird in den "**Weisungen über die Verhütung gesundheitlicher Schädigungen im Zivilschutz (Sicherheitsvorschriften)**", Nr. 1121-51-d geregelt. [Download (361KB)](ZSOSicherheitsvorschriften.pdf)
 
-<br>
+
 ## Montageanleitungunen
 ### Aufbau 4-teilige Antenne
 
@@ -43,5 +42,4 @@ Die Steckerkappe schützt die Buchse vor Verschmutzung und Beschädigung. Das En
 Die Steckerkappe entfernen und das Kabel mit dem Stecker anschliessen. Der Stecker-Gewindering vorsichtig auf das Gewinde drehen und mit der Hand fest anziehen. **Keine Zangen** oder andere Werkzeuge verwenden!
 <br>
 <a href="ANT6.PNG?origin=Telematik/Antennen.md"><img style="width: 30%;" src="ANT6.PNG"/></a>
-<br>
 <br>

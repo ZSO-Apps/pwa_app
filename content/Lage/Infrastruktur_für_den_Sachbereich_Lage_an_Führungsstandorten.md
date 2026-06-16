@@ -1,4 +1,3 @@
-<br>
 Der **Standort**, die **Einrichtungen** sowie die **Telematikmittel** bilden wesentliche **Voraussetzungen** zur **effizienten Stabsarbeit**. Die zur Verfügung stehende Infrastruktur beeinflusst die Stabsarbeit nachhaltig.
 
 Der Standort des **KP Front** (sprich der Einsatzleitung) wird vom **Einsatzleiter** festgelegt. Der **KP Rück** (Basis) sowie die **KP** von **Führungsorganen sind in der Regel für den Einsatz vorbereitet**.
@@ -9,7 +8,7 @@ Folgende **minimale Anforderungen** müssen aber stets erfüllt sein ...
 * **Rapportraum** mit der Auflage, dass zumindest eine Wand als **Führungswand** bewirtschaftet werden kann.
 * **Arbeitsräume** bzw. **Arbeitszellen**, die es erlauben, dass die Angehörigen des Führungs- organs ihrer Tätigkeit in Gruppen oder als Einzelner nachgehen können.
 
-<br>
+
 ## Aufbau Lagewand im Lagezentrum
 <center><img src="maennchen_lagewand.jpg" width="100x*"></center>
 

@@ -1,4 +1,3 @@
-<br>
 ## Fachbereich Lage
 
 ### Funktionsübersicht
@@ -139,8 +138,3 @@ Gliederung wie folgt:
 <a href="MZ.PNG?origin=Telematik/Funktions-_und_Aufgabenbehelf_-_Lage.md"><img style="width: 100%;" src="MZ.png"/></a>
 
 <br>
-<br>
-<br>
-<br>
-
-

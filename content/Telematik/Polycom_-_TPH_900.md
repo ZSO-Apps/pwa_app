@@ -1,8 +1,6 @@
-<br>
 ## Legende
 <a href="PC1.png?origin=Telematik/Polycom_-_TPH_900.md"><img style="width: 100%;" src="PC1.PNG"/></a>
 
-<br>
 ### Notruftaste
 <a href="PC2.png?origin=Telematik/Polycom_-_TPH_900.md"><img style="width: 50%;" src="PC2.PNG"/></a>
 
@@ -13,11 +11,9 @@ Beispiel:
 manipulation ausgelöst. Es müssen keine weiteren Massnahmen
 getroffen werden! Schluss!“
 
-<br>
 ## Display & Symbole
 <a href="PC3.PNG?origin=Telematik/Polycom_-_TPH_900.md"><img style="width: 100%;" src="PC3.PNG"/></a>
 
-<br>
 ## Tasten
 
 ### Linke Multifunktionstaste
@@ -36,7 +32,6 @@ getroffen werden! Schluss!“
 * **Navigation im Menü:** Die Taste ist der Registerkarte (Zurück) zugeordnet und wird für einen Abbruch verwendet.
 * **Weitere Verwendung:** Aktivieren der Stummschaltung nach dem Empfangen eines Rufes.
 
-<br>
 ## Betriebsarten
 
 ### Systembetrieb (S)
@@ -48,7 +43,6 @@ Kommunikation an alle Geräte im Empfangsbereich. Senden / Empfangen an alle Ger
 ### Relaismode (R)
 Kommunikation über IDR. Senden / Empfangen zwischen allen Geräten in IDR-Reichweite mit denselben OG-Einstellungen.
 
-<br>
 ## Funkmaterial NTP
 
 ### Inhalt NTP-Koffer
@@ -60,7 +54,4 @@ Kommunikation über IDR. Senden / Empfangen zwischen allen Geräten in IDR-Reich
 ### Kanalwahl/Wechsel POLYCOM TPH 900
 <a href="PC9.png?origin=Telematik/Polycom_-_TPH_900.md"><img style="width: 100%;" src="PC9.PNG"/></a>
 
-<br>
-<br>
-<br>
 <br>

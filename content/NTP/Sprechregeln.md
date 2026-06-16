@@ -1,5 +1,3 @@
-<br>
-
 ## DDSSS
 
 **D**enken<br>
@@ -8,12 +6,10 @@
 **S**chauen (rote LED)<br>
 **S**prechen
 
-<br>
 ## Buchstabiertabelle
 <a href="Buchstabiertabelle.PNG?origin=Telematik/Buchstabiertabelle.md"><img style="width: 100%;" src="Buchstabiertabelle.PNG"/></a>
 
 
-<br>
 ## Schlüsselwörter
 
 **AN**<br>
@@ -37,7 +33,6 @@ Bestätigt Ferhlerfreiheit einer Quittung
 **SCHLUSS**<br>
 Beendet das Gespräch
 
-<br>
 ## Redewendungen
 
 Gliederung der Übermittlung nach Inhaltsbezeichnung:
@@ -49,7 +44,6 @@ Gliederung der Übermittlung nach Inhaltsbezeichnung:
 
 <a href="SPR1.PNG?origin=Telematik/Sprechregeln.md"><img style="width: 100%;" src="SPR1.PNG"/></a>
 
-<br>
 ## Verbindungskontrolle
 
 Eine Verbindungskontrolle ist in folgenden Fällen erforderlich:
@@ -68,7 +62,6 @@ Eine Verbindungsqualität wird wie folgt angegeben:
 
 **"THREE"**, Gute bis sehr gute Verständlichkeit
 
-<br>
 ## Beispiele
 
 ### Durchführung einer Verbindungskontrolle
@@ -81,7 +74,4 @@ Eine Verbindungsqualität wird wie folgt angegeben:
 ### Kanalwechsel
 <a href="SPR.PNG?origin=Telematik/Sprechregeln.md"><img style="width: 100%;" src="SPR.PNG"/></a>
 
-<br>
-<br>
-<br>
 <br>

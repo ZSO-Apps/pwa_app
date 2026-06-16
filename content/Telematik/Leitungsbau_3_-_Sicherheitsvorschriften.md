@@ -1,9 +1,7 @@
-<br>
 ## Mitbenützung von Tragwerken
 
 <a href="tragwerke.png?origin=Telematik/Leitungsbau_3_-_Sicherheitsvorschriften.md"><img style="width: 100%;" src="tragwerke.png"/></a>
 
-<br>
 ## Niederspannungsfreileitungen
 ### Kreuzen
 <a href="kreuzen.PNG?origin=Telematik/Leitungsbau_3_-_Sicherheitsvorschriften.md"><img style="width: 100%;" src="kreuzen.PNG"/></a>
@@ -11,7 +9,6 @@
 ### Parallelführung
 <a href="parallelfuehrung.PNG?origin=Telematik/Leitungsbau_3_-_Sicherheitsvorschriften.md"><img style="width: 100%;" src="parallelfuehrung.PNG"/></a>
 
-<br>
 ## Hochspannungsfreileitungen
 
 **nicht erlaubt**: Mitbenützung von folgenden Tragwerken:
@@ -22,9 +19,6 @@
 
 ### Parallelführung
 <a href="parallelfuehrung_HSP.PNG?origin=Telematik/Leitungsbau_3_-_Sicherheitsvorschriften.md"><img style="width: 100%;" src="parallelfuehrung_HSP.PNG"/></a>
-<br>
-<br>
-<br>
 <br>
 
 

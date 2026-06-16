@@ -1,4 +1,3 @@
-<br>
 ### NTP Informationen
 
 **Allgemines:**

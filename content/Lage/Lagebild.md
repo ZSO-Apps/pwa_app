@@ -1,4 +1,3 @@
-<br>
 ## Inhalt
 * Vernetzung von Fakten / Feststellungen / Sachverhalten
 
@@ -63,5 +62,4 @@
 
 <center><img src="maennchen_filmklappe.jpg" width="120x*"></center>
 
-<br>
 <br>

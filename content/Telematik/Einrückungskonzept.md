@@ -1,4 +1,3 @@
-<br>
 ## Checkliste
 
 * Überblick der Situation (wer ist vor Ort (Chef/Grfhr), was ist zu tun?
@@ -15,7 +14,4 @@
 
 * Beschilderung des KP aussen (Schilder bei RFO)
 
-<br>
-<br>
-<br>
 <br>
