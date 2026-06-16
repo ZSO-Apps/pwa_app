@@ -318,6 +318,7 @@ export function renderWkListPage(req, { kachel, wks, canCreate }) {
 }
 
 export function renderWkCreatePage(req, { error, values = {} } = {}) {
+  const ausruestungPlaceholder = 'Identitätskarte / Dienstbüchlein&#10;Tenue gemäss Befehl&#10;Hygieneartikel, Schreibzeug';
   const body = `
   <article class="content">
     <div class="content-header">
@@ -327,34 +328,31 @@ export function renderWkCreatePage(req, { error, values = {} } = {}) {
     <form method="POST" action="/wk" class="genform wide">
       <h2>Grunddaten</h2>
       <div class="field-row">
-        <div class="field"><label for="nummer">Nummer *</label><input id="nummer" name="nummer" required value="${esc(fieldValue(values, 'nummer'))}"></div>
         <div class="field"><label for="name">Name *</label><input id="name" name="name" required value="${esc(fieldValue(values, 'name'))}"></div>
+        <div class="field"><label for="nummer">Nummer</label><input id="nummer" name="nummer" value="${esc(fieldValue(values, 'nummer'))}"></div>
       </div>
-      <label class="field" for="platzhalter">Hinweis / Platzhalter<textarea id="platzhalter" name="platzhalter" rows="3">${esc(fieldValue(values, 'platzhalter', 'Platzhalter — bitte vor Beginn des WK durch Kdo aktualisieren.'))}</textarea></label>
+      <label class="field" for="beschreibung">Beschreibung<textarea id="beschreibung" name="beschreibung" rows="3">${esc(fieldValue(values, 'beschreibung'))}</textarea></label>
 
       <h2>Eckdaten</h2>
       <div class="field-row">
-        <div class="field"><label for="datum">Datum</label><input id="datum" name="datum" value="${esc(fieldValue(values, 'datum', 'TBD'))}"></div>
-        <div class="field"><label for="ort">Ort</label><input id="ort" name="ort" value="${esc(fieldValue(values, 'ort', 'TBD'))}"></div>
-        <div class="field"><label for="tenue">Tenue</label><input id="tenue" name="tenue" value="${esc(fieldValue(values, 'tenue', 'TBD'))}"></div>
+        <div class="field"><label for="datumVon">Datum von</label><input id="datumVon" name="datumVon" type="date" value="${esc(fieldValue(values, 'datumVon'))}"></div>
+        <div class="field"><label for="datumBis">Datum bis</label><input id="datumBis" name="datumBis" type="date" value="${esc(fieldValue(values, 'datumBis'))}"></div>
+        <div class="field"><label for="ort">Ort</label><input id="ort" name="ort" value="${esc(fieldValue(values, 'ort'))}"></div>
+        <div class="field"><label for="tenue">Tenue</label><input id="tenue" name="tenue" value="${esc(fieldValue(values, 'tenue'))}"></div>
       </div>
 
-      <h2>Tagesablauf</h2>
-      <div class="field-row day-row">
-        <div class="field"><label for="tag_mo">Mo</label><input id="tag_mo" name="tag_mo" value="${esc(fieldValue(values, 'tag_mo', 'Einrücken, Material'))}"></div>
-        <div class="field"><label for="tag_di">Di</label><input id="tag_di" name="tag_di" value="${esc(fieldValue(values, 'tag_di', 'Ausbildung'))}"></div>
-        <div class="field"><label for="tag_mi">Mi</label><input id="tag_mi" name="tag_mi" value="${esc(fieldValue(values, 'tag_mi', 'Ausbildung'))}"></div>
-        <div class="field"><label for="tag_do">Do</label><input id="tag_do" name="tag_do" value="${esc(fieldValue(values, 'tag_do', 'Übung'))}"></div>
-        <div class="field"><label for="tag_fr">Fr</label><input id="tag_fr" name="tag_fr" value="${esc(fieldValue(values, 'tag_fr', 'Abrüsten'))}"></div>
-      </div>
-
-      <h2>Persönliche Ausrüstung</h2>
-      <label class="field" for="ausruestung">Ein Eintrag pro Zeile<textarea id="ausruestung" name="ausruestung" rows="5">${esc(fieldValue(values, 'ausruestung', 'Persönliche Waffe & Munition gemäss Marschbefehl\nIdentitätskarte / Dienstbüchlein\nTenue gemäss Befehl\nHygieneartikel, Schreibzeug'))}</textarea></label>
+      <h2 class="section-title-with-info">Persönliche Ausrüstung
+        <span class="info-popover" tabindex="0" role="button" aria-label="Info: Ein Eintrag pro Zeile">i
+          <span class="info-bubble">Ein Eintrag pro Zeile</span>
+        </span>
+      </h2>
+      <label class="field sr-only" for="ausruestung">Persönliche Ausrüstung</label>
+      <textarea id="ausruestung" name="ausruestung" rows="5" placeholder="${ausruestungPlaceholder}">${esc(fieldValue(values, 'ausruestung'))}</textarea>
 
       <h2>Kontakt</h2>
       <div class="field-row">
-        <div class="field"><label for="kdoWk">Kdo WK</label><input id="kdoWk" name="kdoWk" value="${esc(fieldValue(values, 'kdoWk', 'TBD'))}"></div>
-        <div class="field"><label for="verpflegungLogistik">Verpflegung / Logistik</label><input id="verpflegungLogistik" name="verpflegungLogistik" value="${esc(fieldValue(values, 'verpflegungLogistik', 'TBD'))}"></div>
+        <div class="field"><label for="kdoWk">Kdo WK</label><input id="kdoWk" name="kdoWk" value="${esc(fieldValue(values, 'kdoWk'))}"></div>
+        <div class="field"><label for="verpflegungLogistik">Verpflegung / Logistik</label><input id="verpflegungLogistik" name="verpflegungLogistik" value="${esc(fieldValue(values, 'verpflegungLogistik'))}"></div>
       </div>
 
       <p class="muted">Kader, Mannschaft und Appell werden auf Basis dieser WK-Datei später ergänzt. Ein Appell ist erst sinnvoll, wenn Kader und Mannschaft eingetragen sind.</p>
@@ -365,33 +363,45 @@ export function renderWkCreatePage(req, { error, values = {} } = {}) {
   return layout(req, { title: 'WK erstellen', body });
 }
 
+function wkDetailDate(wk) {
+  const von = wk.eckdaten?.datumVon || wk.eckdaten?.von || wk.zeitraum?.von || '';
+  const bis = wk.eckdaten?.datumBis || wk.eckdaten?.bis || wk.zeitraum?.bis || '';
+  if (von && bis && von !== bis) return `${von} - ${bis}`;
+  return von || bis || wk.eckdaten?.datum || '';
+}
+
 export function renderWkDetailPage(req, wk) {
+  const beschreibung = wk.beschreibung ?? wk.platzhalter ?? '';
+  const nummer = wk.nummer ? `<p class="muted">Nummer: ${esc(wk.nummer)}</p>` : '';
+  const beschreibungBlock = beschreibung ? `<blockquote>${esc(beschreibung)}</blockquote>` : '';
   const tagesablauf = (wk.tagesablauf || []).map((row) => `<tr><td>${esc(row.tag)}</td><td>${esc(row.aktivitaet)}</td></tr>`).join('');
+  const tagesablaufBlock = tagesablauf ? `
+    <h2>Tagesablauf (Übersicht)</h2>
+    <table><thead><tr><th>Tag</th><th>Aktivität</th></tr></thead><tbody>${tagesablauf}</tbody></table>` : '';
   const ausruestung = (wk.ausruestung || []).map((item) => `<li>${esc(item)}</li>`).join('');
   const body = `
   <article class="content prose">
     <nav class="crumbs"><a href="/k/wk-information">WK Information</a> / <span>${esc(wk.name || wk.id)}</span></nav>
     <h1>${esc(wk.name || wk.id)}</h1>
-    <p class="muted">Nummer: ${esc(wk.nummer || '')}</p>
-    <blockquote>${esc(wk.platzhalter || 'Platzhalter — bitte vor Beginn des WK durch Kdo aktualisieren.')}</blockquote>
+    ${nummer}
+    ${beschreibungBlock}
 
     <h2>Eckdaten</h2>
     <ul>
-      <li><strong>Datum:</strong> ${esc(wk.eckdaten?.datum || 'TBD')}</li>
-      <li><strong>Ort:</strong> ${esc(wk.eckdaten?.ort || 'TBD')}</li>
-      <li><strong>Tenue:</strong> ${esc(wk.eckdaten?.tenue || 'TBD')}</li>
+      <li><strong>Datum:</strong> ${esc(wkDetailDate(wk))}</li>
+      <li><strong>Ort:</strong> ${esc(wk.eckdaten?.ort || wk.ort || '')}</li>
+      <li><strong>Tenue:</strong> ${esc(wk.eckdaten?.tenue || '')}</li>
     </ul>
 
-    <h2>Tagesablauf (Übersicht)</h2>
-    <table><thead><tr><th>Tag</th><th>Aktivität</th></tr></thead><tbody>${tagesablauf || '<tr><td colspan="2"><em>Keine Einträge</em></td></tr>'}</tbody></table>
+    ${tagesablaufBlock}
 
     <h2>Persönliche Ausrüstung</h2>
     <ul>${ausruestung || '<li><em>Keine Einträge</em></li>'}</ul>
 
     <h2>Kontakt</h2>
     <ul>
-      <li><strong>Kdo WK:</strong> ${esc(wk.kontakt?.kdoWk || 'TBD')}</li>
-      <li><strong>Verpflegung / Logistik:</strong> ${esc(wk.kontakt?.verpflegungLogistik || 'TBD')}</li>
+      <li><strong>Kdo WK:</strong> ${esc(wk.kontakt?.kdoWk || '')}</li>
+      <li><strong>Verpflegung / Logistik:</strong> ${esc(wk.kontakt?.verpflegungLogistik || '')}</li>
     </ul>
 
     <h2>Appell</h2>

@@ -178,8 +178,8 @@ kacheln:
   name/title is the read-only detail link. Reading WK entries requires
   `Unteroffizier` or higher.
 - Creating a WK from the GUI requires `Offizier` or higher. The creation mask
-  captures Nummer, Name, Hinweis, Eckdaten, Tagesablauf, persönliche
-  Ausrüstung and Kontakt.
+  captures Name, optional Nummer, Beschreibung, Eckdaten (Datum von/bis, Ort,
+  Tenue), persönliche Ausrüstung and Kontakt.
 - An Appell can be created once Kader and Mannschaft are entered. The Appell is
   stored in the same WK file and records per-person status plus comments.
 - Real WK files are runtime data and are ignored by Git. The repository tracks

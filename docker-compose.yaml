@@ -1,0 +1,22 @@
+services:
+  pwa-app:
+    build: .
+    container_name: pwa_app
+    ports:
+      - "8080:8080"
+    volumes:
+      - ./data:/app/data:z
+    restart: unless-stopped
+    networks:
+      - proxy-network
+    labels:
+      - "traefik.enable=true"
+      # Hier wird die Variable aus der .env Datei eingesetzt:
+      - "traefik.http.routers.pwa.rule=Host(`${APP_DOMAIN}`)"
+      - "traefik.http.routers.pwa.entrypoints=websecure"
+      - "traefik.http.routers.pwa.tls.certresolver=myresolver"
+      - "traefik.http.services.pwa.loadbalancer.server.port=8080"
+
+networks:
+  proxy-network:
+    external: true

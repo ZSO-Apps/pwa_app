@@ -1,12 +1,21 @@
 # Beispiel für eine WK-Datei.
 # Echte WK-Dateien liegen ebenfalls unter data/wk/*.yaml und werden nicht committed.
 id: wk-2026-001
-nummer: "001"
 name: "WK Beispiel"
-zeitraum:
-  von: "2026-09-07"
-  bis: "2026-09-11"
-ort: "TBD"
+nummer: "001"
+beschreibung: ""
+eckdaten:
+  datumVon: "2026-09-07"
+  datumBis: "2026-09-11"
+  ort: "TBD"
+  tenue: "TBD"
+ausruestung:
+  - "Identitätskarte / Dienstbüchlein"
+  - "Tenue gemäss Befehl"
+  - "Hygieneartikel, Schreibzeug"
+kontakt:
+  kdoWk: ""
+  verpflegungLogistik: ""
 
 # Referenzen für spätere Formulare: Formulare können wkId verwenden, z.B. wk-2026-001.
 formularReferenz: wk-2026-001

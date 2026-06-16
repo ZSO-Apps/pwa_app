@@ -3,8 +3,6 @@ import path from 'node:path';
 import YAML from 'yaml';
 
 const WK_DIR = path.resolve('data/wk');
-const DAY_KEYS = ['mo', 'di', 'mi', 'do', 'fr'];
-const DAY_LABELS = { mo: 'Mo', di: 'Di', mi: 'Mi', do: 'Do', fr: 'Fr' };
 
 function ensureDir() {
   fs.mkdirSync(WK_DIR, { recursive: true });
@@ -32,7 +30,7 @@ function wkPath(id) {
 }
 
 function uniqueId(nummer, name) {
-  const base = slug(`wk-${nummer}-${name}`);
+  const base = slug(['wk', nummer, name].filter(Boolean).join('-'));
   let candidate = base;
   let index = 2;
   while (fs.existsSync(wkPath(candidate))) {
@@ -55,12 +53,19 @@ function readYaml(filePath) {
   return parsed;
 }
 
+function dateRange(wk) {
+  const von = wk.eckdaten?.datumVon || wk.eckdaten?.von || wk.zeitraum?.von || '';
+  const bis = wk.eckdaten?.datumBis || wk.eckdaten?.bis || wk.zeitraum?.bis || '';
+  if (von && bis && von !== bis) return `${von} - ${bis}`;
+  return von || bis || wk.eckdaten?.datum || '';
+}
+
 function summary(wk) {
   return {
     id: wk.id,
     nummer: wk.nummer || '',
     name: wk.name || wk.title || wk.id,
-    datum: wk.eckdaten?.datum || wk.zeitraum?.von || '',
+    datum: dateRange(wk),
     ort: wk.eckdaten?.ort || wk.ort || '',
     tenue: wk.eckdaten?.tenue || '',
     appellStatus: wk.appell?.status || 'nicht bereit',
@@ -96,35 +101,26 @@ export function getWk(id) {
 
 export function createWk(input, user) {
   ensureDir();
-  const nummer = String(input.nummer || '').trim();
   const name = String(input.name || '').trim();
-  if (!nummer) throw new Error('Nummer ist erforderlich.');
+  const nummer = String(input.nummer || '').trim();
   if (!name) throw new Error('Name ist erforderlich.');
 
   const id = uniqueId(nummer, name);
   const wk = {
     id,
-    nummer,
     name,
-    platzhalter: String(input.platzhalter || 'Platzhalter — bitte vor Beginn des WK durch Kdo aktualisieren.').trim(),
+    nummer,
+    beschreibung: String(input.beschreibung || '').trim(),
     eckdaten: {
-      datum: String(input.datum || 'TBD').trim(),
-      ort: String(input.ort || 'TBD').trim(),
-      tenue: String(input.tenue || 'TBD').trim(),
+      datumVon: String(input.datumVon || '').trim(),
+      datumBis: String(input.datumBis || '').trim(),
+      ort: String(input.ort || '').trim(),
+      tenue: String(input.tenue || '').trim(),
     },
-    tagesablauf: DAY_KEYS.map((key) => ({
-      tag: DAY_LABELS[key],
-      aktivitaet: String(input[`tag_${key}`] || '').trim(),
-    })).filter((row) => row.aktivitaet),
-    ausruestung: splitLines(input.ausruestung || [
-      'Persönliche Waffe & Munition gemäss Marschbefehl',
-      'Identitätskarte / Dienstbüchlein',
-      'Tenue gemäss Befehl',
-      'Hygieneartikel, Schreibzeug',
-    ].join('\n')),
+    ausruestung: splitLines(input.ausruestung),
     kontakt: {
-      kdoWk: String(input.kdoWk || 'TBD').trim(),
-      verpflegungLogistik: String(input.verpflegungLogistik || 'TBD').trim(),
+      kdoWk: String(input.kdoWk || '').trim(),
+      verpflegungLogistik: String(input.verpflegungLogistik || '').trim(),
     },
     kader: [],
     mannschaft: [],
