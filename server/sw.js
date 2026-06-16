@@ -1,5 +1,5 @@
 import crypto from 'node:crypto';
-import { listKachelAssets, listPublicAssets } from './content.js';
+import { listKachelPublicAssets } from './content.js';
 import { getLayout } from './layout.js';
 
 const STATIC_PRECACHE = [
@@ -13,15 +13,11 @@ const STATIC_PRECACHE = [
 function publicKachelUrls() {
   return getLayout().kacheln
     .filter((kachel) => (kachel.access || 'public') === 'public' && kachel.content)
-    .flatMap((kachel) => listKachelAssets(kachel));
+    .flatMap((kachel) => listKachelPublicAssets(kachel));
 }
 
 export function buildServiceWorker() {
-  const urls = [...new Set([
-    ...STATIC_PRECACHE,
-    ...publicKachelUrls(),
-    ...listPublicAssets(),
-  ])];
+  const urls = [...new Set([...STATIC_PRECACHE, ...publicKachelUrls()])];
   const hash = crypto.createHash('sha1').update(urls.join('\n')).digest('hex').slice(0, 10);
   const cacheName = `zso-public-${hash}`;
   return `// Auto-generated. Cache version busts when public content changes.
@@ -31,7 +27,6 @@ const PRECACHE = ${JSON.stringify(urls)};
 self.addEventListener('install', (event) => {
   event.waitUntil((async () => {
     const cache = await caches.open(CACHE);
-    // Best-effort: don't fail install if a single URL 404s.
     await Promise.all(PRECACHE.map(async (u) => {
       try { await cache.add(new Request(u, { cache: 'reload' })); } catch (e) { /* skip */ }
     }));
@@ -56,17 +51,13 @@ self.addEventListener('fetch', (event) => {
   const url = new URL(req.url);
   if (url.origin !== self.location.origin) return;
 
-  // Network-first for navigation. Successful page loads are cached as the
-  // device's last online state, including role-visible Kacheln after login.
   if (req.mode === 'navigate') {
     event.respondWith((async () => {
       const cache = await caches.open(CACHE);
       const cacheableNavigation =
         url.pathname === '/' ||
         url.pathname === '/offline' ||
-        url.pathname.startsWith('/k/') ||
-        url.pathname.startsWith('/content/');
-
+        url.pathname.startsWith('/k/');
       try {
         const fresh = await fetch(req);
         if (fresh.ok && cacheableNavigation) {
@@ -87,13 +78,7 @@ self.addEventListener('fetch', (event) => {
     return;
   }
 
-  // Static / content / Kachel assets: cache-first.
-  if (
-    url.pathname.startsWith('/content/') ||
-    url.pathname.startsWith('/client/') ||
-    url.pathname.startsWith('/k/') ||
-    url.pathname === '/offline'
-  ) {
+  if (url.pathname.startsWith('/client/') || url.pathname.startsWith('/k/') || url.pathname === '/offline') {
     event.respondWith((async () => {
       const cache = await caches.open(CACHE);
       const cached = await cache.match(req, { ignoreSearch: true });
@@ -107,7 +92,6 @@ self.addEventListener('fetch', (event) => {
       }
     })());
   }
-  // Everything else: pass through to the network (browser default).
 });
 `;
 }

@@ -47,6 +47,23 @@ a { color: inherit; }
 .hamburger[aria-expanded="true"] span:nth-child(2) { opacity: 0; }
 .hamburger[aria-expanded="true"] span:nth-child(3) { transform: translateY(-6px) rotate(-45deg); }
 
+/* WK context banner (only shown when logged in) */
+.wk-banner {
+  display: flex; align-items: center; gap: .5rem;
+  padding: .4rem .8rem;
+  background: #34495E; color: #fff;
+  font-size: .85rem;
+  border-bottom: 1px solid rgba(255,255,255,.1);
+}
+.wk-banner label { font-weight: 500; opacity: .85; }
+.wk-banner select {
+  background: rgba(255,255,255,.1); color: #fff; border: 1px solid rgba(255,255,255,.25);
+  border-radius: 3px; padding: .2rem .4rem; font-size: .85rem; max-width: 100%;
+}
+.wk-banner select option { color: #1f2933; }
+.wk-banner--empty { background: #6B4226; }
+.wk-banner--empty a { color: #fff; text-decoration: underline; margin-left: auto; }
+
 /* Sync info under header */
 .sync-info { padding: .3rem .8rem; font-size: .75rem; color: var(--muted); text-align: center; min-height: 1.4em; }
 

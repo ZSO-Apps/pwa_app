@@ -1,145 +1,109 @@
 import fs from 'node:fs';
 import path from 'node:path';
-import YAML from 'yaml';
 
-const WK_DIR = path.resolve('data/wk');
-const DAY_KEYS = ['mo', 'di', 'mi', 'do', 'fr'];
-const DAY_LABELS = { mo: 'Mo', di: 'Di', mi: 'Mi', do: 'Do', fr: 'Fr' };
+const WK_DIR = path.resolve('data/forms/wk/_global');
 
-function ensureDir() {
-  fs.mkdirSync(WK_DIR, { recursive: true });
+function parseDate(value) {
+  if (!value) return null;
+  const t = Date.parse(value);
+  return Number.isFinite(t) ? t : null;
 }
 
-function slug(value) {
-  return String(value || '')
-    .normalize('NFKD')
-    .replace(/[\u0300-\u036f]/g, '')
-    .toLowerCase()
-    .replace(/[^a-z0-9]+/g, '-')
-    .replace(/^-|-$/g, '')
-    .slice(0, 80) || 'wk';
-}
-
-function assertSafeId(id) {
-  if (!/^[a-z0-9][a-z0-9-]*$/.test(id || '')) {
-    throw new Error('ungueltige-wk-id');
-  }
-}
-
-function wkPath(id) {
-  assertSafeId(id);
-  return path.join(WK_DIR, `${id}.yaml`);
-}
-
-function uniqueId(nummer, name) {
-  const base = slug(`wk-${nummer}-${name}`);
-  let candidate = base;
-  let index = 2;
-  while (fs.existsSync(wkPath(candidate))) {
-    candidate = `${base}-${index}`;
-    index += 1;
-  }
-  return candidate;
-}
-
-function splitLines(value) {
-  return String(value || '')
-    .split(/\r?\n/)
-    .map((line) => line.trim())
-    .filter(Boolean);
-}
-
-function readYaml(filePath) {
-  const parsed = YAML.parse(fs.readFileSync(filePath, 'utf8')) || {};
-  if (!parsed.id) parsed.id = path.basename(filePath, '.yaml');
-  return parsed;
-}
-
-function summary(wk) {
+function summarize(submission, id) {
+  const start = submission.start || '';
+  const ende = submission.ende || '';
+  const label = [submission.nummer, submission.name].filter(Boolean).join(' ').trim() || id;
+  const range = start && ende ? `${start} – ${ende}` : start || ende || '';
   return {
-    id: wk.id,
-    nummer: wk.nummer || '',
-    name: wk.name || wk.title || wk.id,
-    datum: wk.eckdaten?.datum || wk.zeitraum?.von || '',
-    ort: wk.eckdaten?.ort || wk.ort || '',
-    tenue: wk.eckdaten?.tenue || '',
-    appellStatus: wk.appell?.status || 'nicht bereit',
+    id,
+    name: submission.name || '',
+    nummer: submission.nummer || '',
+    start,
+    ende,
+    kommentar: submission.kommentar || '',
+    label,
+    range,
+    submittedAt: submission._meta?.submittedAt || null,
   };
 }
 
 export function listWks() {
-  ensureDir();
+  if (!fs.existsSync(WK_DIR)) return [];
   return fs.readdirSync(WK_DIR)
-    .filter((name) => name.endsWith('.yaml') && !name.endsWith('.example.yaml'))
-    .map((name) => {
+    .filter((f) => f.endsWith('.json'))
+    .map((f) => {
       try {
-        return summary(readYaml(path.join(WK_DIR, name)));
-      } catch (error) {
-        console.error(`wk: failed to parse ${name}:`, error.message);
+        const parsed = JSON.parse(fs.readFileSync(path.join(WK_DIR, f), 'utf8'));
+        return summarize(parsed, path.basename(f, '.json'));
+      } catch (e) {
+        console.error(`wk: failed to parse ${f}:`, e.message);
         return null;
       }
     })
     .filter(Boolean)
-    .sort((a, b) => (
-      String(b.datum).localeCompare(String(a.datum), 'de')
-      || String(a.nummer).localeCompare(String(b.nummer), 'de')
-      || String(a.name).localeCompare(String(b.name), 'de')
-    ));
+    .sort((a, b) => String(a.start).localeCompare(String(b.start)) || a.id.localeCompare(b.id));
+}
+
+// Pick the WK whose date range is "closest" to today: 0 if today lies in the
+// range, otherwise the smaller of |today-start| / |today-ende|.
+export function pickNearestWk(wks, today = Date.now()) {
+  if (!wks.length) return null;
+  let best = wks[0];
+  let bestDist = Infinity;
+  for (const wk of wks) {
+    const s = parseDate(wk.start);
+    const e = parseDate(wk.ende) ?? s;
+    let dist;
+    if (s !== null && e !== null && today >= s && today <= e) dist = 0;
+    else {
+      const ds = s !== null ? Math.abs(today - s) : Infinity;
+      const de = e !== null ? Math.abs(today - e) : Infinity;
+      dist = Math.min(ds, de);
+    }
+    if (dist < bestDist) { bestDist = dist; best = wk; }
+  }
+  return best;
 }
 
 export function getWk(id) {
-  ensureDir();
-  const filePath = wkPath(id);
-  if (!fs.existsSync(filePath)) return null;
-  return readYaml(filePath);
+  if (!id) return null;
+  if (!/^[A-Za-z0-9][A-Za-z0-9._-]*$/.test(id)) return null;
+  const file = path.join(WK_DIR, id + '.json');
+  if (!file.startsWith(WK_DIR + path.sep)) return null;
+  if (!fs.existsSync(file)) return null;
+  try {
+    const parsed = JSON.parse(fs.readFileSync(file, 'utf8'));
+    return summarize(parsed, id);
+  } catch {
+    return null;
+  }
 }
 
-export function createWk(input, user) {
-  ensureDir();
-  const nummer = String(input.nummer || '').trim();
-  const name = String(input.name || '').trim();
-  if (!nummer) throw new Error('Nummer ist erforderlich.');
-  if (!name) throw new Error('Name ist erforderlich.');
+const COOKIE = 'wkId';
 
-  const id = uniqueId(nummer, name);
-  const wk = {
-    id,
-    nummer,
-    name,
-    platzhalter: String(input.platzhalter || 'Platzhalter — bitte vor Beginn des WK durch Kdo aktualisieren.').trim(),
-    eckdaten: {
-      datum: String(input.datum || 'TBD').trim(),
-      ort: String(input.ort || 'TBD').trim(),
-      tenue: String(input.tenue || 'TBD').trim(),
-    },
-    tagesablauf: DAY_KEYS.map((key) => ({
-      tag: DAY_LABELS[key],
-      aktivitaet: String(input[`tag_${key}`] || '').trim(),
-    })).filter((row) => row.aktivitaet),
-    ausruestung: splitLines(input.ausruestung || [
-      'Persönliche Waffe & Munition gemäss Marschbefehl',
-      'Identitätskarte / Dienstbüchlein',
-      'Tenue gemäss Befehl',
-      'Hygieneartikel, Schreibzeug',
-    ].join('\n')),
-    kontakt: {
-      kdoWk: String(input.kdoWk || 'TBD').trim(),
-      verpflegungLogistik: String(input.verpflegungLogistik || 'TBD').trim(),
-    },
-    kader: [],
-    mannschaft: [],
-    appell: {
-      status: 'nicht bereit',
-      durchgefuehrtAm: null,
-      durchgefuehrtVon: null,
-      eintraege: [],
-    },
-    meta: {
-      erstelltAm: new Date().toISOString(),
-      erstelltVon: user?.username || null,
-    },
-  };
+export function wkMiddleware(req, res, next) {
+  if (!req.user) { req.activeWk = null; return next(); }
+  const wks = listWks();
+  if (!wks.length) { req.activeWk = null; req.wkList = []; return next(); }
+  const wanted = req.cookies?.[COOKIE];
+  let active = wanted ? wks.find((w) => w.id === wanted) : null;
+  if (!active) {
+    active = pickNearestWk(wks);
+    if (active) {
+      res.cookie(COOKIE, active.id, {
+        httpOnly: false, sameSite: 'lax', path: '/',
+        maxAge: 1000 * 60 * 60 * 24 * 365,
+      });
+    }
+  }
+  req.activeWk = active || null;
+  req.wkList = wks;
+  next();
+}
 
-  fs.writeFileSync(wkPath(id), YAML.stringify(wk));
-  return wk;
+export function setActiveWk(res, id) {
+  res.cookie(COOKIE, id, {
+    httpOnly: false, sameSite: 'lax', path: '/',
+    maxAge: 1000 * 60 * 60 * 24 * 365,
+  });
 }

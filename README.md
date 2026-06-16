@@ -1,12 +1,12 @@
 # ZSO App
 
-A self-hostable PWA for civil-protection / ZSO organizations: public offline content + protected LAN-only content + simple file-based forms. Originally built for ZSO Brugg Region; designed to be forked by any organization.
+A self-hostable PWA for civil-protection / ZSO organizations: public offline content + protected LAN-only content + simple file-based forms, all WK-scoped. Originally built for ZSO Brugg Region; designed to be forked by any organization.
 
 ## What's inside
 
 - **Public Kacheln** (no login, fully offline-cached): `FU Lage`, `FU Telematik`, `Notfall-Treffpunkt`, `Unterstützung`, `Handkarten`.
-- **Protected Kacheln** (require login on the org's LAN): `WK Foo` (Soldat+), `WK Information` (Uof+), `WK Admin` (Of+).
-- **Forms**: not public; quiz (Soldat submits, Uof+ sees results), Essensbestellung (Of-only) and a planned Standard Formular category.
+- **Protected Kacheln** (require login on the org's LAN): `WK Organisation` (Soldat+), `Quiz` (Soldat+), `Admin` (Offizier+).
+- **Forms** live inside their host Kachel's content folder and appear in the listing as two entries — `📝 Submit` and `📊 Results`. Every submission is recorded against the currently active WK.
 - 5 role levels: `admin > Offizier > Unteroffizier > Soldat > public`.
 
 ## Run it
@@ -33,88 +33,92 @@ Override the port with `PORT=80 npm start`. Set `SESSION_SECRET=<32+ random char
 1. Install Node ≥ 18 (`apt install nodejs npm` or the official Node ARM build).
 2. Copy this folder to the device (`rsync`, USB stick, `git clone`).
 3. Production install: `npm ci --omit=dev`.
-4. Seed users once: `npm run seed-users`, then **edit the local `data/users.yaml`** to change passwords. This runtime file is intentionally not committed.
+4. Seed users once: `npm run seed-users`, then **edit the local `data/users.yaml`** to change passwords.
 5. Run: `npm start`. Open from another LAN device at `http://<pi-ip>:8080`.
-6. (Optional) Make it a systemd service:
+6. (Optional) Make it a systemd service (see commit history for an example unit file).
 
-   ```ini
-   # /etc/systemd/system/zso-app.service
-   [Unit]
-   Description=ZSO App
-   After=network.target
-   [Service]
-   WorkingDirectory=/opt/zso-app
-   ExecStart=/usr/bin/node server/index.js
-   Environment=PORT=8080
-   Restart=on-failure
-   User=zso
-   [Install]
-   WantedBy=multi-user.target
-   ```
+## Content layout — the four roots
 
-   Then `systemctl enable --now zso-app`.
+Content lives in **four parallel roots** that are merged at runtime per Kachel:
 
-## Fork / extend
+| Root | Login required? | Purpose |
+|------|-----------------|---------|
+| `content_public/`              | no  | generic public content, shipped with the project |
+| `content_zso_specific_public/` | no  | org-specific public overrides/additions |
+| `content_protected/`              | yes | generic protected content |
+| `content_zso_specific_protected/` | yes | org-specific protected overrides/additions |
 
-Adding things is meant to be drop-in.
+A Kachel only names a slug; the server unions all four roots:
 
-- **Add public content**: drop markdown/PDFs/images into `content/<Folder>/`. Add a Kachel to `layout.yaml`:
-  ```yaml
-  - id: my-kachel
-    title: "Meine Kachel"
-    access: public
-    content: content/MyFolder
-    color: "#8854c0"
-  ```
+```yaml
+- id: handkarten
+  title: "Handkarten"
+  access: public            # public Kachel → only the *_public roots are used
+  content: Handkarten       # → content_public/Handkarten + content_zso_specific_public/Handkarten
+  color: "#2f80ed"
+```
 
-- **Add protected content**: put files under `protected/<Folder>/` and add a Kachel with `access: Soldat | Unteroffizier | Offizier | admin`.
+If two roots contain a file at the same path, the more specific wins (ZSO-specific over generic, protected over public).
 
-- **Add a form**: drop a JSON file into `forms/`. Reference an existing Kachel id with `submitKachel` (and optionally `resultsKachel` + `resultsAccess`). No `layout.yaml` edit needed.
-  ```json
-  {
-    "title": "Mein Formular",
-    "submitKachel": "wk-admin",
-    "resultsKachel": "wk-admin",
-    "submitAccess": "Offizier",
-    "resultsAccess": "Offizier",
-    "fields": [
-      {"name":"name","type":"text","label":"Name","required":true},
-      {"name":"datum","type":"date","label":"Datum"}
-    ]
-  }
-  ```
-  Supported field types: `text`, `textarea`, `number`, `date`, `time`, `email`, `radio` (with `options`), `select` (with `options`). Add `"correct": "..."` on a `radio` field to auto-score in the results view (quiz mode).
+For a Kachel with `access >= Soldat`, all four roots are merged so the same slug can hold both public (offline-cachable) and protected (LAN-only) material.
 
-- **Add a user / change passwords**: edit the local `data/users.yaml`. Generate a bcrypt hash with `node scripts/hash.js <password>`. Restart the server. Use `data/users.example.yaml` only as the committed template.
+## Forms
 
-- **Sub-Kacheln (groups)**: a Kachel can act as a category — leave out `content` and let forms attach themselves via `submitKachel`. (See `wk-foo` and `wk-admin` in `layout.yaml`.)
+A form is a single `.json` file dropped into any content folder. It shows up in that Kachel's listing as **two entries**: 📝 (submit) and 📊 (results).
 
-## WK files
+Example: `content_protected/quiz/quiz-leitungsbau.json`
 
-Jeder WK wird als eigene YAML-Datei unter `data/wk/<wk-id>.yaml` gespeichert. Ein WK hat mindestens Nummer, Name, Kader, Mannschaft und Appell-Daten. Ein Benutzer gilt als "eingetragen", wenn sein Benutzer- oder Gruppenaccount in dieser WK-Datei aufgeführt ist. Spätere Formulare können einen WK über dessen `id` referenzieren. `Offizier` und höher können WKs über die GUI erstellen; `Unteroffizier` und höher können WK-Einträge aus der WK-Information read-only öffnen. Formular-Auswertungen zeigen ebenfalls eine klickbare Spalte "Name / Titel", welche die gesendete Eingabe read-only öffnet.
+```json
+{
+  "id": "quiz-leitungsbau",
+  "title": "Quiz Leitungsbau",
+  "submitLabel": "Quiz Leitungsbau",
+  "resultsLabel": "Quiz-Auswertung Leitungsbau",
+  "submitAccess": "Soldat",
+  "resultsAccess": "Unteroffizier",
+  "fields": [
+    { "name": "frage1", "type": "radio", "label": "…", "options": ["A","B"], "correct": "A", "required": true }
+  ]
+}
+```
 
-Echte WK-Dateien sind lokale Laufzeitdaten. `data/wk/wk-2026-001.example.yaml` dient als Vorlage.
+Field types: `text`, `textarea`, `number`, `date`, `time`, `email`, `radio` / `select` with `options`. Add `"correct": "…"` on a `radio` field for auto-scoring in the results view.
+
+Optional `"scope": "global"` makes a form WK-independent (used only by the WK form itself).
+
+## WK context
+
+Every logged-in user works inside the context of one **active WK**. The second banner below the top bar shows it and offers a dropdown to switch.
+
+- WKs are created by submitting the `wk` form in **Admin → WK erfassen** (`content_protected/admin/wk.json`).
+- WK records are stored at `data/forms/wk/_global/<id>.json`.
+- The server auto-selects the WK whose start/end range is closest to today.
+- Every other form submission is stored at `data/forms/<form-id>/<active-wk-id>/<timestamp>-<uuid>.json`.
+- Results views are automatically scoped to the active WK.
+- If no WK exists yet, forms (except the WK form itself) are blocked until one is created.
 
 ## How offline works
 
-The service worker (`/service-worker.js`, generated dynamically) precaches `/`, the public `/k/...` pages, everything under `/content/`, PDFs, images and static client assets. Navigation is network-first; successful page loads are cached as the last online state. A user who was signed in can therefore still see the previously loaded role-visible pages while offline.
+The service worker precaches `/`, public `/k/…` pages and their assets. Navigation is network-first; successful page loads are cached as the last online state, so a user who was signed in can still see previously loaded role-visible pages while offline.
 
-Write actions such as opening/submitting forms require a live connection to the local server and are greyed out when the browser is offline. Public users do not see or submit forms.
+Write actions (form submissions, WK creation) require a live connection to the local server and are greyed out when the browser is offline. Public users do not see or submit forms.
 
 A timestamp at the top of every page (`Offline-Inhalte aktualisiert: …`) shows when the service worker last completed a precache pass.
 
 ## Project layout
 
 ```
-/server         Express app (auth, layout, content, forms, SW generator)
-/client         CSS, client JS, manifest, icons
-/content        public markdown + PDFs (offline-cached)
-/protected      markdown for Soldat/Uof/Of/admin (LAN-only)
-/forms          form definitions (JSON)
-/data           local runtime data, not committed
-/data/users.example.yaml committed template for local users.yaml
-/data/wk/*.example.yaml committed templates for one-file-per-WK data
-/layout.yaml    Kachel tree + access levels
+/server                              Express app (auth, layout, content, forms, WK, SW generator)
+/client                              CSS, client JS, manifest, icons
+/content_public                      generic public content
+/content_zso_specific_public         org-specific public content
+/content_protected                   generic protected content (incl. admin/, quiz/, wk_organisation/)
+/content_zso_specific_protected      org-specific protected content
+/data                                local runtime data, not committed
+/data/users.example.yaml             committed template for local users.yaml
+/data/forms/<form-id>/<wk-id>/…      one JSON per submission
+/data/forms/wk/_global/…             WK records themselves (global scope)
+/layout.yaml                         Kachel tree + access levels (content slug only)
 ```
 
 ## License

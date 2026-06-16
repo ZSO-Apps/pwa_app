@@ -10,10 +10,7 @@ yarn-error.log*
 # Runtime data
 data/.session-secret
 data/users.yaml
-data/wk/*.yaml
-!data/wk/*.example.yaml
-data/forms/*/
-!data/forms/.gitkeep
+data/forms/
 
 # Environment
 .env

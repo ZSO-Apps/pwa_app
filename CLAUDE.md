@@ -22,69 +22,85 @@ organizations can deploy too. Goals, in priority order:
      device can reach the local server (LAN).
    - Forms are never public. Public users must not see form Kacheln and must
      not be able to create or submit forms.
-4. **Easy for other orgs to fork/contribute** — single language (TypeScript
-   everywhere), readable code, file-based content and data (no database
-   server to install).
+4. **Easy for other orgs to fork/contribute** — single language (JavaScript /
+   Node ESM everywhere), readable code, file-based content and data (no
+   database server to install). ZSO-Brugg-specific overrides live in
+   dedicated `content_zso_specific_*` roots so a fork can replace them
+   without touching the generic codebase.
 5. The old project is in the folder old_app.
 
 ## Tech Stack Decisions
 
-- **Language**: TypeScript / Node (or Bun) — chosen over Go for
-  contributor accessibility. One language across server and client.
-- **No Astro** — plain Node server (Express or Fastify) serving both the
-  static public content and the dynamic protected/forms routes from one
-  process. Astro was considered but rejected to avoid mixing a
-  static-site-generator with a stateful server for no real benefit.
+- **Language**: Node.js (plain JavaScript, ESM) — chosen over Go for
+  contributor accessibility, and over TypeScript to keep the zero-build
+  story. One language across server and client.
+- **No Astro** — plain Node + Express serving both the static public
+  content and the dynamic protected/forms routes from one process. Astro
+  was rejected to avoid mixing a static-site-generator with a stateful
+  server for no real benefit.
 - **No SQLite / no database** — fully file-based storage (see below).
-- **PDFs and content authored as markdown + frontmatter**, same authoring
-  model as the existing site.
+- **No build step** — server renders HTML via small string templates;
+  client is vanilla JS + hand-written CSS.
+- **Content authored as markdown + PDFs**, same authoring model as the
+  existing site.
 
 ## Architecture
 
 ```
-/layout.yaml           defines Kacheln (tiles): structure + access level per Kachel
-/content/              public markdown + PDFs (git-managed, no login)
-/protected/            markdown + PDFs for Offizier/Unteroffizier/Soldat levels
-/forms/<form-id>.json  form definitions (schema, access levels, target Kachel)
+/layout.yaml                       Kacheln: slug + access level per Kachel
+/content_public/                   generic public content (git-managed, no login)
+/content_zso_specific_public/      org-specific public overrides
+/content_protected/                generic protected content (admin/, quiz/, wk_organisation/)
+/content_zso_specific_protected/   org-specific protected overrides
 /data/
-  users.yaml           user accounts (bcrypt hashes + role), hand/admin-edited
-  wk/<wk-id>.yaml      one file per WK with number, name, roster and Appell
-  forms/<form-id>/
-    <timestamp>-<uuid>.json   one file per form submission (append-only)
-/server/               Node/Express app
+  users.yaml                       user accounts (bcrypt + role), hand-edited
+  forms/<form-id>/<wk-id>/         one JSON per submission, scoped to active WK
+  forms/wk/_global/                WK records themselves (the wk form is scope=global)
+/server/                           Node/Express app
+  - merges the 4 content roots when serving a Kachel slug
   - renders markdown -> HTML server-side
-  - reads layout.yaml to build navigation + enforce per-Kachel access checks
-  - serves /content as static + provides SW precache manifest (public Kacheln only)
-  - serves protected Kacheln behind session auth, checking role hierarchy
-  - serves /forms: GET schema (render generic form, check submit access),
-    POST submission (check submit access), GET results (check read access)
-/client/ (or /public/) frontend assets, manifest.json, service worker
+  - serves /service-worker.js with a precache manifest of public assets
+  - serves protected Kacheln behind session auth (role hierarchy)
+  - serves /forms: GET schema, POST submission, GET results — all scoped to active WK
+  - active-WK middleware: cookie wkId, auto-pick nearest to today
+/client/                           frontend assets, manifest.json, hand-written SW
 ```
+
+A Kachel references a **slug** under `content:`. The server merges every root
+that contains a folder with that slug. Public Kacheln pull from
+`content_public/` and `content_zso_specific_public/` only; protected Kacheln
+also include the two `_protected` roots (later wins on name collision: ZSO
+overrides generic, protected overrides public).
+
+Forms are `.json` files dropped anywhere in a content folder. Each shows up as
+two listing entries: 📝 submit (uses `submitLabel` + `submitAccess`) and 📊
+results (uses `resultsLabel` + `resultsAccess`). Position in the UI is derived
+from where the JSON sits in the content tree — there is no `submitKachel`
+field anymore.
 
 ### Kacheln (tiles) and layout
 
-- The frontend is organized as **Kacheln** (tiles). In this project, a Kachel
-  means the complete menu entry including its UI, content and attached function,
-  not only the visual card on the start page (e.g. "FU Lage",
-  "NTP Allgemeines", a quiz form, etc.).
-- A single `layout.yaml` (or `.json`) at the project root defines:
-  - the list/structure of Kacheln (title, icon, target content or form)
-  - the **access level required to see/open each Kachel**, one of
+- The frontend is organized as **Kacheln** (tiles). A Kachel means the
+  complete menu entry — its content tree and any attached forms — not just
+  the card on the start page.
+- `layout.yaml` defines:
+  - the list of Kacheln (title, slug, color)
+  - the **access level required to see/open each Kachel**: one of
     `public`, `Soldat`, `Unteroffizier`, `Offizier`, `admin`
   - this is the single source of truth for both navigation rendering and
-    server-side access enforcement — the server must check this file
-    before serving any content tied to a Kachel, not just hide it in the UI
-- A Kachel with access level `public`:
+    server-side access enforcement.
+- A Kachel with `access: public`:
   - requires no login
-  - its UI route under `/k/...` and its content (markdown/PDFs/images) are included in the service worker
-    precache list, so it's available fully offline
-- A Kachel with access level `Soldat`/`Unteroffizier`/`Offizier`/`admin`:
+  - merges only the `_public` content roots
+  - its UI route under `/k/...` and its files are included in the service
+    worker precache, so they're available fully offline.
+- A Kachel with `access: Soldat`/`Unteroffizier`/`Offizier`/`admin`:
   - requires login with at least that role (hierarchy: `admin` ⊇
     `Offizier` ⊇ `Unteroffizier` ⊇ `Soldat`)
-  - content lives under `/protected/` and is served dynamically
-  - successful online navigations are cached as the device's last online state,
-    so a previously logged-in user can still see the last role-visible pages
-    while offline
+  - merges all four content roots
+  - successful online navigations are cached as the device's last online
+    state, so a previously logged-in user can still see the last
+    role-visible pages while offline.
 
 ### Role hierarchy
 
@@ -99,8 +115,13 @@ checks are simple rank comparisons (e.g. `userRole >= requiredRole`), with
 ### Public zone (offline-first PWA)
 
 - Markdown rendered to HTML on the server and cached by the service worker.
-- The service worker precaches `/`, the public `/k/...` routes, the entire
-  `/content` tree, PDFs, images and static client assets.
+- The service worker precaches `/`, the public `/k/...` routes and their
+  assets (markdown rendered as HTML, PDFs, images) walked across the two
+  public content roots (`content_public/`, `content_zso_specific_public/`)
+  plus the static client assets.
+- Form definitions (`.json`) and external `.url` shortcuts are excluded
+  from the precache — they require either a live server or external
+  network.
 - Must work with **zero connectivity of any kind** once cached — e.g. a
   phone with no signal and not on the org WLAN.
 
@@ -118,72 +139,74 @@ checks are simple rank comparisons (e.g. `userRole >= requiredRole`), with
   server-side session store needed) + bcrypt password hashes + role in
   `users.yaml`.
 
+### Current Kacheln
+
+| ID                | Title              | Access     | Content slug      | Notes                                                |
+|-------------------|--------------------|------------|-------------------|------------------------------------------------------|
+| `lage`            | FU Lage            | public     | `Lage`            |                                                      |
+| `telematik`       | FU Telematik       | public     | `Telematik`       |                                                      |
+| `ntp`             | Notfall-Treffpunkt | public     | `NTP`             |                                                      |
+| `unterstuetzung`  | Unterstützung      | public     | `Unterstützung`   |                                                      |
+| `handkarten`      | Handkarten         | public     | `Handkarten`      |                                                      |
+| `wk-organisation` | WK Organisation    | Soldat     | `wk_organisation` | hosts `essensbestellung.json`                        |
+| `quiz`            | Quiz               | Soldat     | `quiz`            | hosts `quiz-leitungsbau.json` and future quizzes     |
+| `admin`           | Admin              | Offizier   | `admin`           | hosts the global-scope `wk.json` form (WK erfassen)  |
+
 ### Example `layout.yaml`
 
 ```yaml
 kacheln:
-  - id: fu-lage
+  - id: lage
     title: "FU Lage"
     access: public
-    content: content/Lage
-
-  - id: ntp-allgemeines
-    title: "NTP Allgemeines"
-    access: public
-    content: content/NTP
-
-  - id: einsatz-details
-    title: "Einsatzdetails"
-    access: Soldat
-    content: protected/Einsatz
+    content: Lage            # → content_public/Lage (+ content_zso_specific_public/Lage)
+    color: "#e8772e"
 
   - id: quiz
-    title: "Wissens-Quiz"
-    access: Soldat        # who can see/open this Kachel at all
-    form: quiz-grundlagen # references /forms/quiz-grundlagen.json
-
-  - id: quiz-results
-    title: "Quiz-Auswertung"
-    access: Unteroffizier
-    formResults: quiz-grundlagen
+    title: "Quiz"
+    access: Soldat           # merges all 4 roots with slug "quiz"
+    content: quiz            # → e.g. content_protected/quiz/
+    color: "#4a90a4"
 ```
 
-### Example `/forms/quiz-grundlagen.json`
+### Example form: `content_protected/quiz/quiz-grundlagen.json`
 
 ```json
 {
   "id": "quiz-grundlagen",
   "title": "Wissens-Quiz Grundlagen",
-  "kachel": "quiz",
+  "submitLabel": "Wissens-Quiz",
+  "resultsLabel": "Auswertung Wissens-Quiz",
   "submitAccess": "Soldat",
   "resultsAccess": "Unteroffizier",
   "fields": [
-    { "name": "frage1", "type": "radio", "label": "...", "options": ["A", "B", "C"] },
-    { "name": "frage2", "type": "text", "label": "..." }
+    { "name": "frage1", "type": "radio", "label": "…", "options": ["A","B","C"], "correct": "A" },
+    { "name": "frage2", "type": "text",  "label": "…" }
   ]
 }
 ```
 
-### WK files and Appell
+Submissions land at `data/forms/quiz-grundlagen/<active-wk-id>/…json`. The
+results view automatically filters to the active WK.
 
-- Each WK is represented by one YAML file under `data/wk/<wk-id>.yaml`.
-  This keeps WK data inspectable and gives later forms a stable `wkId`
-  reference.
-- Every WK has at least an `id`, `nummer`, `name`, optional date range,
-  `kader` and `mannschaft`.
-- "Eingetragen" means the user or group account is present in the WK file in
-  either `kader` or `mannschaft`. It is not inferred from login alone and is
-  not a self-check-in unless an admin/officer later adds that workflow.
-- The WK Information module renders a table of existing WK files. The WK
-  name/title is the read-only detail link. Reading WK entries requires
-  `Unteroffizier` or higher.
-- Creating a WK from the GUI requires `Offizier` or higher. The creation mask
-  captures Nummer, Name, Hinweis, Eckdaten, Tagesablauf, persönliche
-  Ausrüstung and Kontakt.
-- An Appell can be created once Kader and Mannschaft are entered. The Appell is
-  stored in the same WK file and records per-person status plus comments.
-- Real WK files are runtime data and are ignored by Git. The repository tracks
-  only `data/wk/*.example.yaml` templates.
+### WK context
+
+- Every logged-in user works inside the context of one **active WK**. The
+  second banner row below the top bar shows the active WK and offers a
+  `<select>` to switch.
+- WKs are themselves form submissions of the `wk` form
+  (`content_protected/admin/wk.json`, `"scope": "global"`) and live at
+  `data/forms/wk/_global/<id>.json`.
+- The server auto-picks the WK whose date range (start..ende) is closest to
+  today (0 if today lies inside the range). The pick is persisted via the
+  `wkId` cookie; `POST /wk/select` switches it.
+- Every other form scopes its submissions to the active WK
+  (`data/forms/<form-id>/<active-wk-id>/…`). Results views are auto-filtered
+  to the active WK.
+- If no WK has been created yet, submit/results endpoints return 409 with a
+  hint to create one via Admin → WK erfassen. Reading regular content is
+  unaffected.
+- `data/forms/` is local runtime data and not committed.
 
 ### Handkarten
 
@@ -193,42 +216,34 @@ kacheln:
 
 ### Forms
 
-- Each form is defined by a single JSON file: `/forms/<form-id>.json`,
-  specifying:
-  - the field schema (fields, types, labels, validation)
-  - **which Kachel it should appear in** for submission (e.g. a "Quiz"
-    Kachel)
-  - **`submitAccess`**: minimum role required to submit (e.g. `Soldat` —
-    Soldat and above can submit)
-  - **`resultsAccess`**: minimum role required to view results (e.g.
-    `Unteroffizier` — Unteroffizier and above can view submissions), and
-    optionally which Kachel the results view appears in
-- Forms are not available to `public`. The minimum submit role defaults to
-  `Soldat` if omitted, and a configured `public` submit role is treated as
-  `Soldat`.
-- A form host Kachel can render its result table directly. Example:
-  `/k/wk-admin` shows the Essensbestellung results inline and exposes a
-  "Neue Eingabe / Essensbestellung" action that opens `/forms/essensbestellung`.
-- The planned general form categories are: Essensbestellung, Quiz and
-  Standard Formular. Categories may minimally adjust the rendered form UI.
-- Generic server-side renderer turns the schema into an HTML form; the
-  server checks `submitAccess` before rendering/accepting submissions, and
-  `resultsAccess` before rendering the results view.
-- Submissions stored as **one JSON file per submission**:
-  `data/forms/<form-id>/<timestamp>-<uuid>.json`. This avoids file-locking
-  issues entirely (each write is a new file) and keeps data
-  inspectable/backupable via plain file tools (rsync, etc.).
-- `users.yaml`: single file containing accounts + assigned role
-  (`admin`/`Offizier`/`Unteroffizier`/`Soldat`); small, rarely changes —
-  fine to read into memory at startup and edit by hand or via an admin
-  route.
+- A form is a single JSON file dropped anywhere into a content folder
+  (e.g. `content_protected/quiz/quiz-leitungsbau.json`). Position in the
+  UI is derived from where the JSON lives — there is no `submitKachel`
+  field anymore.
+- Each form spec contains:
+  - `id`, `title`, `submitLabel`, `resultsLabel`
+  - `submitAccess` (default `Soldat`; `public` is treated as `Soldat`)
+  - `resultsAccess`
+  - `fields[]` — name/type/label/required/options/correct
+  - optional `"scope": "global"` for the `wk` form itself
+- In every Kachel listing, each form appears as **two entries**: 📝 submit
+  and 📊 results. Each entry is filtered by its respective access level.
+- The generic server-side renderer turns the schema into an HTML form.
+- Submissions are stored as **one JSON file per submission**:
+  `data/forms/<form-id>/<wk-id>/<timestamp>-<uuid>.json`. For
+  `"scope": "global"` forms (only `wk`), the directory is `_global`
+  instead of a WK id. Append-only; safe from file-locking; inspectable
+  via plain file tools (rsync, etc.).
+- Results views automatically scope to the active WK (or to `_global`).
+- `users.yaml`: single file containing accounts + assigned role; small,
+  rarely changes — read into memory at startup, edited by hand.
 
 ## Deployment Story
 
 - Single Node/Bun process, runnable with `npm start` / `bun run start` or
   packaged via `pkg`/`nexe`/Bun compile for a near-single-binary experience.
-- Optional Docker image:
-  `docker run -p 80:8080 -v ./content:/content -v ./data:/data <image>`
+- Optional Docker image (future):
+  `docker run -p 80:8080 -v ./content_public:/app/content_public -v ./data:/app/data <image>`
 - Discoverable on LAN via mDNS (`*.local`) or a printed QR code with the
   LAN IP, so devices can connect to the local server without internet.
 
@@ -238,13 +253,12 @@ kacheln:
   "easy for other orgs to deploy/contribute."
 - Prefer plain file I/O over abstractions; the data model should be
   legible by opening files directly (JSON/YAML), no opaque binary formats.
-- Content authors (often non-developers) interact only with `/content`,
-  `/protected`, and `/forms/*.yaml` — keep these human-editable and
-  documented.
+- Content authors (often non-developers) interact only with the four
+  `content_*/` roots — keep them human-editable and documented.
 - Avoid adding a build step for content if possible; markdown should be
   renderable directly by the running server.
 
-## Decisions taken (first draft)
+## Decisions taken
 
 These resolve the previously open questions and reflect the current code.
 
@@ -260,19 +274,17 @@ These resolve the previously open questions and reflect the current code.
   `data/users.yaml`. The repository tracks `data/users.example.yaml` with
   default demo accounts; the real runtime file is ignored by Git.
 - **Service worker**: hand-written (no Workbox), served dynamically from
-  `/service-worker.js`. Precaches `/`, public `/k/...` routes, `/content/**`
-  and static client assets. Navigation requests are network-first and cache
-  successful responses as the last online state. Static/content assets remain
-  cache-first.
+  `/service-worker.js`. Precaches `/`, public `/k/...` routes (recursive
+  asset walk across the public content roots) and static client assets.
+  Navigation requests are network-first and cache successful responses as
+  the last online state. Static/Kachel assets remain cache-first.
 - **Protected content**: LAN-only for fresh reads/writes. Previously visited
   protected pages can be shown from cache while offline, based on the last
   authenticated online access on that device.
-- **Nested Kacheln**: `layout.yaml` supports a flat list, but a Kachel
-  may have `children` (rendered as a sub-grid). Forms attach themselves
-  to a host Kachel via `submitKachel` / `resultsKachel` in the form
-  JSON, so adding a form is a single-file drop — no `layout.yaml` edit.
-  This supersedes the spec's `kachel:` field name with `submitKachel`
-  (plus `resultsKachel` for the optional results view).
+- **Form placement**: forms attach themselves to a Kachel by being placed
+  inside that Kachel's content folder (in any of the four content roots).
+  No `submitKachel` / `resultsKachel` field anymore; the JSON file's
+  location is the source of truth.
 - **Auth UI**: there is no Login/Logout Kachel. The top bar shows a
   login icon in the top-right when anonymous and a logout icon (POST
   form) when signed in. The hamburger top-left opens the side nav with
@@ -288,9 +300,11 @@ These resolve the previously open questions and reflect the current code.
 - **Kachel grid**: 3 columns on mobile, 4 on tablet, 6 on desktop.
   Kachel color comes from `layout.yaml`'s per-Kachel `color:` field
   (used as a top-border accent).
-- **Content listings** show only directories, `.md`, and `.pdf` entries.
-  Images live in the content folders but are referenced from inside
-  markdown — they are not listed as standalone items.
+- **Content listings** show directories, `.md`, `.pdf`, `.url` entries,
+  plus expanded form entries (📝 submit + 📊 results) for any `.json`
+  form definition in the folder. Images live in the content folders but
+  are referenced from inside markdown — they are not listed as standalone
+  items.
 - **Role naming** stays with the current model:
   `admin > Offizier > Unteroffizier > Soldat > public`. The `Soldat` role is
   intentional and is not renamed to `ZSO User`.
@@ -301,9 +315,9 @@ These resolve the previously open questions and reflect the current code.
   only).
 - mDNS / QR-code discovery on the LAN (not yet implemented).
 - Docker image (documented in `README.md` as future work, not built).
-- Aggregating multiple content sources under one Kachel (current model:
-  one Kachel = one `content` folder, optionally plus auto-attached form
-  children).
 - ToDos: targets can be roles and/or individual users. ToDos need comment
   fields for addressing specific people inside roles. Completed ToDos remain
   visible, are struck through, and are sorted after open ToDos.
+- Per-WK roster / Appell. The old YAML model with `kader`, `mannschaft`
+  and an Appell sub-tree is gone for now. If reintroduced, it should
+  layer on top of the current WK submission, not replace it.
