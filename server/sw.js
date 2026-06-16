@@ -1,17 +1,27 @@
 import crypto from 'node:crypto';
-import { listPublicAssets } from './content.js';
+import { listKachelAssets, listPublicAssets } from './content.js';
+import { getLayout } from './layout.js';
 
-// Note: '/' is intentionally NOT precached — its HTML depends on auth state.
-// Navigation requests use network-first (see fetch handler) with /offline fallback.
 const STATIC_PRECACHE = [
+  '/',
   '/client/styles.css',
   '/client/app.js',
   '/client/manifest.json',
   '/offline',
 ];
 
+function publicKachelUrls() {
+  return getLayout().kacheln
+    .filter((kachel) => (kachel.access || 'public') === 'public' && kachel.content)
+    .flatMap((kachel) => listKachelAssets(kachel));
+}
+
 export function buildServiceWorker() {
-  const urls = [...STATIC_PRECACHE, ...listPublicAssets()];
+  const urls = [...new Set([
+    ...STATIC_PRECACHE,
+    ...publicKachelUrls(),
+    ...listPublicAssets(),
+  ])];
   const hash = crypto.createHash('sha1').update(urls.join('\n')).digest('hex').slice(0, 10);
   const cacheName = `zso-public-${hash}`;
   return `// Auto-generated. Cache version busts when public content changes.
@@ -46,24 +56,44 @@ self.addEventListener('fetch', (event) => {
   const url = new URL(req.url);
   if (url.origin !== self.location.origin) return;
 
-  // Network-first for navigation (HTML page loads). Falls back to /offline cache.
-  // This is what makes login work correctly: the home page must reflect the
-  // current session cookie, never a stale cached copy.
+  // Network-first for navigation. Successful page loads are cached as the
+  // device's last online state, including role-visible Kacheln after login.
   if (req.mode === 'navigate') {
     event.respondWith((async () => {
+      const cache = await caches.open(CACHE);
+      const cacheableNavigation =
+        url.pathname === '/' ||
+        url.pathname === '/offline' ||
+        url.pathname.startsWith('/k/') ||
+        url.pathname.startsWith('/content/');
+
       try {
-        return await fetch(req);
+        const fresh = await fetch(req);
+        if (fresh.ok && cacheableNavigation) {
+          cache.put(req, fresh.clone()).catch(() => {});
+          cache.put(url.pathname, fresh.clone()).catch(() => {});
+        }
+        return fresh;
       } catch {
-        const cache = await caches.open(CACHE);
-        const offline = await cache.match('/offline');
-        return offline || new Response('Offline', { status: 503 });
+        const exact = await cache.match(req) || await cache.match(url.pathname);
+        if (exact) return exact;
+        if (url.pathname === '/') {
+          const home = await cache.match('/');
+          if (home) return home;
+        }
+        return await cache.match('/offline') || new Response('Offline', { status: 503 });
       }
     })());
     return;
   }
 
-  // Static / content assets: cache-first.
-  if (url.pathname.startsWith('/content/') || url.pathname.startsWith('/client/') || url.pathname === '/offline') {
+  // Static / content / Kachel assets: cache-first.
+  if (
+    url.pathname.startsWith('/content/') ||
+    url.pathname.startsWith('/client/') ||
+    url.pathname.startsWith('/k/') ||
+    url.pathname === '/offline'
+  ) {
     event.respondWith((async () => {
       const cache = await caches.open(CACHE);
       const cached = await cache.match(req, { ignoreSearch: true });

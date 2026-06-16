@@ -55,9 +55,11 @@ export function mimeOf(file) {
   return mime.lookup(file) || 'application/octet-stream';
 }
 
-// Recursively walk content dir to build precache list. Only public stuff lives here.
-export function listPublicAssets(contentDir = path.resolve('content')) {
+function listTreeAssets(contentDir, urlBase, { includeRootPage = false } = {}) {
   const urls = [];
+  const rootUrl = urlBase.replace(/\/$/, '');
+  if (includeRootPage) urls.push(rootUrl);
+
   const walk = (abs, urlBase) => {
     if (!fs.existsSync(abs)) return;
     urls.push(urlBase.replace(/\/$/, '') + '/'); // directory index
@@ -70,6 +72,19 @@ export function listPublicAssets(contentDir = path.resolve('content')) {
       else urls.push(childUrl);
     }
   };
-  walk(contentDir, '/content/');
+  walk(contentDir, urlBase);
   return urls;
+}
+
+// Recursively walk content dir to build precache list. Only public stuff lives here.
+export function listPublicAssets(contentDir = path.resolve('content')) {
+  return listTreeAssets(contentDir, '/content/')
+    .filter((url) => url !== '/content/');
+}
+
+export function listKachelAssets(kachel) {
+  if (!kachel?.id || !kachel?.content) return [];
+  return listTreeAssets(path.resolve(kachel.content), `/k/${kachel.id}/`, {
+    includeRootPage: true,
+  });
 }

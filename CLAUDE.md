@@ -20,8 +20,8 @@ organizations can deploy too. Goals, in priority order:
      service worker.
    - All other levels require login; content is only available when the
      device can reach the local server (LAN).
-   - Forms can also live in the `public` access level, but then (obviously)
-     require connectivity to submit — they are not offline-capable.
+   - Forms are never public. Public users must not see form Kacheln and must
+     not be able to create or submit forms.
 4. **Easy for other orgs to fork/contribute** — single language (TypeScript
    everywhere), readable code, file-based content and data (no database
    server to install).
@@ -62,8 +62,10 @@ organizations can deploy too. Goals, in priority order:
 
 ### Kacheln (tiles) and layout
 
-- The frontend is organized as **Kacheln** (tiles) — the main navigation
-  unit of the app (e.g. "FU Lage", "NTP Allgemeines", a quiz form, etc.).
+- The frontend is organized as **Kacheln** (tiles). In this project, a Kachel
+  means the complete menu entry including its UI, content and attached function,
+  not only the visual card on the start page (e.g. "FU Lage",
+  "NTP Allgemeines", a quiz form, etc.).
 - A single `layout.yaml` (or `.json`) at the project root defines:
   - the list/structure of Kacheln (title, icon, target content or form)
   - the **access level required to see/open each Kachel**, one of
@@ -73,13 +75,15 @@ organizations can deploy too. Goals, in priority order:
     before serving any content tied to a Kachel, not just hide it in the UI
 - A Kachel with access level `public`:
   - requires no login
-  - its content (markdown/PDFs) is included in the service worker
+  - its UI route under `/k/...` and its content (markdown/PDFs/images) are included in the service worker
     precache list, so it's available fully offline
 - A Kachel with access level `Soldat`/`Unteroffizier`/`Offizier`/`admin`:
   - requires login with at least that role (hierarchy: `admin` ⊇
     `Offizier` ⊇ `Unteroffizier` ⊇ `Soldat`)
-  - content lives under `/protected/` and is served dynamically, **not**
-    precached (requires reaching the local server)
+  - content lives under `/protected/` and is served dynamically
+  - successful online navigations are cached as the device's last online state,
+    so a previously logged-in user can still see the last role-visible pages
+    while offline
 
 ### Role hierarchy
 
@@ -93,9 +97,9 @@ checks are simple rank comparisons (e.g. `userRole >= requiredRole`), with
 
 ### Public zone (offline-first PWA)
 
-- Markdown rendered to static HTML (build step or on-the-fly, cached).
-- Service worker (Workbox) precaches the entire `/content` tree (HTML +
-  PDFs) at install time.
+- Markdown rendered to HTML on the server and cached by the service worker.
+- The service worker precaches `/`, the public `/k/...` routes, the entire
+  `/content` tree, PDFs, images and static client assets.
 - Must work with **zero connectivity of any kind** once cached — e.g. a
   phone with no signal and not on the org WLAN.
 
@@ -105,9 +109,10 @@ checks are simple rank comparisons (e.g. `userRole >= requiredRole`), with
   internet. This is the key trick: the backend lives on the local network,
   so login/protected Kacheln/forms work even when the WLAN has no internet
   uplink.
-- Cannot be precached (needs auth + dynamic data). PWA should detect
-  "can't reach local server" and show a friendly message
-  ("connect to the org WLAN to log in"), rather than failing silently.
+- Dynamic write actions cannot be used offline. They must be marked as
+  online-only in the UI and be greyed out when the browser reports offline.
+- Previously visited protected pages may be shown from cache as the last online
+  state. Creating or submitting forms still requires reaching the local server.
 - Auth: simple session cookies (or stateless signed cookies / JWT-ish, no
   server-side session store needed) + bcrypt password hashes + role in
   `users.yaml`.
@@ -170,9 +175,14 @@ kacheln:
   - **`resultsAccess`**: minimum role required to view results (e.g.
     `Unteroffizier` — Unteroffizier and above can view submissions), and
     optionally which Kachel the results view appears in
-- Forms can be attached to a `public` Kachel too, but then submission
-  requires connectivity (forms are never offline-capable, regardless of
-  the Kachel's own access level).
+- Forms are not available to `public`. The minimum submit role defaults to
+  `Soldat` if omitted, and a configured `public` submit role is treated as
+  `Soldat`.
+- A form host Kachel can render its result table directly. Example:
+  `/k/wk-admin` shows the Essensbestellung results inline and exposes a
+  "Neue Eingabe / Essensbestellung" action that opens `/forms/essensbestellung`.
+- The planned general form categories are: Essensbestellung, Quiz and
+  Standard Formular. Categories may minimally adjust the rendered form UI.
 - Generic server-side renderer turns the schema into an HTML form; the
   server checks `submitAccess` before rendering/accepting submissions, and
   `resultsAccess` before rendering the results view.
@@ -218,16 +228,17 @@ These resolve the previously open questions and reflect the current code.
 - **Auth**: stateless signed-cookie sessions, HMAC-SHA256 over
   `{username, role}` with a 32-byte secret from `SESSION_SECRET` or
   auto-generated and persisted to `data/.session-secret`. Passwords
-  hashed with **bcryptjs** (pure JS, no native build) in `users.yaml`.
+  hashed with **bcryptjs** (pure JS, no native build) in local
+  `data/users.yaml`. The repository tracks `data/users.example.yaml` with
+  default demo accounts; the real runtime file is ignored by Git.
 - **Service worker**: hand-written (no Workbox), served dynamically from
-  `/service-worker.js`. Precaches `/content/**` + static client assets;
-  cache name is a SHA-1 of the precache list, so content changes bust
-  the cache on next visit. `/` is **not** precached (it depends on auth
-  state). Strategy: network-first for navigation requests (with
-  `/offline` fallback), cache-first for static/content assets.
-- **Protected content**: LAN-only, never cached. Offline visits to
-  protected URLs get the network's offline behavior plus our `/offline`
-  page for navigations.
+  `/service-worker.js`. Precaches `/`, public `/k/...` routes, `/content/**`
+  and static client assets. Navigation requests are network-first and cache
+  successful responses as the last online state. Static/content assets remain
+  cache-first.
+- **Protected content**: LAN-only for fresh reads/writes. Previously visited
+  protected pages can be shown from cache while offline, based on the last
+  authenticated online access on that device.
 - **Nested Kacheln**: `layout.yaml` supports a flat list, but a Kachel
   may have `children` (rendered as a sub-grid). Forms attach themselves
   to a host Kachel via `submitKachel` / `resultsKachel` in the form
@@ -238,6 +249,11 @@ These resolve the previously open questions and reflect the current code.
   login icon in the top-right when anonymous and a logout icon (POST
   form) when signed in. The hamburger top-left opens the side nav with
   all role-visible Kacheln.
+- **Accounts**: individual users and group accounts are both supported via
+  `data/users.yaml`. The signed role remains valid until logout, even if
+  `users.yaml` changes while the user is signed in.
+- **Admin UI**: user/form/layout management will be exposed through an admin
+  interface that only the `admin` role can edit.
 - **Sync indicator**: timestamp `Offline-Inhalte aktualisiert: …` shown
   in small text under the top bar, written by the SW via `postMessage`
   on activate and persisted in `localStorage.lastSync`.
@@ -247,6 +263,9 @@ These resolve the previously open questions and reflect the current code.
 - **Content listings** show only directories, `.md`, and `.pdf` entries.
   Images live in the content folders but are referenced from inside
   markdown — they are not listed as standalone items.
+- **Role naming** stays with the current model:
+  `admin > Offizier > Unteroffizier > Soldat > public`. The `Soldat` role is
+  intentional and is not renamed to `ZSO User`.
 
 ## Still open
 
@@ -257,3 +276,6 @@ These resolve the previously open questions and reflect the current code.
 - Aggregating multiple content sources under one Kachel (current model:
   one Kachel = one `content` folder, optionally plus auto-attached form
   children).
+- ToDos: targets can be roles and/or individual users. ToDos need comment
+  fields for addressing specific people inside roles. Completed ToDos remain
+  visible, are struck through, and are sorted after open ToDos.

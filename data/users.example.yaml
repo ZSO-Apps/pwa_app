@@ -1,0 +1,16 @@
+# Example users for first-time setup.
+# Default password for all users: ZSO1234
+# Copy to data/users.yaml or run `npm run seed-users`, then change passwords before deployment.
+users:
+  admin:
+    role: admin
+    passwordHash: "$2a$10$bBY19rXWq6VG/vLCBD5KpeEJCSCprDnB/GQTVp90WRUveDxgC/jbS"
+  Of:
+    role: Offizier
+    passwordHash: "$2a$10$bBY19rXWq6VG/vLCBD5KpeEJCSCprDnB/GQTVp90WRUveDxgC/jbS"
+  Uof:
+    role: Unteroffizier
+    passwordHash: "$2a$10$bBY19rXWq6VG/vLCBD5KpeEJCSCprDnB/GQTVp90WRUveDxgC/jbS"
+  AdZS:
+    role: Soldat
+    passwordHash: "$2a$10$bBY19rXWq6VG/vLCBD5KpeEJCSCprDnB/GQTVp90WRUveDxgC/jbS"

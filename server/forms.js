@@ -7,11 +7,16 @@ import { renderFormPage, renderResultsPage } from './templates/index.js';
 
 const DATA_DIR = path.resolve('data/forms');
 
+function submitAccessFor(def) {
+  const access = def.submitAccess || 'Soldat';
+  return access === 'public' ? 'Soldat' : access;
+}
+
 export function renderForm(req, res, formId) {
   const def = getForm(formId);
   if (!def) return res.status(404).send('Formular nicht gefunden');
   const role = req.user?.role || 'public';
-  if (!hasAccess(role, def.submitAccess || 'public')) {
+  if (!hasAccess(role, submitAccessFor(def))) {
     if (!req.user) return res.redirect('/login?next=' + encodeURIComponent(req.originalUrl));
     return res.status(403).send('Zugriff verweigert');
   }
@@ -22,7 +27,7 @@ export function submitForm(req, res, formId) {
   const def = getForm(formId);
   if (!def) return res.status(404).send('Formular nicht gefunden');
   const role = req.user?.role || 'public';
-  if (!hasAccess(role, def.submitAccess || 'public')) return res.status(403).send('Zugriff verweigert');
+  if (!hasAccess(role, submitAccessFor(def))) return res.status(403).send('Zugriff verweigert');
 
   const submission = { _meta: { formId, submittedAt: new Date().toISOString(), submittedBy: req.user?.username || null } };
   for (const f of def.fields) {
@@ -41,6 +46,25 @@ export function submitForm(req, res, formId) {
   res.send(renderFormPage(req, def, { submitted: true }));
 }
 
+export function readSubmissions(formId) {
+  const def = getForm(formId);
+  if (!def) return [];
+  const dir = path.join(DATA_DIR, def.id);
+  if (!fs.existsSync(dir)) return [];
+
+  return fs.readdirSync(dir)
+    .filter((f) => f.endsWith('.json'))
+    .sort()
+    .map((f) => {
+      try {
+        return JSON.parse(fs.readFileSync(path.join(dir, f), 'utf8'));
+      } catch {
+        return null;
+      }
+    })
+    .filter(Boolean);
+}
+
 export function renderResults(req, res, formId) {
   const def = getForm(formId);
   if (!def || !def.resultsAccess) return res.status(404).send('Auswertung nicht verfügbar');
@@ -49,14 +73,5 @@ export function renderResults(req, res, formId) {
     if (!req.user) return res.redirect('/login?next=' + encodeURIComponent(req.originalUrl));
     return res.status(403).send('Zugriff verweigert');
   }
-  const dir = path.join(DATA_DIR, def.id);
-  let submissions = [];
-  if (fs.existsSync(dir)) {
-    submissions = fs.readdirSync(dir)
-      .filter((f) => f.endsWith('.json'))
-      .sort()
-      .map((f) => { try { return JSON.parse(fs.readFileSync(path.join(dir, f), 'utf8')); } catch { return null; } })
-      .filter(Boolean);
-  }
-  res.send(renderResultsPage(req, def, submissions));
+  res.send(renderResultsPage(req, def, readSubmissions(formId)));
 }
