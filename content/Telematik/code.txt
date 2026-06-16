@@ -1,0 +1,7 @@
+<a href="chargen_produkte.png"><img style="width: 100%;" src="chargen_produkte.png"/></a>
+
+<div style="width: 33%;float:right;">
+<img src="chef_lage.jpg"/>
+<p align="middle">C Lage</p>
+</div>
+

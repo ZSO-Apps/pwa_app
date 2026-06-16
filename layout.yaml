@@ -1,0 +1,42 @@
+kacheln:
+  - id: lage
+    title: "FU Lage"
+    access: public
+    content: content/Lage
+    color: "#e8772e"
+
+  - id: telematik
+    title: "FU Telematik"
+    access: public
+    content: content/Telematik
+    color: "#e8772e"
+
+  - id: ntp
+    title: "Notfall-Treffpunkt"
+    access: public
+    content: content/NTP
+    color: "#7ac74f"
+
+  - id: unterstuetzung
+    title: "Unterstützung"
+    access: public
+    content: content/Unterstützung
+    color: "#3aa0e0"
+
+  - id: wk-foo
+    title: "WK Foo"
+    access: Soldat
+    color: "#9b7bd4"
+    # children appended at startup from /forms/*.json (submitKachel/resultsKachel == wk-foo)
+
+  - id: wk-information
+    title: "WK Information"
+    access: Unteroffizier
+    content: protected/WK-Information
+    color: "#4a90a4"
+
+  - id: wk-admin
+    title: "WK Admin"
+    access: Offizier
+    color: "#b8474e"
+    # children appended at startup from forms targeting wk-admin

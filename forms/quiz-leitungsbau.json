@@ -1,0 +1,33 @@
+{
+  "id": "quiz-leitungsbau",
+  "title": "Quiz Leitungsbau",
+  "submitKachel": "wk-foo",
+  "resultsKachel": "wk-foo",
+  "submitLabel": "Quiz Leitungsbau",
+  "resultsLabel": "Quiz-Auswertung Leitungsbau",
+  "submitAccess": "Soldat",
+  "resultsAccess": "Unteroffizier",
+  "fields": [
+    {
+      "name": "frage1",
+      "type": "radio",
+      "label": "Welche Spannung führt eine typische Niederspannungs-Hausleitung in der Schweiz?",
+      "options": ["230 V", "400 V", "1000 V"],
+      "correct": "230 V",
+      "required": true
+    },
+    {
+      "name": "frage2",
+      "type": "radio",
+      "label": "Mindest-Verlegetiefe eines Erdkabels (Richtwert)?",
+      "options": ["20 cm", "60 cm", "100 cm"],
+      "correct": "60 cm",
+      "required": true
+    },
+    {
+      "name": "kommentar",
+      "type": "textarea",
+      "label": "Freier Kommentar (optional)"
+    }
+  ]
+}
