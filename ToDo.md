@@ -7,6 +7,7 @@
 - [ ] Print -> WK Hinzufügen
 - [ ] Farbe/Design
 - [ ] MD Editor
+- [ ] Hinzufügen von Dateien (zB MD, PDF, ...) in eine Kachel (statt den Editor öffnen, einfach file upload)
 - [ ] Quiz verbessern (Auswertung, was war richtig/falsch, Punkte)
 - [ ] Bugfixes
 - [ ] WK-Archivieren
