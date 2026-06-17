@@ -32,6 +32,20 @@ function publicKachelUrls() {
     .flatMap((kachel) => listKachelPublicAssets(kachel));
 }
 
+// Hash the contents of the local static client assets so the cache version
+// busts when styles.css / app.js / manifest.json change — not just when the
+// list of public-content URLs changes. Without this the SW would serve a stale
+// stylesheet forever (assets are cache-first).
+function clientAssetsFingerprint() {
+  const h = crypto.createHash('sha1');
+  for (const u of STATIC_PRECACHE) {
+    if (!u.startsWith('/client/')) continue;
+    const abs = path.resolve('.' + u);
+    try { h.update(u).update(fs.readFileSync(abs)); } catch { /* missing file */ }
+  }
+  return h.digest('hex');
+}
+
 export function buildServiceWorker() {
   const urls = [...new Set([...STATIC_PRECACHE, ...publicKachelUrls()])];
   const assetState = STATIC_CLIENT_ASSETS.map((urlPath) => {
@@ -42,7 +56,10 @@ export function buildServiceWorker() {
       return urlPath;
     }
   }).join('\n');
-  const hash = crypto.createHash('sha1').update(urls.join('\n') + '\n' + assetState).digest('hex').slice(0, 10);
+  const hash = crypto.createHash('sha1')
+    .update(urls.join('\n'))
+    .update(clientAssetsFingerprint())
+    .digest('hex').slice(0, 10);
   const cacheName = `zso-public-${hash}`;
   return `// Auto-generated. Cache version busts when public content changes.
 const CACHE = ${JSON.stringify(cacheName)};

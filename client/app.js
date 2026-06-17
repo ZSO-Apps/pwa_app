@@ -46,6 +46,26 @@ document.addEventListener('click', (event) => {
   window.alert('Diese Funktion benötigt eine Verbindung zum Server.');
 });
 
+// Remember Name / Mobile across form fills (accounts are generic per role, so
+// we cache these per-device in localStorage). Matches fields whose name is
+// exactly "name" or "mobile" (case-insensitive).
+(function rememberContactFields() {
+  const form = document.querySelector('.genform');
+  if (!form) return;
+  const remembered = /^(name|mobile)$/i;
+  const key = (name) => 'formcache:' + name.toLowerCase();
+  form.querySelectorAll('input[name]').forEach((input) => {
+    if (!remembered.test(input.name)) return;
+    if (!input.value) {
+      const saved = localStorage.getItem(key(input.name));
+      if (saved) input.value = saved;
+    }
+    input.addEventListener('input', () => {
+      try { localStorage.setItem(key(input.name), input.value); } catch {}
+    });
+  });
+})();
+
 // Service worker
 if ('serviceWorker' in navigator) {
   navigator.serviceWorker.register('/service-worker.js').catch((e) => console.warn('SW register failed', e));

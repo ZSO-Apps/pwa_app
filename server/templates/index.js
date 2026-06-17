@@ -1,6 +1,7 @@
 import fs from 'node:fs';
 import path from 'node:path';
 import { visibleKacheln } from '../layout.js';
+import { isDisplay, isStored } from '../form-elements.js';
 
 export function esc(s) {
   return String(s ?? '').replace(/[&<>"']/g, (c) => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c]));
@@ -183,6 +184,9 @@ function renderField(f, value = '') {
   const current = value ?? '';
   const currentString = String(current);
   const common = `name="${esc(f.name)}" id="f-${esc(f.name)}"${f.required ? ' required' : ''}`;
+  if (f.type === 'checkbox') {
+    return `<label class="checkbox"><input type="checkbox" ${common}${value ? ' checked' : ''}> ${esc(f.label || f.name)}</label>`;
+  }
   if (f.type === 'textarea') return `<textarea ${common} rows="4">${esc(currentString)}</textarea>`;
   if (f.type === 'radio') {
     return (f.options || []).map((o, i) => {
@@ -206,7 +210,88 @@ function renderField(f, value = '') {
   return `<input type="${type}" ${common}${minmax} value="${esc(currentString)}">`;
 }
 
+// Optional per-element width hint. Elements flow left-to-right (flex-wrap), so
+// e.g. two "half" elements share one line. Default is full width. Kept as a
+// flat single attribute on purpose — easy to toggle in a future form editor.
+function widthClass(el) {
+  const w = el?.width;
+  if (w === 'half') return ' w-half';
+  if (w === 'third') return ' w-third';
+  if (w === 'quarter') return ' w-quarter';
+  return '';
+}
+
+// Render a structural/display element (heading banner, paragraph, signature
+// line). Shared between the fill-out form and the submission detail view.
+function renderDisplayElement(f) {
+  if (f.type === 'heading') {
+    const style = f.color ? ` style="--banner-c:${esc(f.color)}"` : '';
+    return `<div class="form-heading"${style}>${esc(f.label || '')}</div>`;
+  }
+  if (f.type === 'paragraph') {
+    return `<p class="form-paragraph">${esc(f.text || f.label || '')}</p>`;
+  }
+  if (f.type === 'signature') {
+    return `<div class="form-signature"><span class="sig-line"></span><span class="sig-label">${esc(f.label || 'Unterschrift')}</span></div>`;
+  }
+  return '';
+}
+
+// One element inside the fill-out form. printOnly elements are skipped by the
+// caller; checkbox carries its own label so it is not double-labelled.
+function renderFormElement(f) {
+  if (isDisplay(f)) return renderDisplayElement(f);
+  if (f.type === 'checkbox') {
+    return `<div class="field field-check">${renderField(f)}</div>`;
+  }
+  return `<div class="field">
+    <label for="f-${esc(f.name)}">${esc(f.label || f.name)}${f.required ? ' *' : ''}</label>
+    ${renderField(f)}
+  </div>`;
+}
+
+// Optional per-element width hint. Elements flow left-to-right (flex-wrap), so
+// e.g. two "half" elements share one line. Default is full width. Kept as a
+// flat single attribute on purpose — easy to toggle in a future form editor.
+function widthClass(el) {
+  const w = el?.width;
+  if (w === 'half') return ' w-half';
+  if (w === 'third') return ' w-third';
+  if (w === 'quarter') return ' w-quarter';
+  return '';
+}
+
+// Render a structural/display element (heading banner, paragraph, signature
+// line). Shared between the fill-out form and the submission detail view.
+function renderDisplayElement(f) {
+  if (f.type === 'heading') {
+    const style = f.color ? ` style="--banner-c:${esc(f.color)}"` : '';
+    return `<div class="form-heading"${style}>${esc(f.label || '')}</div>`;
+  }
+  if (f.type === 'paragraph') {
+    return `<p class="form-paragraph">${esc(f.text || f.label || '')}</p>`;
+  }
+  if (f.type === 'signature') {
+    return `<div class="form-signature"><span class="sig-line"></span><span class="sig-label">${esc(f.label || 'Unterschrift')}</span></div>`;
+  }
+  return '';
+}
+
+// One element inside the fill-out form. printOnly elements are skipped by the
+// caller; checkbox carries its own label so it is not double-labelled.
+function renderFormElement(f) {
+  if (isDisplay(f)) return renderDisplayElement(f);
+  if (f.type === 'checkbox') {
+    return `<div class="field field-check">${renderField(f)}</div>`;
+  }
+  return `<div class="field">
+    <label for="f-${esc(f.name)}">${esc(f.label || f.name)}${f.required ? ' *' : ''}</label>
+    ${renderField(f)}
+  </div>`;
+}
+
 export function renderFormPage(req, def, { submitted = false, values = {} } = {}) {
+  const elements = (def.fields || []).filter((f) => !f.printOnly);
   const submitLabel = submitted ? 'Neue Eingabe mit diesen Daten speichern' : 'Senden';
   const body = `
   <article class="content narrow form-page">
@@ -223,6 +308,12 @@ export function renderFormPage(req, def, { submitted = false, values = {} } = {}
         </div>
       `).join('')}
       <button type="submit">${esc(submitLabel)}</button>
+  <article class="content narrow">
+    <h1>${esc(def.title || def.id)}</h1>
+    ${submitted ? `<p class="ok">✓ Eingabe gespeichert. Vielen Dank.</p>` : ''}
+    <form method="POST" action="/forms/${esc(def.id)}" class="genform">
+      ${elements.map((f) => `<div class="form-el${widthClass(f)}">${renderFormElement(f)}</div>`).join('\n')}
+      <button type="submit">Senden</button>
     </form>
     <p><a href="/" class="back">← Zurück</a></p>
     ${renderFormPrintBootstrap()}
@@ -236,7 +327,7 @@ function submissionTitle(def, submission) {
   const preferred = preferredNames
     .map((name) => fields.find((field) => field.name === name))
     .find(Boolean);
-  const fallback = preferred || fields[0];
+  const fallback = preferred || fields.find(isStored);
   const value = fallback ? submission[fallback.name] : '';
   return value || submission._meta?.submittedBy || submission._meta?.submittedAt || 'Eintrag';
 }
@@ -244,6 +335,11 @@ function submissionTitle(def, submission) {
 function submissionUrl(def, submission) {
   const id = submission._meta?.submissionId;
   return id ? '/forms/' + encodeURIComponent(def.id) + '/results/' + encodeURIComponent(id) : '#';
+}
+
+function fmtCell(field, value) {
+  if (field.type === 'checkbox') return value ? '☑' : '☐';
+  return value ?? '';
 }
 
 function renderResultsTable(def, submissions) {
@@ -255,11 +351,17 @@ function renderResultsTable(def, submissions) {
     return `<tr data-print-row>
       <td class="select-col"><input type="checkbox" data-print-select aria-label="${esc(title)} auswählen"></td>
       <td><a href="${esc(url)}">${esc(title)}</a></td>
+  const storedFields = (def.fields || []).filter(isStored);
+  const headers = storedFields.map((f) => f.label || f.name);
+  const rows = submissions.map((s) => `<tr>
+      <td><a href="${esc(submissionUrl(def, s))}">${esc(submissionTitle(def, s))}</a></td>
       <td>${esc(s._meta?.submittedAt || '')}</td>
       <td>${esc(s._meta?.submittedBy || '')}</td>
-      ${cols.map((c) => `<td>${esc(s[c] ?? '')}</td>`).join('')}
+      ${storedFields.map((f) => `<td>${esc(fmtCell(f, s[f.name]))}</td>`).join('')}
     </tr>`;
   }).join('');
+      ${cols.map((c) => `<td>${esc(s[c] ?? '')}</td>`).join('')}
+    
 
   let quizSummary = '';
   if ((def.fields || []).some((f) => f.correct !== undefined)) {
@@ -302,17 +404,40 @@ export function renderResultsPage(req, def, submissions, { wkLabel } = {}) {
   return layout(req, { title: 'Auswertung', body });
 }
 
+// One element inside the submission detail view. printOnly inputs render as
+// empty boxes/lines for hand-filling on the printout; stored inputs show their
+// submitted value.
+function renderSubmissionElement(def, submission, f) {
+  if (isDisplay(f)) return renderDisplayElement(f);
+  const label = esc(f.label || f.name);
+  if (f.type === 'checkbox') {
+    const checked = !f.printOnly && submission[f.name];
+    return `<div class="sub-check"><span class="box">${checked ? '☑' : '☐'}</span> <span>${label}</span></div>`;
+  }
+  if (f.printOnly) {
+    const big = f.type === 'textarea';
+    return `<div class="sub-field${big ? ' sub-field--block' : ''}">
+      <div class="sub-label">${label}</div>
+      <div class="sub-write${big ? ' sub-write--block' : ''}"></div>
+    </div>`;
+  }
+  return `<div class="sub-field">
+    <div class="sub-label">${label}</div>
+    <div class="sub-value">${esc(submission[f.name] ?? '')}</div>
+  </div>`;
+}
+
 export function renderSubmissionPage(req, def, submission) {
-  const title = submissionTitle(def, submission);
-  const rows = (def.fields || []).map((field) => '<tr><th>' + esc(field.label || field.name) + '</th><td>' + esc(submission[field.name] ?? '') + '</td></tr>').join('');
-  const body = '<article class="content">' +
-    '<nav class="crumbs"><a href="/forms/' + esc(def.id) + '/results">Auswertung</a> / <span>' + esc(title) + '</span></nav>' +
-    '<h1>' + esc(title) + '</h1>' +
+  const heading = submissionTitle(def, submission);
+  const elements = (def.fields || []).map((f) => `<div class="sub-el${widthClass(f)}">${renderSubmissionElement(def, submission, f)}</div>`).join('\n');
+  const body = '<article class="content sub-detail">' +
+    '<nav class="crumbs"><a href="/forms/' + esc(def.id) + '/results">Auswertung</a> / <span>' + esc(heading) + '</span></nav>' +
+    '<h1>' + esc(def.title || def.id) + '</h1>' +
     '<p class="muted">Gesendet am: ' + esc(submission._meta?.submittedAt || '') + '<br>Gesendet von: ' + esc(submission._meta?.submittedBy || '') + '</p>' +
-    '<div class="tablewrap"><table class="results"><tbody>' + (rows || '<tr><td><em>Keine Felder</em></td></tr>') + '</tbody></table></div>' +
-    '<p><a href="/forms/' + esc(def.id) + '/results" class="back">← Zurück zur Auswertung</a></p>' +
+    '<div class="sub-elements">' + (elements || '<em>Keine Felder</em>') + '</div>' +
+    '<p class="no-print"><a href="/forms/' + esc(def.id) + '/results" class="back">← Zurück zur Auswertung</a></p>' +
     '</article>';
-  return layout(req, { title, body });
+  return layout(req, { title: def.title || heading, body });
 }
 
 export function renderOffline(req) {

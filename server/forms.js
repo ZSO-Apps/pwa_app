@@ -3,6 +3,7 @@ import path from 'node:path';
 import crypto from 'node:crypto';
 import { getForm } from './layout.js';
 import { hasAccess } from './auth.js';
+import { isStored } from './form-elements.js';
 import { renderFormPage, renderResultsPage, renderSubmissionPage, renderError } from './templates/index.js';
 
 const DATA_DIR = path.resolve('data/forms');
@@ -79,7 +80,12 @@ export function submitForm(req, res, formId) {
       wkId: def.scope === 'global' ? null : scope,
     },
   };
-  for (const f of def.fields) {
+  for (const f of def.fields || []) {
+    if (!isStored(f)) continue; // skip display + printOnly elements
+    if (f.type === 'checkbox') {
+      submission[f.name] = req.body?.[f.name] !== undefined;
+      continue;
+    }
     const v = req.body?.[f.name];
     if (f.required && (v === undefined || v === '')) {
       return res.status(400).send(renderError(req, 400, `Feld '${f.label || f.name}' ist erforderlich.`));
