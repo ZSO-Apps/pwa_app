@@ -8,27 +8,17 @@ marked.setOptions({ gfm: true, breaks: false });
 
 const ROOT = path.resolve('.');
 
-// The four content roots. Public roots are visible without login; protected
-// roots only join the merged view when the Kachel requires login.
+// The two content roots. Access is decided per Kachel in layout.yaml, not by
+// the folder a file lives in. The ZSO-specific root overrides the generic one
+// on name collision; ordered later so it wins in the merge.
 const ROOT_DIRS = {
-  publicGeneric:        path.resolve('content_public'),
-  publicZso:            path.resolve('content_zso_specific_public'),
-  protectedGeneric:     path.resolve('content_protected'),
-  protectedZso:         path.resolve('content_zso_specific_protected'),
+  generic: path.resolve('content_generic'),
+  zso:     path.resolve('content_zso_specific'),
 };
 
-// Order: later entries override earlier ones on name collision. ZSO-specific
-// overrides generic; protected layers on top of public for logged-in views.
-function rootsFor(kachelAccess) {
-  const access = kachelAccess || 'public';
-  if (access === 'public') return [ROOT_DIRS.publicGeneric, ROOT_DIRS.publicZso];
-  return [
-    ROOT_DIRS.publicGeneric,
-    ROOT_DIRS.publicZso,
-    ROOT_DIRS.protectedGeneric,
-    ROOT_DIRS.protectedZso,
-  ];
-}
+// Order: later entries override earlier ones on name collision (ZSO overrides
+// generic). Same list regardless of access level.
+const ROOTS = [ROOT_DIRS.generic, ROOT_DIRS.zso];
 
 export function safeResolve(absRoot, ...parts) {
   const p = path.resolve(absRoot, ...parts);
@@ -40,9 +30,19 @@ export function safeResolve(absRoot, ...parts) {
 // directories where the slug appears. Order matters: later overrides earlier.
 export function kachelRoots(kachel) {
   if (!kachel?.content) return [];
-  return rootsFor(kachel.access)
+  return ROOTS
     .map((root) => path.join(root, kachel.content))
     .filter((p) => fs.existsSync(p) && fs.statSync(p).isDirectory());
+}
+
+// For a wkScoped Kachel, the effective content folder is the Kachel's base
+// slug plus the active WK's id subfolder (e.g. wk_infos/<wkId>). Non-scoped
+// Kacheln are returned unchanged. Returns null content when scoped but no WK
+// is active so callers can show a hint instead of a 404.
+export function effectiveKachel(kachel, activeWk) {
+  if (!kachel?.wkScoped) return kachel;
+  if (!activeWk?.id) return { ...kachel, content: null };
+  return { ...kachel, content: path.join(kachel.content, activeWk.id) };
 }
 
 // Resolve a path beneath a Kachel's merged view. Returns the absolute path of
@@ -223,7 +223,7 @@ export function listKachelPublicAssets(kachel) {
       }
     }
   };
-  for (const root of [ROOT_DIRS.publicGeneric, ROOT_DIRS.publicZso]) {
+  for (const root of ROOTS) {
     walk(path.join(root, kachel.content));
   }
   return [...urls];

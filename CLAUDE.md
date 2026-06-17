@@ -24,9 +24,9 @@ organizations can deploy too. Goals, in priority order:
      not be able to create or submit forms.
 4. **Easy for other orgs to fork/contribute** — single language (JavaScript /
    Node ESM everywhere), readable code, file-based content and data (no
-   database server to install). ZSO-Brugg-specific overrides live in
-   dedicated `content_zso_specific_*` roots so a fork can replace them
-   without touching the generic codebase.
+   database server to install). ZSO-Brugg-specific overrides live in the
+   dedicated `content_zso_specific/` root so a fork can replace them without
+   touching the generic `content_generic/` content.
 5. The old project is in the folder old_app.
 
 ## Tech Stack Decisions
@@ -48,16 +48,14 @@ organizations can deploy too. Goals, in priority order:
 
 ```
 /layout.yaml                       Kacheln: slug + access level per Kachel
-/content_public/                   generic public content (git-managed, no login)
-/content_zso_specific_public/      org-specific public overrides
-/content_protected/                generic protected content (admin/, quiz/, wk_organisation/)
-/content_zso_specific_protected/   org-specific protected overrides
+/content_generic/                  generic content shipped with the project
+/content_zso_specific/             org-specific overrides/additions
 /data/
   users.yaml                       user accounts (bcrypt + role), hand-edited
   forms/<form-id>/<wk-id>/         one JSON per submission, scoped to active WK
   forms/wk/_global/                WK records themselves (the wk form is scope=global)
 /server/                           Node/Express app
-  - merges the 4 content roots when serving a Kachel slug
+  - merges the 2 content roots when serving a Kachel slug
   - renders markdown -> HTML server-side
   - serves /service-worker.js with a precache manifest of public assets
   - serves protected Kacheln behind session auth (role hierarchy)
@@ -66,11 +64,12 @@ organizations can deploy too. Goals, in priority order:
 /client/                           frontend assets, manifest.json, hand-written SW
 ```
 
-A Kachel references a **slug** under `content:`. The server merges every root
-that contains a folder with that slug. Public Kacheln pull from
-`content_public/` and `content_zso_specific_public/` only; protected Kacheln
-also include the two `_protected` roots (later wins on name collision: ZSO
-overrides generic, protected overrides public).
+A Kachel references a **slug** under `content:`. The server merges both content
+roots that contain a folder with that slug: `content_generic/` first, then
+`content_zso_specific/` (later wins on name collision, so a ZSO-specific file
+overrides the generic one of the same name). Access is decided **only** by the
+Kachel's `access:` in `layout.yaml`, never by which root a file lives in — the
+same two roots serve public and protected Kacheln alike.
 
 Forms are `.json` files dropped anywhere in a content folder. Each shows up as
 two listing entries: 📝 submit (uses `submitLabel` + `submitAccess`) and 📊
@@ -91,16 +90,21 @@ field anymore.
     server-side access enforcement.
 - A Kachel with `access: public`:
   - requires no login
-  - merges only the `_public` content roots
+  - merges `content_generic/` + `content_zso_specific/`
   - its UI route under `/k/...` and its files are included in the service
     worker precache, so they're available fully offline.
 - A Kachel with `access: Soldat`/`Unteroffizier`/`Offizier`/`Admin`:
   - requires login with at least that role (hierarchy: `Admin` ⊇
     `Offizier` ⊇ `Unteroffizier` ⊇ `Soldat`)
-  - merges all four content roots
+  - merges the same two roots (`content_generic/` + `content_zso_specific/`)
   - successful online navigations are cached as the device's last online
     state, so a previously logged-in user can still see the last
     role-visible pages while offline.
+- A Kachel with `wkScoped: true` (e.g. `WK Infos`, `WK Infos Kader`):
+  - resolves its content to the active WK's subfolder, i.e. effective slug
+    `<content>/<active-wk-id>` (see "Per-WK content Kacheln" below).
+- Any Kachel folder may contain **subfolders**; they are listed with a folder
+  icon and navigated recursively under `/k/<id>/...`.
 
 ### Role hierarchy
 
@@ -116,9 +120,9 @@ checks are simple rank comparisons (e.g. `userRole >= requiredRole`), with
 
 - Markdown rendered to HTML on the server and cached by the service worker.
 - The service worker precaches `/`, the public `/k/...` routes and their
-  assets (markdown rendered as HTML, PDFs, images) walked across the two
-  public content roots (`content_public/`, `content_zso_specific_public/`)
-  plus the static client assets.
+  assets (markdown rendered as HTML, PDFs, images) walked across both content
+  roots (`content_generic/`, `content_zso_specific/`) for `access: public`
+  Kacheln, plus the static client assets.
 - Form definitions (`.json`) and external `.url` shortcuts are excluded
   from the precache — they require either a live server or external
   network.
@@ -148,7 +152,9 @@ checks are simple rank comparisons (e.g. `userRole >= requiredRole`), with
 | `ntp`             | Notfall-Treffpunkt | public     | `NTP`             |                                                      |
 | `unterstuetzung`  | Unterstützung      | public     | `Unterstützung`   |                                                      |
 | `handkarten`      | Handkarten         | public     | `Handkarten`      |                                                      |
-| `wk-organisation` | WK Organisation    | Soldat     | `wk_organisation` | hosts `essensbestellung.json`                        |
+| `wk-organisation` | WK Organisation    | Unteroffizier | `wk_organisation` | hosts `essensbestellung.json`, `beurteilung*.json` |
+| `wk-infos`        | WK Infos           | Soldat     | `wk_infos`        | `wkScoped` — shows the active WK's subfolder          |
+| `wk-infos-kader`  | WK Infos Kader     | Unteroffizier | `wk_infos_kader` | `wkScoped` — Kader-only per-WK content              |
 | `quiz`            | Quiz               | Soldat     | `quiz`            | hosts `quiz-leitungsbau.json` and future quizzes     |
 | `admin`           | Admin              | Offizier   | `admin`           | hosts the global-scope `wk.json` form (WK erfassen)  |
 
@@ -159,17 +165,24 @@ kacheln:
   - id: lage
     title: "FU Lage"
     access: public
-    content: Lage            # → content_public/Lage (+ content_zso_specific_public/Lage)
+    content: Lage            # → content_generic/Lage (+ content_zso_specific/Lage)
     color: "#e8772e"
 
   - id: quiz
     title: "Quiz"
-    access: Soldat           # merges all 4 roots with slug "quiz"
-    content: quiz            # → e.g. content_protected/quiz/
+    access: Soldat           # merges both roots with slug "quiz"
+    content: quiz            # → content_generic/quiz/ (+ content_zso_specific/quiz/)
     color: "#4a90a4"
+
+  - id: wk-infos
+    title: "WK Infos"
+    access: Soldat
+    content: wk_infos        # effective slug: wk_infos/<active-wk-id>
+    wkScoped: true
+    color: "#6c8ebf"
 ```
 
-### Example form: `content_protected/quiz/quiz-grundlagen.json`
+### Example form: `content_generic/quiz/quiz-grundlagen.json`
 
 ```json
 {
@@ -195,8 +208,12 @@ results view automatically filters to the active WK.
   second banner row below the top bar shows the active WK and offers a
   `<select>` to switch.
 - WKs are themselves form submissions of the `wk` form
-  (`content_protected/admin/wk.json`, `"scope": "global"`) and live at
+  (`content_generic/admin/wk.json`, `"scope": "global"`) and live at
   `data/forms/wk/_global/<id>.json`.
+- Creating a WK auto-creates its per-WK content folders
+  `content_zso_specific/wk_infos/<wk-id>/` and
+  `content_zso_specific/wk_infos_kader/<wk-id>/` (see "Per-WK content
+  Kacheln" below). Done in `ensureWkContentFolders` in `server/forms.js`.
 - The server auto-picks the WK whose date range (start..ende) is closest to
   today (0 if today lies inside the range). The pick is persisted via the
   `wkId` cookie; `POST /wk/select` switches it.
@@ -208,6 +225,25 @@ results view automatically filters to the active WK.
   unaffected.
 - `data/forms/` is local runtime data and not committed.
 
+### Per-WK content Kacheln (`wkScoped`)
+
+- A Kachel marked `wkScoped: true` in `layout.yaml` shows content **for the
+  active WK only**. Its effective content slug becomes
+  `<content>/<active-wk-id>`, resolved by `effectiveKachel()` in
+  `server/content.js` and threaded through the `/k/:id` routes in
+  `server/index.js`.
+- Two such Kacheln exist: `wk-infos` (`Soldat`) and `wk-infos-kader`
+  (`Unteroffizier`). They hold per-WK material like Tagesbefehle and
+  Arbeitsprogramme, typically as Markdown/PDF, optionally grouped in
+  subfolders.
+- The target folders are created automatically when a WK is erfasst (see WK
+  context). Authors then drop files into
+  `content_zso_specific/wk_infos/<wk-id>/` etc.
+- Without an active WK these Kacheln return 409 with a hint to create/select a
+  WK. With an active WK but an empty folder they render an empty listing
+  (not a 404). Switching the active WK in the banner switches the shown
+  content.
+
 ### Handkarten
 
 - Handkarten are normal Markdown/PDF content.
@@ -217,7 +253,7 @@ results view automatically filters to the active WK.
 ### Forms
 
 - A form is a single JSON file dropped anywhere into a content folder
-  (e.g. `content_protected/quiz/quiz-leitungsbau.json`). Position in the
+  (e.g. `content_generic/quiz/quiz-leitungsbau.json`). Position in the
   UI is derived from where the JSON lives — there is no `submitKachel`
   field anymore.
 - Each form spec contains:
@@ -246,7 +282,7 @@ results view automatically filters to the active WK.
 - Single Node/Bun process, runnable with `npm start` / `bun run start` or
   packaged via `pkg`/`nexe`/Bun compile for a near-single-binary experience.
 - Optional Docker image (future):
-  `docker run -p 80:8080 -v ./content_public:/app/content_public -v ./data:/app/data <image>`
+  `docker run -p 80:8080 -v ./content_zso_specific:/app/content_zso_specific -v ./data:/app/data <image>`
 - Discoverable on LAN via mDNS (`*.local`) or a printed QR code with the
   LAN IP, so devices can connect to the local server without internet.
 

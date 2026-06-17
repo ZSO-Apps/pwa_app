@@ -29,6 +29,20 @@ kacheln:
     content: wk_organisation
     color: "#9b7bd4"
 
+  - id: wk-infos
+    title: "WK Infos"
+    access: Soldat
+    content: wk_infos
+    wkScoped: true
+    color: "#6c8ebf"
+
+  - id: wk-infos-kader
+    title: "WK Infos Kader"
+    access: Unteroffizier
+    content: wk_infos_kader
+    wkScoped: true
+    color: "#d79b00"
+
   - id: quiz
     title: "Quiz"
     access: Soldat

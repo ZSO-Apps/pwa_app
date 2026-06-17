@@ -16,8 +16,8 @@ Ein Formular ist **eine einzige JSON-Datei**, die irgendwo in einen der
 Content-Ordner gelegt wird, z.B.:
 
 ```
-content_protected/wk_organisation/essensbestellung.json
-content_protected/quiz/quiz-leitungsbau.json
+content_generic/wk_organisation/essensbestellung.json
+content_generic/quiz/quiz-leitungsbau.json
 ```
 
 - **Wo die Datei liegt, bestimmt, in welcher Kachel das Formular erscheint.**
@@ -283,7 +283,7 @@ Antworten pro Person.
 ### Das WK-Formular selbst (`scope: "global"`)
 
 Die WKs sind selbst Formular-Einträge des WK-Formulars
-(`content_protected/admin/wk.json`). Dieses trägt `"scope": "global"`, wodurch
+(`content_generic/admin/wk.json`). Dieses trägt `"scope": "global"`, wodurch
 seine Einträge **nicht** WK-spezifisch, sondern global gespeichert werden
 (`data/forms/wk/_global/…`). Der Server wählt automatisch den WK, dessen
 Zeitraum (`start`…`ende`) am nächsten zu heute liegt.

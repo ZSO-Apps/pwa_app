@@ -7,7 +7,7 @@
   "submitAccess": "Offizier",
   "resultsAccess": "Offizier",
   "fields": [
-    { "name": "name",      "type": "text",     "label": "WK Name",      "required": true },
+    { "name": "wk_name",   "type": "text",     "label": "WK Name",      "required": true },
     { "name": "nummer",    "type": "number",   "label": "WK Nummer",    "required": false },
     { "name": "start",     "type": "date",     "label": "Start",        "required": true },
     { "name": "ende",      "type": "date",     "label": "Ende",         "required": true },

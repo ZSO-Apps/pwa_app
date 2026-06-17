@@ -4,7 +4,7 @@ import path from 'node:path';
 import fs from 'node:fs';
 import { loadLayout, findKachel } from './layout.js';
 import { sessionMiddleware, checkLogin, setSessionCookie, clearSessionCookie, hasAccess } from './auth.js';
-import { listKachelDir, renderMarkdown, mimeOf, resolveKachelPath, kachelRoots } from './content.js';
+import { listKachelDir, renderMarkdown, mimeOf, resolveKachelPath, kachelRoots, effectiveKachel } from './content.js';
 import { renderHome, renderListing, renderMarkdownPage, renderLogin, renderOffline, renderError } from './templates/index.js';
 import { renderForm, submitForm, renderResults, renderSubmission } from './forms.js';
 import { buildServiceWorker } from './sw.js';
@@ -74,26 +74,44 @@ function ensureKachelAccess(req, res, kachel) {
 }
 
 app.get('/k/:id', (req, res) => {
-  const k = findKachel(req.params.id);
-  if (!k) return res.status(404).send(renderError(req, 404, 'Kachel nicht gefunden'));
-  if (!ensureKachelAccess(req, res, k)) return;
+  const kachel = findKachel(req.params.id);
+  if (!kachel) return res.status(404).send(renderError(req, 404, 'Kachel nicht gefunden'));
+  if (!ensureKachelAccess(req, res, kachel)) return;
+
+  if (kachel.wkScoped && !req.activeWk) {
+    return res.status(409).send(renderError(req, 409, 'Bitte zuerst einen WK auswählen oder anlegen (Admin → WK erfassen).'));
+  }
+  const k = effectiveKachel(kachel, req.activeWk);
 
   const role = req.user?.role || 'public';
   if (!k.content) return res.status(404).send(renderError(req, 404, 'Leere Kachel'));
-  if (!kachelRoots(k).length) return res.status(404).send(renderError(req, 404, 'Inhalt nicht gefunden'));
+  // wkScoped Kacheln may have an as-yet-empty WK folder — show an empty listing
+  // rather than a 404 once a WK is active.
+  if (!kachelRoots(k).length) {
+    if (kachel.wkScoped) {
+      return res.send(renderListing(req, kachel, [], [{ label: kachel.title, url: `/k/${kachel.id}` }]));
+    }
+    return res.status(404).send(renderError(req, 404, 'Inhalt nicht gefunden'));
+  }
 
   // index.md anywhere in the merged roots gets rendered as the Kachel landing.
   const idx = resolveKachelPath(k, 'index.md');
-  if (idx) return res.send(renderMarkdownPage(req, k, renderMarkdown(idx), '/'));
+  if (idx) return res.send(renderMarkdownPage(req, kachel, renderMarkdown(idx), '/'));
 
-  const entries = listKachelDir(k, '', `/k/${k.id}/`, role);
-  return res.send(renderListing(req, k, entries, [{ label: k.title, url: `/k/${k.id}` }]));
+  const entries = listKachelDir(k, '', `/k/${kachel.id}/`, role);
+  return res.send(renderListing(req, kachel, entries, [{ label: kachel.title, url: `/k/${kachel.id}` }]));
 });
 
 app.get('/k/:id/*', (req, res) => {
-  const k = findKachel(req.params.id);
-  if (!k || !k.content) return res.status(404).send(renderError(req, 404, 'Nicht gefunden'));
-  if (!ensureKachelAccess(req, res, k)) return;
+  const kachel = findKachel(req.params.id);
+  if (!kachel || !kachel.content) return res.status(404).send(renderError(req, 404, 'Nicht gefunden'));
+  if (!ensureKachelAccess(req, res, kachel)) return;
+
+  if (kachel.wkScoped && !req.activeWk) {
+    return res.status(409).send(renderError(req, 409, 'Bitte zuerst einen WK auswählen oder anlegen (Admin → WK erfassen).'));
+  }
+  const k = effectiveKachel(kachel, req.activeWk);
+  if (!k.content) return res.status(404).send(renderError(req, 404, 'Nicht gefunden'));
 
   const role = req.user?.role || 'public';
   const rel = decodeURIComponent(req.params[0] || '');
@@ -103,18 +121,18 @@ app.get('/k/:id/*', (req, res) => {
   const stat = fs.statSync(abs);
   if (stat.isDirectory()) {
     const idx = resolveKachelPath(k, path.join(rel, 'index.md'));
-    if (idx) return res.send(renderMarkdownPage(req, k, renderMarkdown(idx), `/k/${k.id}/`));
-    const urlPrefix = `/k/${k.id}/${rel.replace(/\/$/, '')}/`;
+    if (idx) return res.send(renderMarkdownPage(req, kachel, renderMarkdown(idx), `/k/${kachel.id}/`));
+    const urlPrefix = `/k/${kachel.id}/${rel.replace(/\/$/, '')}/`;
     const entries = listKachelDir(k, rel, urlPrefix, role);
     const parts = rel.split('/').filter(Boolean);
-    const crumbs = [{ label: k.title, url: `/k/${k.id}` }];
-    let acc = `/k/${k.id}`;
+    const crumbs = [{ label: kachel.title, url: `/k/${kachel.id}` }];
+    let acc = `/k/${kachel.id}`;
     for (const p of parts) { acc += '/' + encodeURIComponent(p); crumbs.push({ label: decodeURIComponent(p), url: acc }); }
-    return res.send(renderListing(req, k, entries, crumbs));
+    return res.send(renderListing(req, kachel, entries, crumbs));
   }
   if (abs.endsWith('.md')) {
-    const parentUrl = `/k/${k.id}/${rel.split('/').slice(0, -1).join('/')}`.replace(/\/$/, '') + '/';
-    return res.send(renderMarkdownPage(req, { ...k, title: path.basename(abs, '.md') }, renderMarkdown(abs), parentUrl));
+    const parentUrl = `/k/${kachel.id}/${rel.split('/').slice(0, -1).join('/')}`.replace(/\/$/, '') + '/';
+    return res.send(renderMarkdownPage(req, { ...kachel, title: path.basename(abs, '.md') }, renderMarkdown(abs), parentUrl));
   }
   res.type(mimeOf(abs));
   res.sendFile(abs);

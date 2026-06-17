@@ -8,6 +8,18 @@ import { renderFormPage, renderResultsPage, renderSubmissionPage, renderError } 
 
 const DATA_DIR = path.resolve('data/forms');
 
+// Per-WK content Kacheln (wkScoped in layout.yaml). When a WK is created we
+// auto-create its subfolder in each of these so authors can drop files per WK.
+const WK_CONTENT_SLUGS = ['wk_infos', 'wk_infos_kader'];
+const ZSO_ROOT = path.resolve('content_zso_specific');
+
+function ensureWkContentFolders(wkId) {
+  if (!/^[A-Za-z0-9][A-Za-z0-9._-]*$/.test(wkId)) return;
+  for (const slug of WK_CONTENT_SLUGS) {
+    fs.mkdirSync(path.join(ZSO_ROOT, slug, wkId), { recursive: true });
+  }
+}
+
 function submitAccessFor(def) {
   const access = def.submitAccess || 'Soldat';
   return access === 'public' ? 'Soldat' : access;
@@ -31,7 +43,7 @@ function slugifyPart(s) {
 function submissionFilename(def, submission, dir) {
   if (def.id === 'wk') {
     const datePart = String(submission.start || '').replace(/-/g, '_');
-    const namePart = slugifyPart(submission.name);
+    const namePart = slugifyPart(submission.wk_name || submission.name);
     let base = [datePart, namePart].filter(Boolean).join('_') || 'wk';
     if (!/^[A-Za-z0-9]/.test(base)) base = 'wk_' + base;
     let candidate = base;
@@ -125,6 +137,8 @@ export function submitForm(req, res, formId) {
   fs.writeFileSync(path.join(dir, file), JSON.stringify(submission, null, 2));
 
   const submissionId = path.basename(file, '.json');
+  // A new WK gets its per-WK content folders so authors can fill them right away.
+  if (def.id === 'wk') ensureWkContentFolders(submissionId);
   const detailUrl = `/forms/${encodeURIComponent(def.id)}/results/${encodeURIComponent(submissionId)}`;
   res.send(renderFormPage(req, def, { submitted: true, values: req.body || {}, detailUrl }));
 }

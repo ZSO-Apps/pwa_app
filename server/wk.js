@@ -12,11 +12,13 @@ function parseDate(value) {
 function summarize(submission, id) {
   const start = submission.start || '';
   const ende = submission.ende || '';
-  const label = [submission.nummer, submission.name].filter(Boolean).join(' ').trim() || id;
+  // Field renamed name -> wk_name; fall back to legacy `name` for old records.
+  const wkName = submission.wk_name || submission.name || '';
+  const label = [submission.nummer, wkName].filter(Boolean).join(' ').trim() || id;
   const range = start && ende ? `${start} – ${ende}` : start || ende || '';
   return {
     id,
-    name: submission.name || '',
+    name: wkName,
     nummer: submission.nummer || '',
     start,
     ende,

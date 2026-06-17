@@ -128,6 +128,7 @@ export function renderListing(req, kachel, entries, breadcrumbs) {
   const body = `
   <article class="content">
     <nav class="crumbs">${crumb}</nav>
+    <p><a href="/" class="back">← Zurück zur Übersicht</a></p>
     <h1>${esc(kachel.title)}</h1>
     <ul class="listing">${items || '<li><em>Keine Einträge</em></li>'}</ul>
     <p><a href="/" class="back">← Zurück zur Übersicht</a></p>
@@ -138,6 +139,7 @@ export function renderListing(req, kachel, entries, breadcrumbs) {
 export function renderMarkdownPage(req, kachel, contentHtml, parentUrl) {
   const body = `
   <article class="content prose">
+    <p><a href="${esc(parentUrl || '/')}" class="back">← Zurück</a></p>
     ${contentHtml}
     <p><a href="${esc(parentUrl || '/')}" class="back">← Zurück</a></p>
   </article>`;
@@ -306,6 +308,7 @@ export function renderFormPage(req, def, { submitted = false, values = {}, detai
   const detailAttr = detailUrl ? ` data-detail-url="${esc(detailUrl)}"` : '';
   const body = `
   <article class="content narrow form-page">
+    <p><a href="${esc(formBackUrl(def))}" class="back">← Zurück</a></p>
     <div class="content-header">
       <h1>${esc(def.title || def.id)}</h1>
       <button type="button" class="secondary-button" data-form-print${detailAttr} disabled>Print</button>
@@ -396,6 +399,7 @@ export function renderResultsPage(req, def, submissions, { wkLabel } = {}) {
       : '<p class="muted">Kein WK aktiv.</p>';
   const body = `
   <article class="content" data-results-print>
+    <p class="no-print"><a href="${esc(formBackUrl(def))}" class="back">← Zurück</a></p>
     <h1>Auswertung — ${esc(def.title || def.id)}</h1>
     ${scopeHint}
     ${renderResultsTable(def, submissions)}
@@ -432,6 +436,7 @@ export function renderSubmissionPage(req, def, submission) {
     .join('\n');
   const body = `<article class="content sub-detail">
     <nav class="crumbs no-print"><a href="/forms/${esc(def.id)}/results">Auswertung</a> / <span>${esc(heading)}</span></nav>
+    <p class="no-print"><a href="/forms/${esc(def.id)}/results" class="back">← Zurück zur Auswertung</a></p>
     <div class="content-header">
       <h1>${esc(def.title || def.id)}</h1>
       <button type="button" class="secondary-button no-print" onclick="window.print()">Print</button>

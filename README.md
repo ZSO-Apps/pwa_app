@@ -37,36 +37,43 @@ Override the port with `PORT=80 npm start`. Set `SESSION_SECRET=<32+ random char
 5. Run: `npm start`. Open from another LAN device at `http://<pi-ip>:8080`.
 6. (Optional) Make it a systemd service (see commit history for an example unit file).
 
-## Content layout — the four roots
+## Content layout — the two roots
 
-Content lives in **four parallel roots** that are merged at runtime per Kachel:
+Content lives in **two parallel roots** that are merged at runtime per Kachel:
 
-| Root | Login required? | Purpose |
-|------|-----------------|---------|
-| `content_public/`              | no  | generic public content, shipped with the project |
-| `content_zso_specific_public/` | no  | org-specific public overrides/additions |
-| `content_protected/`              | yes | generic protected content |
-| `content_zso_specific_protected/` | yes | org-specific protected overrides/additions |
+| Root | Purpose |
+|------|---------|
+| `content_generic/`      | generic content shipped with the project |
+| `content_zso_specific/` | org-specific overrides/additions |
 
-A Kachel only names a slug; the server unions all four roots:
+A Kachel only names a slug; the server unions both roots:
 
 ```yaml
 - id: handkarten
   title: "Handkarten"
-  access: public            # public Kachel → only the *_public roots are used
-  content: Handkarten       # → content_public/Handkarten + content_zso_specific_public/Handkarten
+  access: public            # access is decided here, not by the folder
+  content: Handkarten       # → content_generic/Handkarten + content_zso_specific/Handkarten
   color: "#2f80ed"
 ```
 
-If two roots contain a file at the same path, the more specific wins (ZSO-specific over generic, protected over public).
+If both roots contain a file at the same path, the ZSO-specific one wins. Access
+is governed **only** by the Kachel's `access:` in `layout.yaml` — the same two
+roots serve public and protected Kacheln alike.
 
-For a Kachel with `access >= Soldat`, all four roots are merged so the same slug can hold both public (offline-cachable) and protected (LAN-only) material.
+### Per-WK Kacheln (`wkScoped`)
+
+A Kachel with `wkScoped: true` shows content for the **active WK** only; its
+effective slug is `<content>/<active-wk-id>`. The two such Kacheln are
+`WK Infos` (`Soldat`) and `WK Infos Kader` (`Unteroffizier`). Their per-WK
+folders (`content_zso_specific/wk_infos/<wk-id>/` and `…/wk_infos_kader/<wk-id>/`)
+are created automatically when a WK is erfasst. Folders may contain subfolders,
+shown with a folder icon and navigable recursively.
 
 ## Forms
 
 A form is a single `.json` file dropped into any content folder. It shows up in that Kachel's listing as **two entries**: 📝 (submit) and 📊 (results).
 
-Example: `content_protected/quiz/quiz-leitungsbau.json`
+Example: `content_generic/quiz/quiz-leitungsbau.json`
 
 ```json
 {
@@ -92,7 +99,7 @@ Optional `"scope": "global"` makes a form WK-independent (used only by the WK fo
 
 Every logged-in user works inside the context of one **active WK**. The second banner below the top bar shows it and offers a dropdown to switch.
 
-- WKs are created by submitting the `wk` form in **Admin → WK erfassen** (`content_protected/admin/wk.json`).
+- WKs are created by submitting the `wk` form in **Admin → WK erfassen** (`content_generic/admin/wk.json`). Creating a WK auto-creates its `wk_infos` / `wk_infos_kader` folders under `content_zso_specific/`.
 - WK records are stored at `data/forms/wk/_global/<id>.json`.
 - The server auto-selects the WK whose start/end range is closest to today.
 - Every other form submission is stored at `data/forms/<form-id>/<active-wk-id>/<timestamp>-<uuid>.json`.
@@ -112,10 +119,8 @@ A timestamp at the top of every page (`Offline-Inhalte aktualisiert: …`) shows
 ```
 /server                              Express app (auth, layout, content, forms, WK, SW generator)
 /client                              CSS, client JS, manifest, icons
-/content_public                      generic public content
-/content_zso_specific_public         org-specific public content
-/content_protected                   generic protected content (incl. admin/, quiz/, wk_organisation/)
-/content_zso_specific_protected      org-specific protected content
+/content_generic                     generic content (incl. admin/, quiz/, wk_organisation/)
+/content_zso_specific                org-specific overrides/additions (incl. per-WK wk_infos/)
 /data                                local runtime data, not committed
 /data/users.example.yaml             committed template for local users.yaml
 /data/forms/<form-id>/<wk-id>/…      one JSON per submission
