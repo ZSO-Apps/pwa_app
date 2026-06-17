@@ -9,6 +9,7 @@ import { renderHome, renderListing, renderMarkdownPage, renderLogin, renderOffli
 import { renderForm, submitForm, renderResults, renderSubmission } from './forms.js';
 import { buildServiceWorker } from './sw.js';
 import { wkMiddleware, setActiveWk, listWks } from './wk.js';
+import { createUser, deleteUser, renderDeleteUser, renderEditUser, renderNewUser, renderUsers, updateUser } from './user-admin.js';
 
 const PORT = process.env.PORT ? Number(process.env.PORT) : 8080;
 
@@ -118,6 +119,14 @@ app.get('/k/:id/*', (req, res) => {
   res.type(mimeOf(abs));
   res.sendFile(abs);
 });
+
+app.get('/admin/users', (req, res) => renderUsers(req, res));
+app.get('/admin/users/new', (req, res) => renderNewUser(req, res));
+app.post('/admin/users', (req, res) => createUser(req, res));
+app.get('/admin/users/:username/edit', (req, res) => renderEditUser(req, res));
+app.post('/admin/users/:username/edit', (req, res) => updateUser(req, res));
+app.get('/admin/users/:username/delete', (req, res) => renderDeleteUser(req, res));
+app.post('/admin/users/:username/delete', (req, res) => deleteUser(req, res));
 
 app.get('/forms/:id', (req, res) => renderForm(req, res, req.params.id));
 app.post('/forms/:id', (req, res) => submitForm(req, res, req.params.id));

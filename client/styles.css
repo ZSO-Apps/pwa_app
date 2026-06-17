@@ -255,6 +255,7 @@ a { color: inherit; }
 .result-print-actions { display: flex; align-items: center; gap: .75rem; margin: .8rem 0; }
 .select-col { width: 2.3rem; text-align: center; }
 .select-col input { width: 1rem; height: 1rem; }
+#print-bundle { display: none; }
 
 
 /* Print: strip app chrome so a submission detail prints as a clean sheet. */
@@ -268,4 +269,19 @@ a { color: inherit; }
   a[href] { color: inherit; text-decoration: none; }
   /* Keep multi-column elements together on one page where possible. */
   .sub-el, .form-signature, .sub-check { break-inside: avoid; }
+
+  body.print-detail-bundle > :not(#print-bundle) { display: none !important; }
+  body.print-detail-bundle #print-bundle { display: block !important; }
+  .print-page { break-after: page; page-break-after: always; }
+  .print-page:last-child { break-after: auto; page-break-after: auto; }
 }
+
+
+.row-actions { display: flex; flex-wrap: wrap; gap: .4rem; }
+.secondary-button.compact, .danger-button.compact { padding: .35rem .55rem; font-size: .85rem; }
+.danger-button, .danger-submit {
+  font: inherit; font-weight: 600; padding: .55rem .85rem;
+  background: #fde2e2; color: #7a1c1c; border: 1px solid #e3a4a4;
+  border-radius: 6px; cursor: pointer; text-decoration: none;
+}
+.danger-button:hover, .danger-submit:hover { background: #f8caca; }

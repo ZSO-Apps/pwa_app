@@ -1,0 +1,12 @@
+{
+  "type": "admin-page",
+  "id": "users",
+  "title": "User Management",
+  "scope": "global",
+  "submitLabel": "User erfassen",
+  "resultsLabel": "User Übersicht",
+  "submitAccess": "admin",
+  "resultsAccess": "admin",
+  "submitUrl": "/admin/users/new",
+  "resultsUrl": "/admin/users"
+}

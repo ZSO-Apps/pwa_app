@@ -109,6 +109,37 @@ export function listKachelDir(kachel, relPath, urlPrefix, role) {
     } else if (ext === '.json') {
       const def = readFormDef(e.abs);
       if (!def) continue;
+      if (def.type === 'admin-page') {
+        const submitAccess = def.submitAccess || def.access || 'admin';
+        const resultsAccess = def.resultsAccess || def.access || 'admin';
+        const onlineOnly = def.onlineOnly ?? true;
+
+        if (def.submitUrl && hasAccess(role, submitAccess)) {
+          items.push({
+            kind: 'form-submit',
+            label: def.submitLabel || def.label || def.title || def.id,
+            url: def.submitUrl,
+            onlineOnly,
+          });
+        }
+        if (def.resultsUrl && hasAccess(role, resultsAccess)) {
+          items.push({
+            kind: 'form-results',
+            label: def.resultsLabel || def.label || `Übersicht ${def.title || def.id}`,
+            url: def.resultsUrl,
+            onlineOnly,
+          });
+        }
+        if (!def.submitUrl && !def.resultsUrl && def.url && hasAccess(role, def.access || 'admin')) {
+          items.push({
+            kind: def.kind || 'url',
+            label: def.label || def.title || def.id,
+            url: def.url,
+            onlineOnly,
+          });
+        }
+        continue;
+      }
       // Submit entry
       if (hasAccess(role, submitAccessFor(def))) {
         items.push({
@@ -209,6 +240,7 @@ export function scanForms() {
       if (e.isDirectory()) walk(child);
       else if (e.name.toLowerCase().endsWith('.json')) {
         const def = readFormDef(child);
+        if (def?.type === 'admin-page') continue;
         if (def?.id) forms[def.id] = def;
       }
     }

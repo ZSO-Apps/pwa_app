@@ -56,6 +56,10 @@ export function loadUsers() {
   return _users;
 }
 
+export function resetUsersCache() {
+  _users = null;
+}
+
 export async function checkLogin(username, password) {
   const users = loadUsers();
   const u = users[username];

@@ -98,7 +98,9 @@ export function submitForm(req, res, formId) {
   const file = `${submission._meta.submittedAt.replace(/[:.]/g, '-')}-${crypto.randomUUID()}.json`;
   fs.writeFileSync(path.join(dir, file), JSON.stringify(submission, null, 2));
 
-  res.send(renderFormPage(req, def, { submitted: true, values: req.body || {} }));
+  const submissionId = path.basename(file, '.json');
+  const detailUrl = `/forms/${encodeURIComponent(def.id)}/results/${encodeURIComponent(submissionId)}`;
+  res.send(renderFormPage(req, def, { submitted: true, values: req.body || {}, detailUrl }));
 }
 
 export function readSubmissions(formId, scope) {
