@@ -2,18 +2,18 @@
 
 ## Prio 1
 
-- [ ] Offline Funktion
+- [X] Offline Funktion
 - [ ] Mandanten Fähigkeit (Logos)
 - [ ] Print -> WK Hinzufügen
 - [ ] Farbe/Design
 - [ ] MD Editor
-- [ ] Quiz
+- [ ] Quiz verbessern (Auswertung, was war richtig/falsch, Punkte)
 - [ ] Bugfixes
 - [ ] WK-Archivieren
 
 ## Prio 2
 
-- [ ] Filter Auswertung
+- [ ] Filter Auswertungn (Tabellen sortierbar und filterbar machen)
 - [ ] Transport Formular
 - [ ] Appell
 

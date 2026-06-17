@@ -122,12 +122,8 @@ export function renderListing(req, kachel, entries, breadcrumbs) {
     const online = e.onlineOnly ? ' data-online-only="true"' : '';
     return `<li><a href="${esc(e.url)}"${attrs}${online}><span class="ic">${icon}</span> ${esc(e.label)}</a></li>`;
   }).join('');
-  const crumb = breadcrumbs.map((b, i) =>
-    i === breadcrumbs.length - 1 ? `<span>${esc(b.label)}</span>` : `<a href="${esc(b.url)}">${esc(b.label)}</a>`
-  ).join(' / ');
   const body = `
   <article class="content">
-    <nav class="crumbs">${crumb}</nav>
     <p><a href="/" class="back">← Zurück zur Übersicht</a></p>
     <h1>${esc(kachel.title)}</h1>
     <ul class="listing">${items || '<li><em>Keine Einträge</em></li>'}</ul>
