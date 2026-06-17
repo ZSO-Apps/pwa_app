@@ -165,8 +165,16 @@ a { color: inherit; }
 .prose code { background: #eef2f6; padding: .1rem .35rem; border-radius: 3px; }
 
 /* Forms */
-.loginform, .genform { display: flex; flex-direction: column; gap: .8rem; max-width: 420px; }
+.loginform { display: flex; flex-direction: column; gap: .8rem; max-width: 420px; }
+.genform { display: flex; flex-wrap: wrap; align-items: flex-start; gap: .8rem; max-width: 560px; }
 .genform.wide { max-width: 900px; }
+/* Each form element is a row by default; width hints let two share a line. */
+.genform .form-el { flex: 1 1 100%; }
+.genform .form-el > * { width: 100%; }
+.genform .form-el.w-half { flex: 1 1 calc(50% - .4rem); }
+.genform .form-el.w-third { flex: 1 1 calc(33.333% - .54rem); }
+.genform .form-el.w-quarter { flex: 1 1 calc(25% - .6rem); }
+.genform > button { flex: 1 1 100%; }
 .loginform label, .genform .field { display: flex; flex-direction: column; gap: .25rem; font-weight: 600; font-size: .9rem; }
 .field-row { display: grid; grid-template-columns: repeat(auto-fit, minmax(160px, 1fr)); gap: .75rem; }
 .day-row { grid-template-columns: repeat(auto-fit, minmax(130px, 1fr)); }
@@ -196,6 +204,35 @@ a { color: inherit; }
 .genform button, .loginform button { font: inherit; font-weight: 600; padding: .6rem 1rem; background: var(--accent); color: #08332b; border: 0; border-radius: 6px; cursor: pointer; }
 .genform button:hover, .loginform button:hover { background: #14a78a; }
 
+/* Form display elements (section banner, text block, signature line) */
+.form-heading {
+  --banner-c: #d9dee4;
+  background: var(--banner-c); color: #1f2933;
+  font-weight: 700; font-size: .95rem;
+  padding: .45rem .7rem; border-radius: 6px;
+  margin: .4rem 0 .1rem;
+}
+.form-paragraph { margin: .2rem 0; color: var(--fg); font-size: .92rem; }
+.field-check { font-weight: 400; }
+.genform label.checkbox { display: inline-flex; align-items: flex-start; gap: .45rem; font-weight: 400; }
+.form-signature { display: flex; flex-direction: column; gap: .15rem; margin: .6rem 0 .2rem; }
+.form-signature .sig-line { display: block; border-bottom: 1px solid #1f2933; height: 1.6rem; max-width: 320px; }
+.form-signature .sig-label { font-size: .8rem; color: var(--muted); }
+
+/* Submission detail (ordered, printable checklist) */
+.sub-elements { display: flex; flex-wrap: wrap; align-items: flex-start; gap: .55rem; margin: .6rem 0 1rem; }
+.sub-el { flex: 1 1 100%; }
+.sub-el.w-half { flex: 1 1 calc(50% - .28rem); }
+.sub-el.w-third { flex: 1 1 calc(33.333% - .37rem); }
+.sub-el.w-quarter { flex: 1 1 calc(25% - .42rem); }
+.sub-field { display: flex; flex-direction: column; gap: .15rem; }
+.sub-label { font-size: .8rem; font-weight: 600; color: var(--muted); }
+.sub-value { font-size: 1rem; }
+.sub-write { border-bottom: 1px solid #1f2933; height: 1.6rem; max-width: 360px; }
+.sub-write--block { border: 1px solid #b6bec7; border-radius: 6px; height: 4.5rem; max-width: none; }
+.sub-check { display: flex; align-items: flex-start; gap: .5rem; font-size: .95rem; }
+.sub-check .box { font-size: 1.15rem; line-height: 1; }
+
 .err { background: #fde2e2; color: #7a1c1c; padding: .5rem .7rem; border-radius: 6px; }
 .ok { background: #defcef; color: #0b5b3a; padding: .5rem .7rem; border-radius: 6px; }
 
@@ -206,3 +243,16 @@ a { color: inherit; }
 .results a:hover { text-decoration: underline; }
 .results thead { background: #eef2f6; }
 .quiz-summary { padding-left: 1.1rem; }
+
+/* Print: strip app chrome so a submission detail prints as a clean sheet. */
+@media print {
+  .topbar, .wk-banner, .sync-info, .sidenav, .overlay, .no-print,
+  .crumbs, .content .back { display: none !important; }
+  body { background: #fff; }
+  .main { padding: 0; max-width: none; }
+  .content { box-shadow: none; border-radius: 0; padding: 0; margin: 0; }
+  .form-heading { -webkit-print-color-adjust: exact; print-color-adjust: exact; }
+  a[href] { color: inherit; text-decoration: none; }
+  /* Keep multi-column elements together on one page where possible. */
+  .sub-el, .form-signature, .sub-check { break-inside: avoid; }
+}

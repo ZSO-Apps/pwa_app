@@ -6,11 +6,27 @@
   "submitAccess": "Soldat",
   "resultsAccess": "Offizier",
   "fields": [
-    { "name": "name",      "type": "text",     "label": "Name",            "required": true },
-    { "name": "datum",     "type": "date",     "label": "Datum",           "required": true },
-    { "name": "zeit",      "type": "time",     "label": "Zeit",            "required": true },
-    { "name": "anzahl",    "type": "number",   "label": "Anzahl Personen", "required": true, "min": 1 },
-    { "name": "ort",       "type": "text",     "label": "Ort",             "required": true },
-    { "name": "kommentar", "type": "textarea", "label": "Kommentar" }
+    { "type": "heading", "label": "Besteller" },
+    { "name": "name",      "type": "text",     "label": "Name",            "required": true, "width": "half" },
+    { "name": "mobile",    "type": "text",     "label": "Mobile",                            "width": "half" },
+    { "name": "datum",     "type": "date",     "label": "Datum",           "required": true, "width": "half" },
+    { "name": "zeit",      "type": "time",     "label": "Zeit",            "required": true, "width": "half" },
+    { "name": "anzahl",    "type": "number",   "label": "Anzahl Personen", "required": true, "min": 1, "width": "half" },
+    { "name": "ort",       "type": "text",     "label": "Ort",             "required": true, "width": "half" },
+    { "name": "kommentar", "type": "textarea", "label": "Kommentar" },
+
+    { "type": "heading",  "label": "Fourier", "printOnly": true },
+    { "type": "checkbox", "name": "f_beruecksichtigt", "label": "Die Bestellung wurde berücksichtigt.", "printOnly": true, "width": "half" },
+    { "type": "signature", "label": "Unterschrift Fourier", "printOnly": true, "width": "half" },
+    { "type": "checkbox", "name": "f_kopie",           "label": "Eine Kopie für die Kursakten wurde abgelegt.", "printOnly": true, "width": "half" },
+
+    { "type": "heading",  "label": "Kü Uof", "printOnly": true },
+    { "name": "k_sicherstellen", "type": "textarea", "label": "Folgendes ist sicherzustellen:", "printOnly": true },
+    { "type": "checkbox", "name": "k_menus",   "label": "Anzahl Menus stimmen mit Bestellung.", "printOnly": true, "width": "half" },
+    { "type": "signature", "label": "Unterschrift Kü Uof", "printOnly": true, "width": "half" },
+    { "type": "checkbox", "name": "k_gebinde", "label": "Gebinde sind gerüstet und überprüft.", "printOnly": true, "width": "half" },
+
+    { "type": "heading",  "label": "Kommentar", "printOnly": true },
+    { "name": "schluss_kommentar", "type": "textarea", "label": "", "printOnly": true }
   ]
 }
