@@ -174,8 +174,13 @@ function renderFormPrintBootstrap() {
   form.addEventListener('change', update);
   printButton.addEventListener('click', () => {
     if (!form.reportValidity()) { update(); return; }
+    if (window.ZSOPrint && window.ZSOPrint.form) {
+      window.ZSOPrint.form(root, form);
+      return;
+    }
     window.print();
   });
+  printButton.dataset.printBound = 'inline';
   update();
 })();
 </script>`;
@@ -247,14 +252,50 @@ function renderFormElement(f, values) {
   </div>`;
 }
 
-export function renderFormPage(req, def, { submitted = false, values = {} } = {}) {
+function renderDraftDetailElement(f) {
+  if (isDisplay(f)) return renderDisplayElement(f);
+  const label = esc(f.label || f.name || '');
+  if (f.type === 'checkbox') {
+    if (f.printOnly) {
+      return `<div class="sub-check"><span class="box">☐</span> <span>${label}</span></div>`;
+    }
+    return `<div class="sub-check" data-print-check="${esc(f.name)}"><span class="box">☐</span> <span>${label}</span></div>`;
+  }
+  if (f.printOnly) {
+    const big = f.type === 'textarea';
+    return `<div class="sub-field${big ? ' sub-field--block' : ''}">
+      <div class="sub-label">${label}</div>
+      <div class="sub-write${big ? ' sub-write--block' : ''}"></div>
+    </div>`;
+  }
+  return `<div class="sub-field">
+    <div class="sub-label">${label}</div>
+    <div class="sub-value" data-print-value="${esc(f.name)}"></div>
+  </div>`;
+}
+
+function renderFormPrintTemplate(def) {
+  const elements = (def.fields || [])
+    .map((f) => `<div class="sub-el${widthClass(f)}">${renderDraftDetailElement(f)}</div>`)
+    .join('\n');
+  return `<template data-form-print-template>
+    <article class="content sub-detail print-page">
+      <h1>${esc(def.title || def.id)}</h1>
+      <p class="muted" data-print-generated>Druckvorschau, noch nicht gespeichert</p>
+      <div class="sub-elements">${elements || '<em>Keine Felder</em>'}</div>
+    </article>
+  </template>`;
+}
+
+export function renderFormPage(req, def, { submitted = false, values = {}, detailUrl = '' } = {}) {
   const elements = (def.fields || []).filter((f) => !f.printOnly);
   const submitLabel = submitted ? 'Neue Eingabe mit diesen Daten speichern' : 'Senden';
+  const detailAttr = detailUrl ? ` data-detail-url="${esc(detailUrl)}"` : '';
   const body = `
   <article class="content narrow form-page">
     <div class="content-header">
       <h1>${esc(def.title || def.id)}</h1>
-      <button type="button" class="secondary-button" data-form-print disabled>Print</button>
+      <button type="button" class="secondary-button" data-form-print${detailAttr} disabled>Print</button>
     </div>
     ${submitted ? `<p class="ok">✓ Eingabe gespeichert. Die Werte bleiben als Vorlage erhalten. Erneutes Speichern erstellt eine neue Eingabe.</p>` : ''}
     <form method="POST" action="/forms/${esc(def.id)}" class="genform" data-enhanced-form>
@@ -262,6 +303,7 @@ export function renderFormPage(req, def, { submitted = false, values = {} } = {}
       <button type="submit">${esc(submitLabel)}</button>
     </form>
     <p><a href="/" class="back">← Zurück</a></p>
+    ${renderFormPrintTemplate(def)}
     ${renderFormPrintBootstrap()}
   </article>`;
   return layout(req, { title: def.title || 'Formular', body });
@@ -294,7 +336,7 @@ function renderResultsTable(def, submissions) {
   const rows = submissions.map((s) => {
     const title = submissionTitle(def, s);
     const url = submissionUrl(def, s);
-    return `<tr data-print-row>
+    return `<tr data-print-row data-print-url="${esc(url)}">
       <td class="select-col"><input type="checkbox" data-print-select aria-label="${esc(title)} auswählen"></td>
       <td><a href="${esc(url)}">${esc(title)}</a></td>
       <td>${esc(s._meta?.submittedAt || '')}</td>
@@ -376,12 +418,107 @@ export function renderSubmissionPage(req, def, submission) {
     .join('\n');
   const body = `<article class="content sub-detail">
     <nav class="crumbs no-print"><a href="/forms/${esc(def.id)}/results">Auswertung</a> / <span>${esc(heading)}</span></nav>
-    <h1>${esc(def.title || def.id)}</h1>
+    <div class="content-header">
+      <h1>${esc(def.title || def.id)}</h1>
+      <button type="button" class="secondary-button no-print" onclick="window.print()">Print</button>
+    </div>
     <p class="muted">Gesendet am: ${esc(submission._meta?.submittedAt || '')}<br>Gesendet von: ${esc(submission._meta?.submittedBy || '')}</p>
     <div class="sub-elements">${elements || '<em>Keine Felder</em>'}</div>
     <p class="no-print"><a href="/forms/${esc(def.id)}/results" class="back">← Zurück zur Auswertung</a></p>
   </article>`;
   return layout(req, { title: def.title || heading, body });
+}
+
+
+export function renderUsersPage(req, users) {
+  const rows = users.map((user) => {
+    const name = esc(user.username);
+    const role = esc(user.role);
+    const actions = user.protected
+      ? `<div class="row-actions">
+          <a class="secondary-button compact" href="/admin/users/${encodeURIComponent(user.username)}/edit">Passwort ändern</a>
+        </div>`
+      : `<div class="row-actions">
+          <a class="secondary-button compact" href="/admin/users/${encodeURIComponent(user.username)}/edit">Bearbeiten</a>
+          <a class="danger-button compact" href="/admin/users/${encodeURIComponent(user.username)}/delete">Löschen</a>
+        </div>`;
+    return `<tr>
+      <td>${name}</td>
+      <td>${role}</td>
+      <td>${user.protected ? 'Basisaccount' : 'Erstellt'}</td>
+      <td>${actions}</td>
+    </tr>`;
+  }).join('');
+  const body = `
+  <article class="content">
+    <div class="content-header">
+      <h1>User Übersicht</h1>
+      <a class="secondary-button" href="/admin/users/new">User erfassen</a>
+    </div>
+    <div class="tablewrap"><table class="results">
+      <thead><tr><th>Name</th><th>Rolle</th><th>Typ</th><th>Aktionen</th></tr></thead>
+      <tbody>${rows || '<tr><td colspan="4"><em>Keine User vorhanden.</em></td></tr>'}</tbody>
+    </table></div>
+    <p><a href="/k/admin" class="back">← Zurück zu Admin</a></p>
+  </article>`;
+  return layout(req, { title: 'User Übersicht', body });
+}
+
+export function renderUserFormPage(req, { mode, roles, values = {}, originalUsername = '', error = '', baseUser = false }) {
+  const isEdit = mode === 'edit';
+  const title = isEdit ? (baseUser ? 'Passwort ändern' : 'User bearbeiten') : 'User erfassen';
+  const action = isEdit ? `/admin/users/${encodeURIComponent(originalUsername)}/edit` : '/admin/users';
+  const roleOptions = roles.map((role) => {
+    const selected = (values.role || 'Soldat') === role ? ' selected' : '';
+    return `<option value="${esc(role)}"${selected}>${esc(role)}</option>`;
+  }).join('');
+  const passwordRequired = !isEdit || baseUser;
+  const usernameAttrs = baseUser ? ' readonly' : '';
+  const roleField = baseUser
+    ? `<input id="role" value="${esc(values.role || '')}" disabled><input type="hidden" name="role" value="${esc(values.role || '')}">`
+    : `<select id="role" name="role" required>${roleOptions}</select>`;
+  const body = `
+  <article class="content narrow">
+    <h1>${title}</h1>
+    ${baseUser ? '<p class="muted">Basisaccount: Name und Rolle sind fix. Es kann nur das Passwort geändert werden.</p>' : ''}
+    ${error ? `<p class="err">${esc(error)}</p>` : ''}
+    <form method="POST" action="${esc(action)}" class="genform">
+      <div class="field">
+        <label for="username">Name *</label>
+        <input id="username" name="username" autocomplete="username" required value="${esc(values.username || '')}"${usernameAttrs}>
+      </div>
+      <div class="field">
+        <label for="password">${baseUser ? 'Neues Passwort *' : `Passwort${isEdit ? ' (leer lassen = unverändert)' : ' *'}`}</label>
+        <input id="password" name="password" type="password" autocomplete="new-password"${passwordRequired ? ' required' : ''}>
+      </div>
+      <div class="field">
+        <label for="role">Rolle *</label>
+        ${roleField}
+      </div>
+      <button type="submit">${baseUser ? 'Passwort speichern' : (isEdit ? 'User speichern' : 'User erstellen')}</button>
+    </form>
+    <p><a href="/admin/users" class="back">← Zurück zur User Übersicht</a></p>
+  </article>`;
+  return layout(req, { title, body });
+}
+
+export function renderUserDeletePage(req, { username, role, error = '' }) {
+  const body = `
+  <article class="content narrow">
+    <h1>User löschen</h1>
+    ${error ? `<p class="err">${esc(error)}</p>` : ''}
+    <p>Der User <strong>${esc(username)}</strong>${role ? ` mit Rolle <strong>${esc(role)}</strong>` : ''} wird gelöscht.</p>
+    <p>Zur Bestätigung den Namen exakt eingeben.</p>
+    <form method="POST" action="/admin/users/${encodeURIComponent(username)}/delete" class="genform">
+      <div class="field">
+        <label for="confirmation">Bestätigung *</label>
+        <input id="confirmation" name="confirmation" required autocomplete="off">
+      </div>
+      <button type="submit" class="danger-submit">Endgültig löschen</button>
+    </form>
+    <p><a href="/admin/users" class="back">← Abbrechen</a></p>
+  </article>`;
+  return layout(req, { title: 'User löschen', body });
 }
 
 export function renderOffline(req) {

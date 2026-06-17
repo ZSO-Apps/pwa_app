@@ -79,6 +79,82 @@ if ('serviceWorker' in navigator) {
 }
 
 
+function removePrintBundle() {
+  document.body.classList.remove('print-detail-bundle');
+  document.getElementById('print-bundle')?.remove();
+}
+
+function ensurePrintBundle() {
+  removePrintBundle();
+  const bundle = document.createElement('div');
+  bundle.id = 'print-bundle';
+  document.body.appendChild(bundle);
+  return bundle;
+}
+
+function fillDraftPrintTemplate(article, form) {
+  const data = new FormData(form);
+  article.querySelectorAll('[data-print-value]').forEach((el) => {
+    const name = el.getAttribute('data-print-value');
+    el.textContent = data.get(name) || '';
+  });
+  article.querySelectorAll('[data-print-check]').forEach((el) => {
+    const name = el.getAttribute('data-print-check');
+    const box = el.querySelector('.box');
+    if (box) box.textContent = data.has(name) ? '☑' : '☐';
+  });
+  const generated = article.querySelector('[data-print-generated]');
+  if (generated) generated.textContent = 'Druckvorschau, noch nicht gespeichert';
+}
+
+function printArticleElements(articles) {
+  if (!articles.length) return;
+  const bundle = ensurePrintBundle();
+  articles.forEach((article) => {
+    article.classList.add('print-page');
+    bundle.appendChild(article);
+  });
+  document.body.classList.add('print-detail-bundle');
+  window.print();
+  window.setTimeout(removePrintBundle, 500);
+}
+
+async function fetchDetailArticle(url) {
+  const response = await fetch(url, { credentials: 'same-origin' });
+  if (!response.ok) throw new Error('Detailansicht konnte nicht geladen werden.');
+  const html = await response.text();
+  const doc = new DOMParser().parseFromString(html, 'text/html');
+  const article = doc.querySelector('article.sub-detail') || doc.querySelector('main article.content') || doc.querySelector('main');
+  if (!article) throw new Error('Detailansicht ist leer.');
+  const clone = article.cloneNode(true);
+  clone.querySelectorAll('script').forEach((el) => el.remove());
+  clone.querySelectorAll('.no-print, .crumbs').forEach((el) => el.remove());
+  return clone;
+}
+
+window.ZSOPrint = {
+  form(root, form) {
+    const detailUrl = root.querySelector('[data-form-print]')?.getAttribute('data-detail-url');
+    if (detailUrl) {
+      window.ZSOPrint.details([detailUrl]).catch((error) => {
+        window.alert(error?.message || 'Detailansicht konnte nicht gedruckt werden.');
+      });
+      return;
+    }
+    const template = root.querySelector('template[data-form-print-template]');
+    if (!template) {
+      window.print();
+      return;
+    }
+    const article = template.content.firstElementChild.cloneNode(true);
+    fillDraftPrintTemplate(article, form);
+    printArticleElements([article]);
+  },
+  details(urls) {
+    return Promise.all(urls.map(fetchDetailArticle)).then(printArticleElements);
+  },
+};
+
 function initEnhancedForms() {
   document.querySelectorAll('form[data-enhanced-form]').forEach((form) => {
     const container = form.closest('.form-page') || form;
@@ -89,13 +165,16 @@ function initEnhancedForms() {
     };
     form.addEventListener('input', update);
     form.addEventListener('change', update);
-    printButton.addEventListener('click', () => {
-      if (!form.reportValidity()) {
-        update();
-        return;
-      }
-      window.print();
-    });
+    if (!printButton.dataset.printBound) {
+      printButton.addEventListener('click', () => {
+        if (!form.reportValidity()) {
+          update();
+          return;
+        }
+        window.ZSOPrint.form(container, form);
+      });
+      printButton.dataset.printBound = 'app';
+    }
     update();
   });
 }
@@ -104,6 +183,7 @@ function initResultPrinting() {
   const cleanup = () => {
     document.body.classList.remove('print-selected-results');
     document.querySelectorAll('[data-print-row].is-print-selected').forEach((row) => row.classList.remove('is-print-selected'));
+    removePrintBundle();
   };
   window.addEventListener('afterprint', cleanup);
 
@@ -130,14 +210,22 @@ function initResultPrinting() {
       checks.forEach((check) => { check.checked = selectAll.checked; });
       update();
     });
-    printButton.addEventListener('click', () => {
+    printButton.addEventListener('click', async () => {
       const selectedRows = rows.filter((row) => row.querySelector('[data-print-select]')?.checked);
-      if (!selectedRows.length) return;
+      const urls = selectedRows.map((row) => row.getAttribute('data-print-url')).filter(Boolean);
+      if (!urls.length) return;
       cleanup();
-      selectedRows.forEach((row) => row.classList.add('is-print-selected'));
-      document.body.classList.add('print-selected-results');
-      window.print();
-      window.setTimeout(cleanup, 500);
+      const oldText = printButton.textContent;
+      printButton.disabled = true;
+      printButton.textContent = 'Lade Detailansichten…';
+      try {
+        await window.ZSOPrint.details(urls);
+      } catch (error) {
+        window.alert(error?.message || 'Detailansichten konnten nicht gedruckt werden.');
+      } finally {
+        printButton.textContent = oldText;
+        update();
+      }
     });
     update();
   });

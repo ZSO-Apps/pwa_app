@@ -7,7 +7,7 @@ A self-hostable PWA for civil-protection / ZSO organizations: public offline con
 - **Public Kacheln** (no login, fully offline-cached): `FU Lage`, `FU Telematik`, `Notfall-Treffpunkt`, `Unterstützung`, `Handkarten`.
 - **Protected Kacheln** (require login on the org's LAN): `WK Organisation` (Soldat+), `Quiz` (Soldat+), `Admin` (Offizier+).
 - **Forms** live inside their host Kachel's content folder and appear in the listing as two entries — `📝 Submit` and `📊 Results`. Every submission is recorded against the currently active WK.
-- 5 role levels: `admin > Offizier > Unteroffizier > Soldat > public`.
+- 5 role levels: `Admin > Offizier > Unteroffizier > Soldat > public`.
 
 ## Run it
 
@@ -21,7 +21,7 @@ Default users from `data/users.example.yaml` (all password `ZSO1234` — change 
 
 | Username | Role           |
 |----------|----------------|
-| `admin`  | admin          |
+| `Admin`  | Admin          |
 | `Of`     | Offizier       |
 | `Uof`    | Unteroffizier  |
 | `AdZS`   | Soldat         |
