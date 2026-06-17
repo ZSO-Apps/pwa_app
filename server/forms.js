@@ -17,6 +17,32 @@ function safeSubmissionId(id) {
   return /^[A-Za-z0-9][A-Za-z0-9._-]*$/.test(id || '');
 }
 
+// Turn a free-text part into a filesystem/id-safe token (umlauts -> ascii).
+function slugifyPart(s) {
+  return String(s || '')
+    .normalize('NFKD')
+    .replace(/[^A-Za-z0-9]+/g, '_')
+    .replace(/^_+|_+$/g, '');
+}
+
+// Filename (without directory) for a new submission. WK records get a readable
+// id derived from start date + name (YYYY_MM_DD_Name); everything else stays on
+// the collision-proof timestamp+uuid scheme.
+function submissionFilename(def, submission, dir) {
+  if (def.id === 'wk') {
+    const datePart = String(submission.start || '').replace(/-/g, '_');
+    const namePart = slugifyPart(submission.name);
+    let base = [datePart, namePart].filter(Boolean).join('_') || 'wk';
+    if (!/^[A-Za-z0-9]/.test(base)) base = 'wk_' + base;
+    let candidate = base;
+    for (let n = 2; fs.existsSync(path.join(dir, candidate + '.json')); n++) {
+      candidate = `${base}_${n}`;
+    }
+    return candidate + '.json';
+  }
+  return `${submission._meta.submittedAt.replace(/[:.]/g, '-')}-${crypto.randomUUID()}.json`;
+}
+
 function scopeDirFor(def, req) {
   if (def.scope === 'global') return '_global';
   return req.activeWk?.id || null;
@@ -95,7 +121,7 @@ export function submitForm(req, res, formId) {
 
   const dir = path.join(DATA_DIR, def.id, scope);
   fs.mkdirSync(dir, { recursive: true });
-  const file = `${submission._meta.submittedAt.replace(/[:.]/g, '-')}-${crypto.randomUUID()}.json`;
+  const file = submissionFilename(def, submission, dir);
   fs.writeFileSync(path.join(dir, file), JSON.stringify(submission, null, 2));
 
   const submissionId = path.basename(file, '.json');

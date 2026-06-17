@@ -1,7 +1,7 @@
 import fs from 'node:fs';
 import path from 'node:path';
 import { marked } from 'marked';
-import { visibleKacheln } from '../layout.js';
+import { visibleKacheln, findKachelBySlug } from '../layout.js';
 import { isDisplay, isStored } from '../form-elements.js';
 
 export function esc(s) {
@@ -161,6 +161,19 @@ export function renderLogin(req, error) {
   return layout(req, { title: 'Login', body });
 }
 
+// Where a form's "Zurück" link should point: the Kachel it was opened from,
+// falling back to the start page if it can't be resolved.
+function formBackUrl(def) {
+  const k = findKachelBySlug(def?._slug);
+  return k ? `/k/${k.id}` : '/';
+}
+
+function renderDupNameWarning(def) {
+  const dups = def?._dupNames || [];
+  if (!dups.length) return '';
+  return `<p class="err">⚠ Achtung: Die Elemente ${esc(dups.join(', '))} sind nicht korrekt hinterlegt (doppelte Feldnamen). Eingaben dieser Felder können verloren gehen.</p>`;
+}
+
 function renderFormPrintBootstrap() {
   return `<script>
 (() => {
@@ -297,12 +310,13 @@ export function renderFormPage(req, def, { submitted = false, values = {}, detai
       <h1>${esc(def.title || def.id)}</h1>
       <button type="button" class="secondary-button" data-form-print${detailAttr} disabled>Print</button>
     </div>
+    ${renderDupNameWarning(def)}
     ${submitted ? `<p class="ok">✓ Eingabe gespeichert. Die Werte bleiben als Vorlage erhalten. Erneutes Speichern erstellt eine neue Eingabe.</p>` : ''}
     <form method="POST" action="/forms/${esc(def.id)}" class="genform" data-enhanced-form>
       ${elements.map((f) => `<div class="form-el${widthClass(f)}">${renderFormElement(f, values)}</div>`).join('\n')}
       <button type="submit">${esc(submitLabel)}</button>
     </form>
-    <p><a href="/" class="back">← Zurück</a></p>
+    <p><a href="${esc(formBackUrl(def))}" class="back">← Zurück</a></p>
     ${renderFormPrintTemplate(def)}
     ${renderFormPrintBootstrap()}
   </article>`;
@@ -385,7 +399,7 @@ export function renderResultsPage(req, def, submissions, { wkLabel } = {}) {
     <h1>Auswertung — ${esc(def.title || def.id)}</h1>
     ${scopeHint}
     ${renderResultsTable(def, submissions)}
-    <p><a href="/" class="back">← Zurück</a></p>
+    <p><a href="${esc(formBackUrl(def))}" class="back">← Zurück</a></p>
   </article>`;
   return layout(req, { title: 'Auswertung', body });
 }

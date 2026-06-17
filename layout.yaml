@@ -23,12 +23,6 @@ kacheln:
     content: Unterstützung
     color: "#3aa0e0"
 
-  - id: handkarten
-    title: "Handkarten"
-    access: public
-    content: Handkarten
-    color: "#2f80ed"
-
   - id: wk-organisation
     title: "WK Organisation"
     access: Unteroffizier

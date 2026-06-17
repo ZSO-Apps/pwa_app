@@ -230,21 +230,43 @@ export function listKachelPublicAssets(kachel) {
 }
 
 // Used by layout.js to discover form definitions across all content roots.
+// Names that appear more than once among a form's named elements. Duplicate
+// `name`s collide on submit/store, so we flag them for a warning in the UI.
+function duplicateFieldNames(def) {
+  const seen = new Set();
+  const dups = new Set();
+  for (const f of def?.fields || []) {
+    if (!f?.name) continue;
+    if (seen.has(f.name)) dups.add(f.name);
+    else seen.add(f.name);
+  }
+  return [...dups];
+}
+
 export function scanForms() {
   const forms = {};
-  const walk = (abs) => {
+  // `slug` is the top-level content folder a form lives in (e.g. "wk_organisation"),
+  // which maps back to its Kachel via layout `content:`.
+  const walk = (abs, slug) => {
     if (!fs.existsSync(abs)) return;
     for (const e of fs.readdirSync(abs, { withFileTypes: true })) {
       if (e.name.startsWith('.')) continue;
       const child = path.join(abs, e.name);
-      if (e.isDirectory()) walk(child);
+      if (e.isDirectory()) walk(child, slug || e.name);
       else if (e.name.toLowerCase().endsWith('.json')) {
         const def = readFormDef(child);
         if (def?.type === 'admin-page') continue;
-        if (def?.id) forms[def.id] = def;
+        if (def?.id) {
+          def._slug = slug || null;
+          def._dupNames = duplicateFieldNames(def);
+          if (def._dupNames.length) {
+            console.warn(`form '${def.id}': doppelte Feldnamen: ${def._dupNames.join(', ')}`);
+          }
+          forms[def.id] = def;
+        }
       }
     }
   };
-  for (const root of Object.values(ROOT_DIRS)) walk(root);
+  for (const root of Object.values(ROOT_DIRS)) walk(root, '');
   return forms;
 }

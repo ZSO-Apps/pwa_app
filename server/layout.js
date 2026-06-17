@@ -33,6 +33,20 @@ export function findKachel(id) {
   return walk(layout.kacheln);
 }
 
+// Find the Kachel that owns a content slug (used to send form pages "back" to
+// the Kachel they were opened from).
+export function findKachelBySlug(slug) {
+  if (!slug) return null;
+  const walk = (list) => {
+    for (const k of list) {
+      if (k.content === slug) return k;
+      if (k.children) { const r = walk(k.children); if (r) return r; }
+    }
+    return null;
+  };
+  return walk(getLayout().kacheln);
+}
+
 export function visibleKacheln(role) {
   const filter = (list) =>
     list
