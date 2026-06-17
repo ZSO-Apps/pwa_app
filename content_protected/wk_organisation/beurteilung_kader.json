@@ -1,8 +1,8 @@
 {
   "id": "beurteilung",
-  "title": "Beurteilung von AdZS",
-  "submitLabel": "Beurteilung AdZS",
-  "resultsLabel": "Beurteilungen AdZS Übersicht",
+  "title": "Beurteilung von Kaderanwärter",
+  "submitLabel": "Beurteilung Kaderanwärter",
+  "resultsLabel": "Beurteilungen Kaderanwärter Übersicht",
   "submitAccess": "Unteroffizier",
   "resultsAccess": "Offizier",
   "fields": [
@@ -36,6 +36,43 @@
     { "name": "soz_2",    "type": "number",   "label": "Begegnet Anderen offen und verständnisvoll.", "required": false, "compact": true },
     { "name": "soz_3",    "type": "number",   "label": "Kann sich in der Gruppe gewinnbringend integrieren.", "required": false, "compact": true},
     { "name": "soz_total",    "type": "number",   "label": "Gesamt Bewertung soziales Verhalten", "required": true, "compact": true},
+    { "name": "kommentar", "type": "textarea", "label": "Kommentar" },
+
+    { "name": "geist", "type": "paragraph", "text": "**Geistige Fähigkeiten**"},
+    { "name": "geist_1",    "type": "number",   "label": "Erfasst Lerninhalte rasch und vollständig", "required": false, "compact": true },
+    { "name": "geist_2",    "type": "number",   "label": "Kann erworbene Kenntnisse in die Praxis umsetzen.", "required": false, "compact": true },
+    { "name": "geist_3",    "type": "number",   "label": "Lernt aus begangenen Fehlern.", "required": false, "compact": true},
+    { "name": "geist_total",    "type": "number",   "label": "Gesamt Bewertung geistige Fähigkeiten", "required": true, "compact": true},
+    { "name": "kommentar", "type": "textarea", "label": "Kommentar" },
+
+
+    { "type": "heading", "label": "Kompetenzen als Vorgesetzte/n und Ausbilder/in" },
+    { "name": "vorgesetzt", "type": "paragraph", "text": "**Fähigkeit als Vorgesetzte/n**"},
+    { "name": "vorgesetzt_1",    "type": "number",   "label": "Kann den Sinn seines Anliegens vermitteln, wirkt motivierend.", "required": false, "compact": true },
+    { "name": "vorgesetzt_2",    "type": "number",   "label": "Bleibt auch unter Belastung zuverlässig und konzentriert.", "required": false, "compact": true },
+    { "name": "vorgesetzt_3",    "type": "number",   "label": "Trifft Entscheidungen überlegt und zeitgerecht.", "required": false, "compact": true},
+    { "name": "vorgesetzt_total",    "type": "number",   "label": "Gesamt Bewertung Kompetenzen als Vorgesetzte/n", "required": true, "compact": true},
+    { "name": "kommentar", "type": "textarea", "label": "Kommentar" },
+    
+    { "name": "komm", "type": "paragraph", "text": "**Kommunikationsverhalten**"},
+    { "name": "komm_1",    "type": "number",   "label": "Drückt sich offen und direkt aus, hört aktiv zu.", "required": false, "compact": true },
+    { "name": "komm_2",    "type": "number",   "label": "Gibt Informationen regelmässig, zeit- und stufengerecht weiter.", "required": false, "compact": true },
+    { "name": "komm_3",    "type": "number",   "label": "Kann Inhalte kurz, bildhaft und verständlich vermitteln.", "required": false, "compact": true},
+    { "name": "komm_total",    "type": "number",   "label": "Gesamt Bewertung Kommunikationsverhalten", "required": true, "compact": true},
+    { "name": "kommentar", "type": "textarea", "label": "Kommentar" },
+    
+    { "name": "fuerungstechnik", "type": "paragraph", "text": "**Führungstechnik**"},
+    { "name": "fuerungstechnik_1",    "type": "number",   "label": "Befiehlt das Wesentliche bestimmt, korrekt und situationsgerecht.", "required": false, "compact": true },
+    { "name": "fuerungstechnik_2",    "type": "number",   "label": "Setzt seine Untergebenen gezielt und sinnvoll ein.", "required": false, "compact": true },
+    { "name": "fuerungstechnik_3",    "type": "number",   "label": "Kontrolliert zweckmässig, konstruktiv und setzt die Sicherheitsvorschriften durch.", "required": false, "compact": true},
+    { "name": "fuerungstechnik_total",    "type": "number",   "label": "Gesamt Bewertung Kompetenzen Führungstechnik", "required": true, "compact": true},
+    { "name": "kommentar", "type": "textarea", "label": "Kommentar" },
+
+    { "name": "ausbildner", "type": "paragraph", "text": "**Fähigkeit als Ausbilder/in**"},
+    { "name": "ausbildner_1",    "type": "number",   "label": "Setzt angemessene Ziele und verfolgt sie konsequent.", "required": false, "compact": true },
+    { "name": "ausbildner_2",    "type": "number",   "label": "Vermittelt Ausbildungsinhalte verständlich und methodisch richtig.", "required": false, "compact": true },
+    { "name": "ausbildner_3",    "type": "number",   "label": "Verhält sich vorbildlich.", "required": false, "compact": true},
+    { "name": "ausbildner_total",    "type": "number",   "label": "Gesamt Bewertung Kompetenzen Ausbilder/in", "required": true, "compact": true},
     { "name": "kommentar", "type": "textarea", "label": "Kommentar" },
 
     { "type": "heading", "label": "Fachkompetenz" },
