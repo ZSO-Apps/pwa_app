@@ -11,8 +11,8 @@
     { "name": "mobile",    "type": "text",     "label": "Mobile",                            "width": "half" },
     { "name": "datum",     "type": "date",     "label": "Datum",           "required": true, "width": "half" },
     { "name": "ort",       "type": "text",     "label": "Standort",             "required": true, "width": "half" },
-    { "name": "anzahlFleisch",    "type": "number",   "label": "Anzahl Fleisch", "required": true, "width": "half" },
-    { "name": "anzahlVegetarisch","type": "number",   "label": "Anzahl Vegetarisch", "required": false, "width": "half" },
+    { "name": "anzahlFleisch",    "type": "number",   "label": "Anzahl Fleisch", "required": true, "width": "half", "compact": true },
+    { "name": "anzahlVegetarisch","type": "number",   "label": "Anzahl Vegetarisch", "required": false, "width": "half", "compact": true },
     {"name": "verpflegungsart", "type": "radio", "label": "Verpflegungsart", "options": ["Frühstück", "Zwipf", "Mittagessen", "Abendessen"], "required": true, "width": "half"},
     { "name": "kommentar", "type": "textarea", "label": "Kommentar", "width": "half" },
 

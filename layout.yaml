@@ -31,7 +31,7 @@ kacheln:
 
   - id: wk-organisation
     title: "WK Organisation"
-    access: Soldat
+    access: Unteroffizier
     content: wk_organisation
     color: "#9b7bd4"
 

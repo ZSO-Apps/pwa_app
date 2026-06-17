@@ -225,6 +225,9 @@ results view automatically filters to the active WK.
   - `submitAccess` (default `Soldat`; `public` is treated as `Soldat`)
   - `resultsAccess`
   - `fields[]` — name/type/label/required/options/correct
+  - optional `"compact": true` on a field renders the label and a smaller
+    input inline (on one row) instead of stacked; honored both in the
+    fill-out form and in the submission detail view
   - optional `"scope": "global"` for the `wk` form itself
 - In every Kachel listing, each form appears as **two entries**: 📝 submit
   and 📊 results. Each entry is filtered by its respective access level.

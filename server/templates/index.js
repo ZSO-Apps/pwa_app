@@ -1,5 +1,6 @@
 import fs from 'node:fs';
 import path from 'node:path';
+import { marked } from 'marked';
 import { visibleKacheln } from '../layout.js';
 import { isDisplay, isStored } from '../form-elements.js';
 
@@ -224,7 +225,9 @@ function renderDisplayElement(f) {
     return `<div class="form-heading"${style}>${esc(f.label || '')}</div>`;
   }
   if (f.type === 'paragraph') {
-    return `<p class="form-paragraph">${esc(f.text || f.label || '')}</p>`;
+    // Inline Markdown (z.B. **fett**, *kursiv*) — gleicher Autorenkreis/Trust
+    // wie die .md-Inhalte, die ebenfalls mit marked gerendert werden.
+    return `<p class="form-paragraph">${marked.parseInline(String(f.text || f.label || ''))}</p>`;
   }
   if (f.type === 'signature') {
     return `<div class="form-signature"><span class="sig-line"></span><span class="sig-label">${esc(f.label || 'Unterschrift')}</span></div>`;
@@ -237,7 +240,8 @@ function renderFormElement(f, values) {
   if (f.type === 'checkbox') {
     return `<div class="field field-check">${renderField(f, values[f.name])}</div>`;
   }
-  return `<div class="field">
+  const compact = f.compact ? ' field--compact' : '';
+  return `<div class="field${compact}">
     <label for="f-${esc(f.name)}">${esc(f.label || f.name)}${f.required ? ' *' : ''}</label>
     ${renderField(f, values[f.name])}
   </div>`;
@@ -351,14 +355,15 @@ function renderSubmissionElement(_def, submission, f) {
     const checked = !f.printOnly && submission[f.name];
     return `<div class="sub-check"><span class="box">${checked ? '☑' : '☐'}</span> <span>${label}</span></div>`;
   }
+  const compact = f.compact ? ' sub-field--compact' : '';
   if (f.printOnly) {
     const big = f.type === 'textarea';
-    return `<div class="sub-field${big ? ' sub-field--block' : ''}">
+    return `<div class="sub-field${big ? ' sub-field--block' : ''}${big ? '' : compact}">
       <div class="sub-label">${label}</div>
       <div class="sub-write${big ? ' sub-write--block' : ''}"></div>
     </div>`;
   }
-  return `<div class="sub-field">
+  return `<div class="sub-field${compact}">
     <div class="sub-label">${label}</div>
     <div class="sub-value">${esc(submission[f.name] ?? '')}</div>
   </div>`;

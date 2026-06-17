@@ -1,0 +1,64 @@
+{
+  "id": "beurteilung",
+  "title": "Beurteilung von AdZS",
+  "submitLabel": "Beurteilung",
+  "resultsLabel": "Beurteilungen Übersicht",
+  "submitAccess": "Unteroffizier",
+  "resultsAccess": "Offizier",
+  "fields": [
+    { "name": "vertraulich", "type": "paragraph", "text": "**VERTRAULICH (wenn ausgefüllt)**", "printOnly": true },
+    { "type": "heading", "label": "Beurteilte Person" },
+    { "name": "vorname",      "type": "text",     "label": "Vorname",            "required": true, "width": "half" },
+    { "name": "nachname",     "type": "text",     "label": "Nachname",           "required": true, "width": "half" },
+
+    { "type": "heading", "label": "Beurteilt durch" },
+    { "name": "name",      "type": "text",     "label": "Name",                   "required": true },
+    
+    { "type": "heading", "label": "Beurteilung" },
+    { "name": "abstufung", "type": "paragraph", "text": "**Abstufung der Beurteilung:**", "width": "half"},
+    { "name": "abstufung_0", "type": "paragraph", "text": "0 - konnte nicht beobachtet werden", "width": "half" },
+    { "name": "abstufung_4", "type": "paragraph", "text": "4 - sehr gut - übertrifft die Anforderungen deutlich", "width": "half" },
+    { "name": "abstufung_3", "type": "paragraph", "text": "3 - gut - erfüllt die Anforderungen vollständig", "width": "half" },
+    { "name": "abstufung_2", "type": "paragraph", "text": "2 - genügend - erfüllt die Anforderungen weitgehend", "width": "half" },
+    { "name": "abstufung_1", "type": "paragraph", "text": "1 - ungenügend - erfüllt die Anforderungen nicht", "width": "half" },
+
+
+    { "type": "heading", "label": "Selbst- und Sozialkompetenz" },
+    { "name": "pers", "type": "paragraph", "text": "**Persönliche Grundhaltung**"},
+    { "name": "pers_1",    "type": "number",   "label": "Tritt als verlässliche Persönlichkeit auf.", "required": false, "compact": true },
+    { "name": "pers_2",    "type": "number",   "label": "Denkt und handelt selbständig und verantwortungsbewusst.", "required": false, "compact": true },
+    { "name": "pers_3",    "type": "number",   "label": "Zeigt Initiative und Engagement.", "required": false, "compact": true},
+    { "name": "pers_total",    "type": "number",   "label": "Gesamt Bewertung persönliche Grundhaltung", "required": true, "compact": true},
+    { "name": "kommentar", "type": "textarea", "label": "Kommentar" },
+
+    { "name": "soz", "type": "paragraph", "text": "**Soziales Verhalten**"},
+    { "name": "soz_1",    "type": "number",   "label": "Wird als Kamerad/in geschätzt.", "required": false, "compact": true },
+    { "name": "soz_2",    "type": "number",   "label": "Begegnet Anderen offen und verständnisvoll.", "required": false, "compact": true },
+    { "name": "soz_3",    "type": "number",   "label": "Kann sich in der Gruppe gewinnbringend integrieren.", "required": false, "compact": true},
+    { "name": "soz_total",    "type": "number",   "label": "Gesamt Bewertung soziales Verhalten", "required": true, "compact": true},
+    { "name": "kommentar", "type": "textarea", "label": "Kommentar" },
+
+    { "type": "heading", "label": "Fachkompetenz" },
+    { "name": "fach_1",    "type": "number",   "label": "Verfügt über die erwarteten Kenntnisse und Fähigkeiten.", "required": false, "compact": true },
+    { "name": "fach_2",    "type": "number",   "label": "Beherrscht die relevanten Geräte / Materialien.", "required": false, "compact": true },
+    { "name": "fach_3",    "type": "number",   "label": "Ist bereit, sich selbständig auf dem aktuellsten Stand zu halten.", "required": false, "compact": true},
+    { "name": "fach_total",    "type": "number",   "label": "Gesamt Bewertung fachliche Leistung", "required": true, "compact": true},
+    { "name": "kommentar", "type": "textarea", "label": "Kommentar" },
+    
+    { "type": "heading", "label": "Gesamtbeurteilung" },
+    { "name": "besonderes", "type": "textarea", "label": "Besonderes" },
+    { "name": "fach_1",    "type": "number",   "label": "Gesamtbeurteilung", "required": true, "compact": true },
+
+    { "name": "foerder", "type": "textarea", "label": "Förderhinweise (Zielsetzungen / Empfehlungen / Massnahmen)" },
+    { "name": "weiterbildung", "type": "text", "label": "Empfehlung für eine Weiterausbildung zum:", "required": false },
+
+    { "type": "heading", "label": "Unterschriften", "printOnly": true },
+    { "name": "unter_1", "type": "text",     "label": "Der/Die Beurteilende:", "printOnly": true, "required": false, "width": "third" },
+    { "name": "datum_1", "type": "text", "label": "Datum", "printOnly": true,"required": false , "width": "third" },
+    { "type": "signature", "label": "Unterschrift der/die Beurteilende", "printOnly": true, "width": "third"},
+    { "name": "unter_2", "type": "text",     "label": "Der/Die Beurteilte:", "printOnly": true, "required": false, "width": "third" },
+    { "name": "datum_2", "type": "text", "label": "Datum", "printOnly": true,"required": false , "width": "third" },
+    { "type": "signature", "label": "Unterschrift der/die Beurteilte", "printOnly": true, "width": "third"}
+    
+  ]
+}

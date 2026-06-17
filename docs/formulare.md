@@ -105,6 +105,7 @@ Spalte in der Auswertung.
 | `min`/`max`| Grenzwerte für `number`. |
 | `correct`  | Richtige Antwort → macht das Feld zur Quizfrage (siehe [Quiz](#quiz)). |
 | `width`    | Breite, siehe [Layout](#5-layout-breite). |
+| `compact`  | `true` = Beschriftung und ein kleineres Eingabefeld nebeneinander, siehe [Kompakt](#5b-kompakte-felder-compact). |
 | `printOnly`| Nur im Ausdruck sichtbar, siehe [printOnly](#6-nur-fuer-den-ausdruck-printonly). |
 
 **Beispiele:**
@@ -130,7 +131,7 @@ und erscheinen **nicht** als Spalte in der Auswertung. Sie dienen der Gliederung
 | `type`      | Beschreibung | Schlüssel |
 |-------------|--------------|-----------|
 | `heading`   | Abschnitts-Banner (grau, optional farbig) zum Unterteilen | `label`, optional `color` |
-| `paragraph` | Reiner Textblock, z.B. eine Formular-Beschreibung | `text` |
+| `paragraph` | Textblock (Inline-**Markdown** erlaubt: `**fett**`, `*kursiv*`, Links) | `text` |
 | `signature` | Unterschriftslinie (v.a. für den Ausdruck) | `label` |
 
 **Beispiele:**
@@ -142,8 +143,11 @@ und erscheinen **nicht** als Spalte in der Auswertung. Sie dienen der Gliederung
 { "type": "heading", "label": "Wichtig", "color": "#e8772e" }
 ```
 ```json
-{ "type": "paragraph", "text": "Bitte pro Person eine Bestellung. Änderungen sind bis 24h vorher möglich." }
+{ "type": "paragraph", "text": "Bitte pro Person eine Bestellung. Änderungen sind **bis 24h vorher** möglich." }
 ```
+
+> Im `text` ist **Inline-Markdown** erlaubt – `**fett**`, `*kursiv*`, `` `code` ``
+> und Links – gleich wie in den normalen Inhalts-Seiten.
 ```json
 { "type": "signature", "label": "Unterschrift Fourier" }
 ```
@@ -175,6 +179,29 @@ rechts, und was zusammen in eine Zeile passt, landet auf einer Zeile.
 Ein `heading` (volle Breite) beginnt immer eine neue Zeile – so bleiben
 Abschnitte sauber getrennt. Das Layout gilt im Ausfüll-Formular **und** in der
 Detail-/Druckansicht.
+
+---
+
+## 5b. Kompakte Felder: `compact`
+
+Standardmässig steht die Beschriftung **über** dem Eingabefeld, das die ganze
+Zeile breit ist. Mit `"compact": true` stehen Beschriftung und ein **kleineres
+Eingabefeld nebeneinander** auf einer Zeile – praktisch für kurze Eingaben wie
+Zahlen oder Uhrzeiten.
+
+```json
+{ "name": "anzahl", "type": "number", "label": "Anzahl Personen", "compact": true }
+```
+→ „Anzahl Personen [__]" auf einer Zeile statt gestapelt.
+
+- Wirkt sowohl im **Ausfüll-Formular** als auch in der **Detail-/Druckansicht**
+  einer Eingabe (dort steht der Wert direkt hinter der Beschriftung).
+- Sinnvoll v.a. für `number`, `date`, `time`, `text` und `select`. Bei
+  `checkbox` und Anzeige-Elementen (`heading`, `paragraph`, `signature`) hat es
+  keine Wirkung – sie stehen ohnehin schon kompakt.
+- Lässt sich mit `width` kombinieren: z.B. zwei kompakte Felder als `half`
+  nebeneinander.
+- Auf schmalen Bildschirmen bricht ein zu langes Label/Feld bei Bedarf um.
 
 ---
 
@@ -304,8 +331,8 @@ Zeitraum (`start`…`ende`) am nächsten zu heute liegt.
 ```
 Eingabe-Typen : text, number, date, time, email, textarea, radio, select, checkbox
 Anzeige-Typen : heading, paragraph, signature
-Modifier      : width (half|third|quarter), printOnly, required, correct (Quiz),
-                options, min, max, color (heading)
+Modifier      : width (half|third|quarter), compact, printOnly, required,
+                correct (Quiz), options, min, max, color (heading)
 Zugriff       : submitAccess, resultsAccess  →  admin > Offizier > Unteroffizier > Soldat
 Merken        : Felder namens "name"/"mobile" werden pro Gerät vorausgefüllt
 Drucken       : Detailansicht einer Eingabe → Browser-Druck (Strg/Cmd+P)
