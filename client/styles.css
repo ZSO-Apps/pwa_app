@@ -244,6 +244,19 @@ a { color: inherit; }
 .results thead { background: #eef2f6; }
 .quiz-summary { padding-left: 1.1rem; }
 
+
+.secondary-button {
+  font: inherit; font-weight: 600; padding: .55rem .85rem;
+  background: #eef2f6; color: #183b56; border: 1px solid #cdd3da;
+  border-radius: 6px; cursor: pointer;
+}
+.secondary-button:hover:not(:disabled) { background: #dfe7ef; }
+.secondary-button:disabled { opacity: .45; cursor: not-allowed; }
+.result-print-actions { display: flex; align-items: center; gap: .75rem; margin: .8rem 0; }
+.select-col { width: 2.3rem; text-align: center; }
+.select-col input { width: 1rem; height: 1rem; }
+
+
 /* Print: strip app chrome so a submission detail prints as a clean sheet. */
 @media print {
   .topbar, .wk-banner, .sync-info, .sidenav, .overlay, .no-print,

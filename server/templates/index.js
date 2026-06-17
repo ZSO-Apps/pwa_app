@@ -1,3 +1,5 @@
+import fs from 'node:fs';
+import path from 'node:path';
 import { visibleKacheln } from '../layout.js';
 import { isDisplay, isStored } from '../form-elements.js';
 
@@ -16,6 +18,16 @@ const LISTING_ICON = {
   'form-submit': '📝',
   'form-results': '📊',
 };
+
+function assetUrl(urlPath) {
+  try {
+    const rel = urlPath.replace(/^\//, '');
+    const stat = fs.statSync(path.resolve(rel));
+    return `${urlPath}?v=${Math.round(stat.mtimeMs)}-${stat.size}`;
+  } catch {
+    return urlPath;
+  }
+}
 
 function renderWkBanner(req) {
   if (!req.user) return '';
@@ -47,7 +59,7 @@ function layout(req, { title, body, extraHead = '' }) {
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
 <title>${esc(title || 'ZSO App')}</title>
-<link rel="stylesheet" href="/client/styles.css">
+<link rel="stylesheet" href="${assetUrl('/client/styles.css')}">
 <link rel="manifest" href="/client/manifest.json">
 <link rel="apple-touch-icon" href="/client/icons/apple-icon-152x152.png">
 <link rel="icon" href="/favicon.ico">
@@ -74,7 +86,7 @@ ${renderWkBanner(req)}
 <main class="main">
 ${body}
 </main>
-<script src="/client/app.js" defer></script>
+<script src="${assetUrl('/client/app.js')}" defer></script>
 </body>
 </html>`;
 }
@@ -148,28 +160,56 @@ export function renderLogin(req, error) {
   return layout(req, { title: 'Login', body });
 }
 
+function renderFormPrintBootstrap() {
+  return `<script>
+(() => {
+  const script = document.currentScript;
+  const root = script && script.closest('.form-page');
+  const form = root && root.querySelector('form[data-enhanced-form]');
+  const printButton = root && root.querySelector('[data-form-print]');
+  if (!form || !printButton) return;
+  const update = () => { printButton.disabled = !form.checkValidity(); };
+  form.addEventListener('input', update);
+  form.addEventListener('change', update);
+  printButton.addEventListener('click', () => {
+    if (!form.reportValidity()) { update(); return; }
+    window.print();
+  });
+  update();
+})();
+</script>`;
+}
+
 function renderField(f, value = '') {
+  const current = value ?? '';
+  const currentString = String(current);
   const common = `name="${esc(f.name)}" id="f-${esc(f.name)}"${f.required ? ' required' : ''}`;
   if (f.type === 'checkbox') {
-    return `<label class="checkbox"><input type="checkbox" ${common}${value ? ' checked' : ''}> ${esc(f.label || f.name)}</label>`;
+    return `<label class="checkbox"><input type="checkbox" ${common}${current ? ' checked' : ''}> ${esc(f.label || f.name)}</label>`;
   }
-  if (f.type === 'textarea') return `<textarea ${common} rows="4">${esc(value)}</textarea>`;
+  if (f.type === 'textarea') return `<textarea ${common} rows="4">${esc(currentString)}</textarea>`;
   if (f.type === 'radio') {
-    return (f.options || []).map((o, i) =>
-      `<label class="radio"><input type="radio" name="${esc(f.name)}" value="${esc(o)}"${i === 0 && f.required ? ' required' : ''}> ${esc(o)}</label>`
-    ).join('');
+    return (f.options || []).map((o, i) => {
+      const option = String(o);
+      const checked = currentString !== '' && currentString === option ? ' checked' : '';
+      const required = i === 0 && f.required ? ' required' : '';
+      return `<label class="radio"><input type="radio" name="${esc(f.name)}" value="${esc(option)}"${required}${checked}> ${esc(option)}</label>`;
+    }).join('');
   }
   if (f.type === 'select') {
-    return `<select ${common}>${(f.options || []).map((o) => `<option>${esc(o)}</option>`).join('')}</select>`;
+    const options = (f.options || []).map((o) => {
+      const option = String(o);
+      const selected = currentString === option ? ' selected' : '';
+      return `<option value="${esc(option)}"${selected}>${esc(option)}</option>`;
+    }).join('');
+    const emptySelected = currentString === '' ? ' selected' : '';
+    return `<select ${common}><option value=""${emptySelected}>Bitte auswählen</option>${options}</select>`;
   }
   const type = ['text', 'number', 'date', 'time', 'email'].includes(f.type) ? f.type : 'text';
   const minmax = (f.min !== undefined ? ` min="${esc(f.min)}"` : '') + (f.max !== undefined ? ` max="${esc(f.max)}"` : '');
-  return `<input type="${type}" ${common}${minmax} value="${esc(value)}">`;
+  return `<input type="${type}" ${common}${minmax} value="${esc(currentString)}">`;
 }
 
-// Optional per-element width hint. Elements flow left-to-right (flex-wrap), so
-// e.g. two "half" elements share one line. Default is full width. Kept as a
-// flat single attribute on purpose — easy to toggle in a future form editor.
 function widthClass(el) {
   const w = el?.width;
   if (w === 'half') return ' w-half';
@@ -178,8 +218,6 @@ function widthClass(el) {
   return '';
 }
 
-// Render a structural/display element (heading banner, paragraph, signature
-// line). Shared between the fill-out form and the submission detail view.
 function renderDisplayElement(f) {
   if (f.type === 'heading') {
     const style = f.color ? ` style="--banner-c:${esc(f.color)}"` : '';
@@ -194,30 +232,33 @@ function renderDisplayElement(f) {
   return '';
 }
 
-// One element inside the fill-out form. printOnly elements are skipped by the
-// caller; checkbox carries its own label so it is not double-labelled.
-function renderFormElement(f) {
+function renderFormElement(f, values) {
   if (isDisplay(f)) return renderDisplayElement(f);
   if (f.type === 'checkbox') {
-    return `<div class="field field-check">${renderField(f)}</div>`;
+    return `<div class="field field-check">${renderField(f, values[f.name])}</div>`;
   }
   return `<div class="field">
     <label for="f-${esc(f.name)}">${esc(f.label || f.name)}${f.required ? ' *' : ''}</label>
-    ${renderField(f)}
+    ${renderField(f, values[f.name])}
   </div>`;
 }
 
-export function renderFormPage(req, def, { submitted = false } = {}) {
+export function renderFormPage(req, def, { submitted = false, values = {} } = {}) {
   const elements = (def.fields || []).filter((f) => !f.printOnly);
+  const submitLabel = submitted ? 'Neue Eingabe mit diesen Daten speichern' : 'Senden';
   const body = `
-  <article class="content narrow">
-    <h1>${esc(def.title || def.id)}</h1>
-    ${submitted ? `<p class="ok">✓ Eingabe gespeichert. Vielen Dank.</p>` : ''}
-    <form method="POST" action="/forms/${esc(def.id)}" class="genform">
-      ${elements.map((f) => `<div class="form-el${widthClass(f)}">${renderFormElement(f)}</div>`).join('\n')}
-      <button type="submit">Senden</button>
+  <article class="content narrow form-page">
+    <div class="content-header">
+      <h1>${esc(def.title || def.id)}</h1>
+      <button type="button" class="secondary-button" data-form-print disabled>Print</button>
+    </div>
+    ${submitted ? `<p class="ok">✓ Eingabe gespeichert. Die Werte bleiben als Vorlage erhalten. Erneutes Speichern erstellt eine neue Eingabe.</p>` : ''}
+    <form method="POST" action="/forms/${esc(def.id)}" class="genform" data-enhanced-form>
+      ${elements.map((f) => `<div class="form-el${widthClass(f)}">${renderFormElement(f, values)}</div>`).join('\n')}
+      <button type="submit">${esc(submitLabel)}</button>
     </form>
     <p><a href="/" class="back">← Zurück</a></p>
+    ${renderFormPrintBootstrap()}
   </article>`;
   return layout(req, { title: def.title || 'Formular', body });
 }
@@ -226,7 +267,7 @@ function submissionTitle(def, submission) {
   const fields = def.fields || [];
   const preferredNames = ['titel', 'title', 'name', 'betreff', 'thema', 'sender'];
   const preferred = preferredNames
-    .map((name) => fields.find((field) => field.name === name))
+    .map((name) => fields.find((field) => field.name === name && isStored(field)))
     .find(Boolean);
   const fallback = preferred || fields.find(isStored);
   const value = fallback ? submission[fallback.name] : '';
@@ -246,18 +287,27 @@ function fmtCell(field, value) {
 function renderResultsTable(def, submissions) {
   const storedFields = (def.fields || []).filter(isStored);
   const headers = storedFields.map((f) => f.label || f.name);
-  const rows = submissions.map((s) => `<tr>
-      <td><a href="${esc(submissionUrl(def, s))}">${esc(submissionTitle(def, s))}</a></td>
+  const rows = submissions.map((s) => {
+    const title = submissionTitle(def, s);
+    const url = submissionUrl(def, s);
+    return `<tr data-print-row>
+      <td class="select-col"><input type="checkbox" data-print-select aria-label="${esc(title)} auswählen"></td>
+      <td><a href="${esc(url)}">${esc(title)}</a></td>
       <td>${esc(s._meta?.submittedAt || '')}</td>
       <td>${esc(s._meta?.submittedBy || '')}</td>
       ${storedFields.map((f) => `<td>${esc(fmtCell(f, s[f.name]))}</td>`).join('')}
-    </tr>`).join('');
+    </tr>`;
+  }).join('');
 
   let quizSummary = '';
-  if ((def.fields || []).some((f) => f.correct !== undefined)) {
+  if (storedFields.some((f) => f.correct !== undefined)) {
     const totals = submissions.map((s) => {
       let correct = 0, total = 0;
-      for (const f of def.fields) if (f.correct !== undefined) { total++; if (s[f.name] === f.correct) correct++; }
+      for (const f of storedFields) {
+        if (f.correct === undefined) continue;
+        total++;
+        if (s[f.name] === f.correct) correct++;
+      }
       return { correct, total, name: s._meta?.submittedBy || '?' };
     });
     quizSummary = `<h2>Quiz-Zusammenfassung</h2>
@@ -268,8 +318,12 @@ function renderResultsTable(def, submissions) {
     <p>${submissions.length} Eingabe(n)</p>
     ${quizSummary}
     ${submissions.length ? `
+    <div class="result-print-actions no-print">
+      <button type="button" class="secondary-button" data-print-selected disabled>Ausgewählte drucken</button>
+      <span class="muted" data-print-count>0 ausgewählt</span>
+    </div>
     <div class="tablewrap"><table class="results">
-      <thead><tr><th>Name / Titel</th><th>Datum</th><th>Benutzer</th>${headers.map((h) => `<th>${esc(h)}</th>`).join('')}</tr></thead>
+      <thead><tr><th class="select-col"><input type="checkbox" data-print-select-all aria-label="Alle auswählen"></th><th>Name / Titel</th><th>Datum</th><th>Benutzer</th>${headers.map((h) => `<th>${esc(h)}</th>`).join('')}</tr></thead>
       <tbody>${rows}</tbody>
     </table></div>` : '<p><em>Noch keine Eingaben.</em></p>'}`;
 }
@@ -281,7 +335,7 @@ export function renderResultsPage(req, def, submissions, { wkLabel } = {}) {
       ? `<p class="muted">WK-Kontext: ${esc(wkLabel)}</p>`
       : '<p class="muted">Kein WK aktiv.</p>';
   const body = `
-  <article class="content">
+  <article class="content" data-results-print>
     <h1>Auswertung — ${esc(def.title || def.id)}</h1>
     ${scopeHint}
     ${renderResultsTable(def, submissions)}
@@ -290,12 +344,9 @@ export function renderResultsPage(req, def, submissions, { wkLabel } = {}) {
   return layout(req, { title: 'Auswertung', body });
 }
 
-// One element inside the submission detail view. printOnly inputs render as
-// empty boxes/lines for hand-filling on the printout; stored inputs show their
-// submitted value.
-function renderSubmissionElement(def, submission, f) {
+function renderSubmissionElement(_def, submission, f) {
   if (isDisplay(f)) return renderDisplayElement(f);
-  const label = esc(f.label || f.name);
+  const label = esc(f.label || f.name || '');
   if (f.type === 'checkbox') {
     const checked = !f.printOnly && submission[f.name];
     return `<div class="sub-check"><span class="box">${checked ? '☑' : '☐'}</span> <span>${label}</span></div>`;
@@ -315,14 +366,16 @@ function renderSubmissionElement(def, submission, f) {
 
 export function renderSubmissionPage(req, def, submission) {
   const heading = submissionTitle(def, submission);
-  const elements = (def.fields || []).map((f) => `<div class="sub-el${widthClass(f)}">${renderSubmissionElement(def, submission, f)}</div>`).join('\n');
-  const body = '<article class="content sub-detail">' +
-    '<nav class="crumbs"><a href="/forms/' + esc(def.id) + '/results">Auswertung</a> / <span>' + esc(heading) + '</span></nav>' +
-    '<h1>' + esc(def.title || def.id) + '</h1>' +
-    '<p class="muted">Gesendet am: ' + esc(submission._meta?.submittedAt || '') + '<br>Gesendet von: ' + esc(submission._meta?.submittedBy || '') + '</p>' +
-    '<div class="sub-elements">' + (elements || '<em>Keine Felder</em>') + '</div>' +
-    '<p class="no-print"><a href="/forms/' + esc(def.id) + '/results" class="back">← Zurück zur Auswertung</a></p>' +
-    '</article>';
+  const elements = (def.fields || [])
+    .map((f) => `<div class="sub-el${widthClass(f)}">${renderSubmissionElement(def, submission, f)}</div>`)
+    .join('\n');
+  const body = `<article class="content sub-detail">
+    <nav class="crumbs no-print"><a href="/forms/${esc(def.id)}/results">Auswertung</a> / <span>${esc(heading)}</span></nav>
+    <h1>${esc(def.title || def.id)}</h1>
+    <p class="muted">Gesendet am: ${esc(submission._meta?.submittedAt || '')}<br>Gesendet von: ${esc(submission._meta?.submittedBy || '')}</p>
+    <div class="sub-elements">${elements || '<em>Keine Felder</em>'}</div>
+    <p class="no-print"><a href="/forms/${esc(def.id)}/results" class="back">← Zurück zur Auswertung</a></p>
+  </article>`;
   return layout(req, { title: def.title || heading, body });
 }
 

@@ -4,11 +4,29 @@ import path from 'node:path';
 import { listKachelPublicAssets } from './content.js';
 import { getLayout } from './layout.js';
 
-const STATIC_PRECACHE = [
-  '/',
+const STATIC_CLIENT_ASSETS = [
   '/client/styles.css',
   '/client/app.js',
   '/client/manifest.json',
+];
+
+function assetStamp(urlPath) {
+  try {
+    const rel = urlPath.replace(/^\//, '');
+    const stat = fs.statSync(path.resolve(rel));
+    return `${Math.round(stat.mtimeMs)}-${stat.size}`;
+  } catch {
+    return 'missing';
+  }
+}
+
+function versionedClientAsset(urlPath) {
+  return `${urlPath}?v=${assetStamp(urlPath)}`;
+}
+
+const STATIC_PRECACHE = [
+  '/',
+  ...STATIC_CLIENT_ASSETS.map(versionedClientAsset),
   '/offline',
 ];
 
@@ -18,16 +36,15 @@ function publicKachelUrls() {
     .flatMap((kachel) => listKachelPublicAssets(kachel));
 }
 
-// Hash the contents of the local static client assets so the cache version
-// busts when styles.css / app.js / manifest.json change — not just when the
-// list of public-content URLs changes. Without this the SW would serve a stale
-// stylesheet forever (assets are cache-first).
 function clientAssetsFingerprint() {
   const h = crypto.createHash('sha1');
-  for (const u of STATIC_PRECACHE) {
-    if (!u.startsWith('/client/')) continue;
-    const abs = path.resolve('.' + u);
-    try { h.update(u).update(fs.readFileSync(abs)); } catch { /* missing file */ }
+  for (const urlPath of STATIC_CLIENT_ASSETS) {
+    h.update(urlPath).update(assetStamp(urlPath));
+    try {
+      h.update(fs.readFileSync(path.resolve(urlPath.replace(/^\//, ''))));
+    } catch {
+      // Missing assets are represented by the stamp above.
+    }
   }
   return h.digest('hex');
 }
@@ -39,7 +56,7 @@ export function buildServiceWorker() {
     .update(clientAssetsFingerprint())
     .digest('hex').slice(0, 10);
   const cacheName = `zso-public-${hash}`;
-  return `// Auto-generated. Cache version busts when public content changes.
+  return `// Auto-generated. Cache version busts when public content or client assets change.
 const CACHE = ${JSON.stringify(cacheName)};
 const PRECACHE = ${JSON.stringify(urls)};
 
@@ -97,7 +114,23 @@ self.addEventListener('fetch', (event) => {
     return;
   }
 
-  if (url.pathname.startsWith('/client/') || url.pathname.startsWith('/k/') || url.pathname === '/offline') {
+  if (url.pathname.startsWith('/client/')) {
+    event.respondWith((async () => {
+      const cache = await caches.open(CACHE);
+      try {
+        const fresh = await fetch(new Request(req, { cache: 'reload' }));
+        if (fresh.ok) cache.put(req, fresh.clone()).catch(() => {});
+        return fresh;
+      } catch {
+        const cached = await cache.match(req) || await cache.match(url.pathname, { ignoreSearch: true });
+        if (cached) return cached;
+        return new Response('Offline', { status: 503 });
+      }
+    })());
+    return;
+  }
+
+  if (url.pathname.startsWith('/k/') || url.pathname === '/offline') {
     event.respondWith((async () => {
       const cache = await caches.open(CACHE);
       const cached = await cache.match(req, { ignoreSearch: true });
