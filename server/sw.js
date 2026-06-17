@@ -1,12 +1,28 @@
 import crypto from 'node:crypto';
+import fs from 'node:fs';
+import path from 'node:path';
 import { listKachelPublicAssets } from './content.js';
 import { getLayout } from './layout.js';
 
-const STATIC_PRECACHE = [
-  '/',
+const STATIC_CLIENT_ASSETS = [
   '/client/styles.css',
   '/client/app.js',
   '/client/manifest.json',
+];
+
+function versionedClientAsset(urlPath) {
+  try {
+    const rel = urlPath.replace(/^\//, '');
+    const stat = fs.statSync(path.resolve(rel));
+    return `${urlPath}?v=${Math.round(stat.mtimeMs)}-${stat.size}`;
+  } catch {
+    return urlPath;
+  }
+}
+
+const STATIC_PRECACHE = [
+  '/',
+  ...STATIC_CLIENT_ASSETS.map(versionedClientAsset),
   '/offline',
 ];
 
@@ -18,7 +34,15 @@ function publicKachelUrls() {
 
 export function buildServiceWorker() {
   const urls = [...new Set([...STATIC_PRECACHE, ...publicKachelUrls()])];
-  const hash = crypto.createHash('sha1').update(urls.join('\n')).digest('hex').slice(0, 10);
+  const assetState = STATIC_CLIENT_ASSETS.map((urlPath) => {
+    try {
+      const stat = fs.statSync(path.resolve(urlPath.replace(/^\//, '')));
+      return `${urlPath}:${stat.mtimeMs}:${stat.size}`;
+    } catch {
+      return urlPath;
+    }
+  }).join('\n');
+  const hash = crypto.createHash('sha1').update(urls.join('\n') + '\n' + assetState).digest('hex').slice(0, 10);
   const cacheName = `zso-public-${hash}`;
   return `// Auto-generated. Cache version busts when public content changes.
 const CACHE = ${JSON.stringify(cacheName)};
@@ -78,7 +102,23 @@ self.addEventListener('fetch', (event) => {
     return;
   }
 
-  if (url.pathname.startsWith('/client/') || url.pathname.startsWith('/k/') || url.pathname === '/offline') {
+  if (url.pathname.startsWith('/client/')) {
+    event.respondWith((async () => {
+      const cache = await caches.open(CACHE);
+      try {
+        const fresh = await fetch(new Request(req, { cache: 'reload' }));
+        if (fresh.ok) cache.put(req, fresh.clone()).catch(() => {});
+        return fresh;
+      } catch {
+        const cached = await cache.match(req) || await cache.match(url.pathname, { ignoreSearch: true });
+        if (cached) return cached;
+        return new Response('Offline', { status: 503 });
+      }
+    })());
+    return;
+  }
+
+  if (url.pathname.startsWith('/k/') || url.pathname === '/offline') {
     event.respondWith((async () => {
       const cache = await caches.open(CACHE);
       const cached = await cache.match(req, { ignoreSearch: true });

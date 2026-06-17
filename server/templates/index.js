@@ -1,3 +1,5 @@
+import fs from 'node:fs';
+import path from 'node:path';
 import { visibleKacheln } from '../layout.js';
 
 export function esc(s) {
@@ -6,6 +8,16 @@ export function esc(s) {
 
 const LOGIN_ICON = `<svg viewBox="0 0 24 24" width="22" height="22" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M15 3h4a2 2 0 0 1 2 2v14a2 2 0 0 1-2 2h-4"/><polyline points="10 17 15 12 10 7"/><line x1="15" y1="12" x2="3" y2="12"/></svg>`;
 const LOGOUT_ICON = `<svg viewBox="0 0 24 24" width="22" height="22" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M9 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h4"/><polyline points="16 17 21 12 16 7"/><line x1="21" y1="12" x2="9" y2="12"/></svg>`;
+
+function assetUrl(urlPath) {
+  try {
+    const rel = urlPath.replace(/^\//, '');
+    const stat = fs.statSync(path.resolve(rel));
+    return `${urlPath}?v=${Math.round(stat.mtimeMs)}-${stat.size}`;
+  } catch {
+    return urlPath;
+  }
+}
 
 const LISTING_ICON = {
   dir: '📁',
@@ -46,7 +58,7 @@ function layout(req, { title, body, extraHead = '' }) {
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
 <title>${esc(title || 'ZSO App')}</title>
-<link rel="stylesheet" href="/client/styles.css">
+<link rel="stylesheet" href="${assetUrl('/client/styles.css')}">
 <link rel="manifest" href="/client/manifest.json">
 <link rel="apple-touch-icon" href="/client/icons/apple-icon-152x152.png">
 <link rel="icon" href="/favicon.ico">
@@ -73,7 +85,7 @@ ${renderWkBanner(req)}
 <main class="main">
 ${body}
 </main>
-<script src="/client/app.js" defer></script>
+<script src="${assetUrl('/client/app.js')}" defer></script>
 </body>
 </html>`;
 }
@@ -147,37 +159,73 @@ export function renderLogin(req, error) {
   return layout(req, { title: 'Login', body });
 }
 
+function renderFormPrintBootstrap() {
+  return `<script>
+(() => {
+  const script = document.currentScript;
+  const root = script && script.closest('.form-page');
+  const form = root && root.querySelector('form[data-enhanced-form]');
+  const printButton = root && root.querySelector('[data-form-print]');
+  if (!form || !printButton) return;
+  const update = () => { printButton.disabled = !form.checkValidity(); };
+  form.addEventListener('input', update);
+  form.addEventListener('change', update);
+  printButton.addEventListener('click', () => {
+    if (!form.reportValidity()) { update(); return; }
+    window.print();
+  });
+  update();
+})();
+</script>`;
+}
+
 function renderField(f, value = '') {
+  const current = value ?? '';
+  const currentString = String(current);
   const common = `name="${esc(f.name)}" id="f-${esc(f.name)}"${f.required ? ' required' : ''}`;
-  if (f.type === 'textarea') return `<textarea ${common} rows="4">${esc(value)}</textarea>`;
+  if (f.type === 'textarea') return `<textarea ${common} rows="4">${esc(currentString)}</textarea>`;
   if (f.type === 'radio') {
-    return (f.options || []).map((o, i) =>
-      `<label class="radio"><input type="radio" name="${esc(f.name)}" value="${esc(o)}"${i === 0 && f.required ? ' required' : ''}> ${esc(o)}</label>`
-    ).join('');
+    return (f.options || []).map((o, i) => {
+      const option = String(o);
+      const checked = currentString !== '' && currentString === option ? ' checked' : '';
+      const required = i === 0 && f.required ? ' required' : '';
+      return `<label class="radio"><input type="radio" name="${esc(f.name)}" value="${esc(option)}"${required}${checked}> ${esc(option)}</label>`;
+    }).join('');
   }
   if (f.type === 'select') {
-    return `<select ${common}>${(f.options || []).map((o) => `<option>${esc(o)}</option>`).join('')}</select>`;
+    const options = (f.options || []).map((o) => {
+      const option = String(o);
+      const selected = currentString === option ? ' selected' : '';
+      return `<option value="${esc(option)}"${selected}>${esc(option)}</option>`;
+    }).join('');
+    const emptySelected = currentString === '' ? ' selected' : '';
+    return `<select ${common}><option value=""${emptySelected}>Bitte auswählen</option>${options}</select>`;
   }
   const type = ['text', 'number', 'date', 'time', 'email'].includes(f.type) ? f.type : 'text';
   const minmax = (f.min !== undefined ? ` min="${esc(f.min)}"` : '') + (f.max !== undefined ? ` max="${esc(f.max)}"` : '');
-  return `<input type="${type}" ${common}${minmax} value="${esc(value)}">`;
+  return `<input type="${type}" ${common}${minmax} value="${esc(currentString)}">`;
 }
 
-export function renderFormPage(req, def, { submitted = false } = {}) {
+export function renderFormPage(req, def, { submitted = false, values = {} } = {}) {
+  const submitLabel = submitted ? 'Neue Eingabe mit diesen Daten speichern' : 'Senden';
   const body = `
-  <article class="content narrow">
-    <h1>${esc(def.title || def.id)}</h1>
-    ${submitted ? `<p class="ok">✓ Eingabe gespeichert. Vielen Dank.</p>` : ''}
-    <form method="POST" action="/forms/${esc(def.id)}" class="genform">
+  <article class="content narrow form-page">
+    <div class="content-header">
+      <h1>${esc(def.title || def.id)}</h1>
+      <button type="button" class="secondary-button" data-form-print disabled>Print</button>
+    </div>
+    ${submitted ? `<p class="ok">✓ Eingabe gespeichert. Die Werte bleiben als Vorlage erhalten. Erneutes Speichern erstellt eine neue Eingabe.</p>` : ''}
+    <form method="POST" action="/forms/${esc(def.id)}" class="genform" data-enhanced-form>
       ${(def.fields || []).map((f) => `
         <div class="field">
           <label for="f-${esc(f.name)}">${esc(f.label || f.name)}${f.required ? ' *' : ''}</label>
-          ${renderField(f)}
+          ${renderField(f, values[f.name])}
         </div>
       `).join('')}
-      <button type="submit">Senden</button>
+      <button type="submit">${esc(submitLabel)}</button>
     </form>
     <p><a href="/" class="back">← Zurück</a></p>
+    ${renderFormPrintBootstrap()}
   </article>`;
   return layout(req, { title: def.title || 'Formular', body });
 }
@@ -201,12 +249,17 @@ function submissionUrl(def, submission) {
 function renderResultsTable(def, submissions) {
   const cols = (def.fields || []).map((f) => f.name);
   const headers = (def.fields || []).map((f) => f.label || f.name);
-  const rows = submissions.map((s) => `<tr>
-      <td><a href="${esc(submissionUrl(def, s))}">${esc(submissionTitle(def, s))}</a></td>
+  const rows = submissions.map((s) => {
+    const title = submissionTitle(def, s);
+    const url = submissionUrl(def, s);
+    return `<tr data-print-row>
+      <td class="select-col"><input type="checkbox" data-print-select aria-label="${esc(title)} auswählen"></td>
+      <td><a href="${esc(url)}">${esc(title)}</a></td>
       <td>${esc(s._meta?.submittedAt || '')}</td>
       <td>${esc(s._meta?.submittedBy || '')}</td>
       ${cols.map((c) => `<td>${esc(s[c] ?? '')}</td>`).join('')}
-    </tr>`).join('');
+    </tr>`;
+  }).join('');
 
   let quizSummary = '';
   if ((def.fields || []).some((f) => f.correct !== undefined)) {
@@ -223,8 +276,12 @@ function renderResultsTable(def, submissions) {
     <p>${submissions.length} Eingabe(n)</p>
     ${quizSummary}
     ${submissions.length ? `
+    <div class="result-print-actions no-print">
+      <button type="button" class="secondary-button" data-print-selected disabled>Ausgewählte drucken</button>
+      <span class="muted" data-print-count>0 ausgewählt</span>
+    </div>
     <div class="tablewrap"><table class="results">
-      <thead><tr><th>Name / Titel</th><th>Datum</th><th>Benutzer</th>${headers.map((h) => `<th>${esc(h)}</th>`).join('')}</tr></thead>
+      <thead><tr><th class="select-col"><input type="checkbox" data-print-select-all aria-label="Alle auswählen"></th><th>Name / Titel</th><th>Datum</th><th>Benutzer</th>${headers.map((h) => `<th>${esc(h)}</th>`).join('')}</tr></thead>
       <tbody>${rows}</tbody>
     </table></div>` : '<p><em>Noch keine Eingaben.</em></p>'}`;
 }
@@ -236,7 +293,7 @@ export function renderResultsPage(req, def, submissions, { wkLabel } = {}) {
       ? `<p class="muted">WK-Kontext: ${esc(wkLabel)}</p>`
       : '<p class="muted">Kein WK aktiv.</p>';
   const body = `
-  <article class="content">
+  <article class="content" data-results-print>
     <h1>Auswertung — ${esc(def.title || def.id)}</h1>
     ${scopeHint}
     ${renderResultsTable(def, submissions)}

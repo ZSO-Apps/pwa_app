@@ -206,3 +206,27 @@ a { color: inherit; }
 .results a:hover { text-decoration: underline; }
 .results thead { background: #eef2f6; }
 .quiz-summary { padding-left: 1.1rem; }
+
+
+.secondary-button {
+  font: inherit; font-weight: 600; padding: .55rem .85rem;
+  background: #eef2f6; color: #183b56; border: 1px solid #cdd3da;
+  border-radius: 6px; cursor: pointer;
+}
+.secondary-button:hover:not(:disabled) { background: #dfe7ef; }
+.secondary-button:disabled { opacity: .45; cursor: not-allowed; }
+.result-print-actions { display: flex; align-items: center; gap: .75rem; margin: .8rem 0; }
+.select-col { width: 2.3rem; text-align: center; }
+.select-col input { width: 1rem; height: 1rem; }
+
+@media print {
+  .topbar, .wk-banner, .sync-info, .sidenav, .overlay, .back, .no-print, .auth-form, .hamburger, .content-header button {
+    display: none !important;
+  }
+  body { background: #fff; color: #000; }
+  .main { max-width: none; padding: 0; }
+  .content { box-shadow: none; border-radius: 0; padding: 0; margin: 0; }
+  .select-col { display: none; }
+  body.print-selected-results .results tbody tr { display: none; }
+  body.print-selected-results .results tbody tr.is-print-selected { display: table-row; }
+}
