@@ -82,9 +82,11 @@ Example: `content_protected/quiz/quiz-leitungsbau.json`
 }
 ```
 
-Field types: `text`, `textarea`, `number`, `date`, `time`, `email`, `radio` / `select` with `options`. Add `"correct": "…"` on a `radio` field for auto-scoring in the results view.
+Field types: `text`, `textarea`, `number`, `date`, `time`, `email`, `checkbox`, `radio` / `select` with `options`. Display-only elements: `heading`, `paragraph`, `signature`. Modifiers: `width` (`half`/`third`/`quarter`), `printOnly` (print-only checklist items), `correct` (quiz auto-scoring).
 
 Optional `"scope": "global"` makes a form WK-independent (used only by the WK form itself).
+
+**Full authoring reference (German):** see [`docs/formulare.md`](docs/formulare.md) — all element types, modifiers, layout, printing and a complete example.
 
 ## WK context
 

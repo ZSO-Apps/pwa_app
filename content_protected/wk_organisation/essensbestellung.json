@@ -3,30 +3,34 @@
   "title": "Essensbestellung",
   "submitLabel": "Essensbestellung",
   "resultsLabel": "Essensbestellungen Übersicht",
-  "submitAccess": "Soldat",
+  "submitAccess": "Offizier",
   "resultsAccess": "Offizier",
   "fields": [
     { "type": "heading", "label": "Besteller" },
     { "name": "name",      "type": "text",     "label": "Name",            "required": true, "width": "half" },
     { "name": "mobile",    "type": "text",     "label": "Mobile",                            "width": "half" },
     { "name": "datum",     "type": "date",     "label": "Datum",           "required": true, "width": "half" },
-    { "name": "zeit",      "type": "time",     "label": "Zeit",            "required": true, "width": "half" },
-    { "name": "anzahl",    "type": "number",   "label": "Anzahl Personen", "required": true, "min": 1, "width": "half" },
-    { "name": "ort",       "type": "text",     "label": "Ort",             "required": true, "width": "half" },
-    { "name": "kommentar", "type": "textarea", "label": "Kommentar" },
+    { "name": "ort",       "type": "text",     "label": "Standort",             "required": true, "width": "half" },
+    { "name": "anzahlFleisch",    "type": "number",   "label": "Anzahl Fleisch", "required": true, "width": "half" },
+    { "name": "anzahlVegetarisch","type": "number",   "label": "Anzahl Vegetarisch", "required": false, "width": "half" },
+    {"name": "verpflegungsart", "type": "radio", "label": "Verpflegungsart", "options": ["Frühstück", "Zwipf", "Mittagessen", "Abendessen"], "required": true, "width": "half"},
+    { "name": "kommentar", "type": "textarea", "label": "Kommentar", "width": "half" },
 
     { "type": "heading",  "label": "Fourier", "printOnly": true },
-    { "type": "checkbox", "name": "f_beruecksichtigt", "label": "Die Bestellung wurde berücksichtigt.", "printOnly": true, "width": "half" },
-    { "type": "signature", "label": "Unterschrift Fourier", "printOnly": true, "width": "half" },
+    { "type": "checkbox", "name": "f_beruecksichtigt", "label": "Die Bestellung wurde bei der Konsolidierung berücksichtigt.", "printOnly": true },
+    { "type": "checkbox", "name": "f_besprochen", "label": "Das Original wurde an Kü Uof übergeben und besprochen.", "printOnly": true },
     { "type": "checkbox", "name": "f_kopie",           "label": "Eine Kopie für die Kursakten wurde abgelegt.", "printOnly": true, "width": "half" },
+    { "type": "signature", "label": "Unterschrift Fourier", "printOnly": true, "width": "half" },
 
     { "type": "heading",  "label": "Kü Uof", "printOnly": true },
-    { "name": "k_sicherstellen", "type": "textarea", "label": "Folgendes ist sicherzustellen:", "printOnly": true },
-    { "type": "checkbox", "name": "k_menus",   "label": "Anzahl Menus stimmen mit Bestellung.", "printOnly": true, "width": "half" },
+    { "name": "k_sicherstellen", "type": "paragraph", "text": "Folgendes ist sicherzustellen:", "printOnly": true },
+    { "type": "checkbox", "name": "k_menus",   "label": "Anzahl Menus stimmen mit Bestellung.", "printOnly": true },
+    { "type": "checkbox", "name": "k_gerüstet",   "label": "Gebinde sind gerüstet und überprüft.", "printOnly": true },
+    { "type": "checkbox", "name": "k_beschriftet",   "label": "Gebinde sind beschriftet.", "printOnly": true },
+    { "type": "checkbox", "name": "k_geschirr", "label": "Geschirrbox ist bereitgestellt.", "printOnly": true, "width": "half" },
     { "type": "signature", "label": "Unterschrift Kü Uof", "printOnly": true, "width": "half" },
-    { "type": "checkbox", "name": "k_gebinde", "label": "Gebinde sind gerüstet und überprüft.", "printOnly": true, "width": "half" },
 
     { "type": "heading",  "label": "Kommentar", "printOnly": true },
-    { "name": "schluss_kommentar", "type": "textarea", "label": "", "printOnly": true }
+    { "name": "schluss_kommentar", "type": "textarea", "label": " ", "printOnly": true }
   ]
 }
