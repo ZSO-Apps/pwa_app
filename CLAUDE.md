@@ -15,7 +15,7 @@ organizations can deploy too. Goals, in priority order:
    WLAN itself has no internet uplink. Public content must work as a PWA
    even with zero connectivity at all (previously cached).
 3. **Hierarchical permission levels**, each level includes all levels below
-   it: `admin` > `Offizier` > `Unteroffizier` > `Soldat` > `public`.
+   it: `Admin` > `Offizier` > `Unteroffizier` > `Soldat` > `public`.
    - `public` = no auth needed, content must be offline-cachable via the PWA
      service worker.
    - All other levels require login; content is only available when the
@@ -86,7 +86,7 @@ field anymore.
 - `layout.yaml` defines:
   - the list of Kacheln (title, slug, color)
   - the **access level required to see/open each Kachel**: one of
-    `public`, `Soldat`, `Unteroffizier`, `Offizier`, `admin`
+    `public`, `Soldat`, `Unteroffizier`, `Offizier`, `Admin`
   - this is the single source of truth for both navigation rendering and
     server-side access enforcement.
 - A Kachel with `access: public`:
@@ -94,8 +94,8 @@ field anymore.
   - merges only the `_public` content roots
   - its UI route under `/k/...` and its files are included in the service
     worker precache, so they're available fully offline.
-- A Kachel with `access: Soldat`/`Unteroffizier`/`Offizier`/`admin`:
-  - requires login with at least that role (hierarchy: `admin` ⊇
+- A Kachel with `access: Soldat`/`Unteroffizier`/`Offizier`/`Admin`:
+  - requires login with at least that role (hierarchy: `Admin` ⊇
     `Offizier` ⊇ `Unteroffizier` ⊇ `Soldat`)
   - merges all four content roots
   - successful online navigations are cached as the device's last online
@@ -105,7 +105,7 @@ field anymore.
 ### Role hierarchy
 
 ```
-admin > Offizier > Unteroffizier > Soldat > public
+Admin > Offizier > Unteroffizier > Soldat > public
 ```
 
 Each role inherits access to everything visible to roles below it. Access
@@ -293,7 +293,7 @@ These resolve the previously open questions and reflect the current code.
   `data/users.yaml`. The signed role remains valid until logout, even if
   `users.yaml` changes while the user is signed in.
 - **Admin UI**: user/form/layout management will be exposed through an admin
-  interface that only the `admin` role can edit.
+  interface that only the `Admin` role can edit.
 - **Sync indicator**: timestamp `Offline-Inhalte aktualisiert: …` shown
   in small text under the top bar, written by the SW via `postMessage`
   on activate and persisted in `localStorage.lastSync`.
@@ -306,7 +306,7 @@ These resolve the previously open questions and reflect the current code.
   are referenced from inside markdown — they are not listed as standalone
   items.
 - **Role naming** stays with the current model:
-  `admin > Offizier > Unteroffizier > Soldat > public`. The `Soldat` role is
+  `Admin > Offizier > Unteroffizier > Soldat > public`. The `Soldat` role is
   intentional and is not renamed to `ZSO User`.
 
 ## Still open

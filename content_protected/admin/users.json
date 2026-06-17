@@ -5,8 +5,8 @@
   "scope": "global",
   "submitLabel": "User erfassen",
   "resultsLabel": "User Übersicht",
-  "submitAccess": "admin",
-  "resultsAccess": "admin",
+  "submitAccess": "Admin",
+  "resultsAccess": "Admin",
   "submitUrl": "/admin/users/new",
   "resultsUrl": "/admin/users"
 }

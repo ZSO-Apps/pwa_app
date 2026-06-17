@@ -2,7 +2,7 @@ import fs from 'node:fs';
 import path from 'node:path';
 import bcrypt from 'bcryptjs';
 import YAML from 'yaml';
-import { hasAccess, resetUsersCache } from './auth.js';
+import { hasAccess, normalizeRole, resetUsersCache } from './auth.js';
 import {
   renderError,
   renderUserDeletePage,
@@ -11,12 +11,12 @@ import {
 } from './templates/index.js';
 
 const USERS_FILE = path.resolve('data/users.yaml');
-const BASE_USERS = new Set(['admin', 'Of', 'Uof', 'AdZS']);
-const USER_ROLES = ['admin', 'Offizier', 'Unteroffizier', 'Soldat'];
+const BASE_USERS = new Set(['Admin', 'admin', 'Of', 'Uof', 'AdZS']);
+const USER_ROLES = ['Admin', 'Offizier', 'Unteroffizier', 'Soldat'];
 
 function requireAdmin(req, res) {
   const role = req.user?.role || 'public';
-  if (hasAccess(role, 'admin')) return true;
+  if (hasAccess(role, 'Admin')) return true;
   if (!req.user) {
     res.redirect('/login?next=' + encodeURIComponent(req.originalUrl));
     return false;
@@ -54,6 +54,7 @@ function validateCommon(input, { requirePassword }) {
   if (!validateUsername(input.username)) {
     throw new Error('Name muss 2-50 Zeichen lang sein und darf nur Buchstaben, Zahlen, Punkt, Unterstrich oder Bindestrich enthalten.');
   }
+  input.role = normalizeRole(input.role);
   if (!USER_ROLES.includes(input.role)) {
     throw new Error('Ungültige Rolle.');
   }
@@ -66,7 +67,7 @@ function toRows(users) {
   return Object.entries(users)
     .map(([username, user]) => ({
       username,
-      role: user.role || '',
+      role: user.role ? normalizeRole(user.role) : '',
       protected: BASE_USERS.has(username),
     }))
     .sort((a, b) => {
@@ -97,6 +98,7 @@ export async function createUser(req, res) {
   try {
     validateCommon(input, { requirePassword: true });
     const { users } = readUsersFile();
+    if (BASE_USERS.has(input.username)) throw new Error('Dieser Name ist als Basisaccount reserviert.');
     if (users[input.username]) throw new Error('Dieser Name existiert bereits.');
     users[input.username] = {
       role: input.role,
@@ -117,7 +119,7 @@ export async function createUser(req, res) {
 export function renderEditUser(req, res) {
   if (!requireAdmin(req, res)) return;
   const username = req.params.username;
-  if (BASE_USERS.has(username)) return res.status(403).send(renderError(req, 403, 'Basisaccounts können nicht bearbeitet werden.'));
+  const isBaseUser = BASE_USERS.has(username);
   const { users } = readUsersFile();
   const user = users[username];
   if (!user) return res.status(404).send(renderError(req, 404, 'User nicht gefunden'));
@@ -125,20 +127,37 @@ export function renderEditUser(req, res) {
     mode: 'edit',
     roles: USER_ROLES,
     originalUsername: username,
-    values: { username, role: user.role || 'Soldat' },
+    values: { username, role: user.role ? normalizeRole(user.role) : 'Soldat' },
+    baseUser: isBaseUser,
   }));
 }
 
 export async function updateUser(req, res) {
   if (!requireAdmin(req, res)) return;
   const originalUsername = req.params.username;
-  if (BASE_USERS.has(originalUsername)) return res.status(403).send(renderError(req, 403, 'Basisaccounts können nicht bearbeitet werden.'));
+  const isBaseUser = BASE_USERS.has(originalUsername);
   const input = normalizeInput(req.body);
   try {
-    validateCommon(input, { requirePassword: false });
     const { users } = readUsersFile();
     const existing = users[originalUsername];
     if (!existing) throw new Error('User nicht gefunden.');
+
+    if (isBaseUser) {
+      const fixedRole = existing.role ? normalizeRole(existing.role) : 'Soldat';
+      if (input.username && input.username !== originalUsername) throw new Error('Bei Basisaccounts kann der Name nicht geändert werden.');
+      if (input.role && normalizeRole(input.role) !== fixedRole) throw new Error('Bei Basisaccounts kann die Rolle nicht geändert werden.');
+      if (!input.password) throw new Error('Für Basisaccounts muss ein neues Passwort eingegeben werden.');
+      users[originalUsername] = {
+        ...existing,
+        role: fixedRole,
+        passwordHash: await bcrypt.hash(input.password, 10),
+      };
+      writeUsersFile(users);
+      return res.redirect(303, '/admin/users');
+    }
+
+    validateCommon(input, { requirePassword: false });
+    if (BASE_USERS.has(input.username)) throw new Error('Dieser Name ist als Basisaccount reserviert.');
     if (input.username !== originalUsername && users[input.username]) throw new Error('Dieser Name existiert bereits.');
     const next = {
       role: input.role,
@@ -149,11 +168,16 @@ export async function updateUser(req, res) {
     writeUsersFile(users);
     res.redirect(303, '/admin/users');
   } catch (error) {
+    const { users } = readUsersFile();
+    const existing = users[originalUsername];
     res.status(400).send(renderUserFormPage(req, {
       mode: 'edit',
       roles: USER_ROLES,
       originalUsername,
-      values: input,
+      values: isBaseUser && existing
+        ? { username: originalUsername, role: existing.role ? normalizeRole(existing.role) : 'Soldat' }
+        : input,
+      baseUser: isBaseUser,
       error: error.message,
     }));
   }

@@ -69,7 +69,7 @@ content_protected/quiz/quiz-leitungsbau.json
 **Rollen-Hierarchie** (jede Rolle schliesst die darunter ein):
 
 ```
-admin > Offizier > Unteroffizier > Soldat > public
+Admin > Offizier > Unteroffizier > Soldat > public
 ```
 
 ---
@@ -306,7 +306,7 @@ Eingabe-Typen : text, number, date, time, email, textarea, radio, select, checkb
 Anzeige-Typen : heading, paragraph, signature
 Modifier      : width (half|third|quarter), printOnly, required, correct (Quiz),
                 options, min, max, color (heading)
-Zugriff       : submitAccess, resultsAccess  →  admin > Offizier > Unteroffizier > Soldat
+Zugriff       : submitAccess, resultsAccess  →  Admin > Offizier > Unteroffizier > Soldat
 Merken        : Felder namens "name"/"mobile" werden pro Gerät vorausgefüllt
 Drucken       : Detailansicht einer Eingabe → Browser-Druck (Strg/Cmd+P)
 ```

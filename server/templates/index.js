@@ -413,7 +413,10 @@ export function renderSubmissionPage(req, def, submission) {
     .join('\n');
   const body = `<article class="content sub-detail">
     <nav class="crumbs no-print"><a href="/forms/${esc(def.id)}/results">Auswertung</a> / <span>${esc(heading)}</span></nav>
-    <h1>${esc(def.title || def.id)}</h1>
+    <div class="content-header">
+      <h1>${esc(def.title || def.id)}</h1>
+      <button type="button" class="secondary-button no-print" onclick="window.print()">Print</button>
+    </div>
     <p class="muted">Gesendet am: ${esc(submission._meta?.submittedAt || '')}<br>Gesendet von: ${esc(submission._meta?.submittedBy || '')}</p>
     <div class="sub-elements">${elements || '<em>Keine Felder</em>'}</div>
     <p class="no-print"><a href="/forms/${esc(def.id)}/results" class="back">← Zurück zur Auswertung</a></p>
@@ -427,7 +430,9 @@ export function renderUsersPage(req, users) {
     const name = esc(user.username);
     const role = esc(user.role);
     const actions = user.protected
-      ? '<span class="muted">Basisaccount, nicht änderbar</span>'
+      ? `<div class="row-actions">
+          <a class="secondary-button compact" href="/admin/users/${encodeURIComponent(user.username)}/edit">Passwort ändern</a>
+        </div>`
       : `<div class="row-actions">
           <a class="secondary-button compact" href="/admin/users/${encodeURIComponent(user.username)}/edit">Bearbeiten</a>
           <a class="danger-button compact" href="/admin/users/${encodeURIComponent(user.username)}/delete">Löschen</a>
@@ -454,32 +459,38 @@ export function renderUsersPage(req, users) {
   return layout(req, { title: 'User Übersicht', body });
 }
 
-export function renderUserFormPage(req, { mode, roles, values = {}, originalUsername = '', error = '' }) {
+export function renderUserFormPage(req, { mode, roles, values = {}, originalUsername = '', error = '', baseUser = false }) {
   const isEdit = mode === 'edit';
-  const title = isEdit ? 'User bearbeiten' : 'User erfassen';
+  const title = isEdit ? (baseUser ? 'Passwort ändern' : 'User bearbeiten') : 'User erfassen';
   const action = isEdit ? `/admin/users/${encodeURIComponent(originalUsername)}/edit` : '/admin/users';
   const roleOptions = roles.map((role) => {
     const selected = (values.role || 'Soldat') === role ? ' selected' : '';
     return `<option value="${esc(role)}"${selected}>${esc(role)}</option>`;
   }).join('');
+  const passwordRequired = !isEdit || baseUser;
+  const usernameAttrs = baseUser ? ' readonly' : '';
+  const roleField = baseUser
+    ? `<input id="role" value="${esc(values.role || '')}" disabled><input type="hidden" name="role" value="${esc(values.role || '')}">`
+    : `<select id="role" name="role" required>${roleOptions}</select>`;
   const body = `
   <article class="content narrow">
     <h1>${title}</h1>
+    ${baseUser ? '<p class="muted">Basisaccount: Name und Rolle sind fix. Es kann nur das Passwort geändert werden.</p>' : ''}
     ${error ? `<p class="err">${esc(error)}</p>` : ''}
     <form method="POST" action="${esc(action)}" class="genform">
       <div class="field">
         <label for="username">Name *</label>
-        <input id="username" name="username" autocomplete="username" required value="${esc(values.username || '')}">
+        <input id="username" name="username" autocomplete="username" required value="${esc(values.username || '')}"${usernameAttrs}>
       </div>
       <div class="field">
-        <label for="password">Passwort${isEdit ? ' (leer lassen = unverändert)' : ' *'}</label>
-        <input id="password" name="password" type="password" autocomplete="new-password"${isEdit ? '' : ' required'}>
+        <label for="password">${baseUser ? 'Neues Passwort *' : `Passwort${isEdit ? ' (leer lassen = unverändert)' : ' *'}`}</label>
+        <input id="password" name="password" type="password" autocomplete="new-password"${passwordRequired ? ' required' : ''}>
       </div>
       <div class="field">
         <label for="role">Rolle *</label>
-        <select id="role" name="role" required>${roleOptions}</select>
+        ${roleField}
       </div>
-      <button type="submit">${isEdit ? 'User speichern' : 'User erstellen'}</button>
+      <button type="submit">${baseUser ? 'Passwort speichern' : (isEdit ? 'User speichern' : 'User erstellen')}</button>
     </form>
     <p><a href="/admin/users" class="back">← Zurück zur User Übersicht</a></p>
   </article>`;

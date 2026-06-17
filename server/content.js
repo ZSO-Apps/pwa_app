@@ -110,8 +110,8 @@ export function listKachelDir(kachel, relPath, urlPrefix, role) {
       const def = readFormDef(e.abs);
       if (!def) continue;
       if (def.type === 'admin-page') {
-        const submitAccess = def.submitAccess || def.access || 'admin';
-        const resultsAccess = def.resultsAccess || def.access || 'admin';
+        const submitAccess = def.submitAccess || def.access || 'Admin';
+        const resultsAccess = def.resultsAccess || def.access || 'Admin';
         const onlineOnly = def.onlineOnly ?? true;
 
         if (def.submitUrl && hasAccess(role, submitAccess)) {
@@ -130,7 +130,7 @@ export function listKachelDir(kachel, relPath, urlPrefix, role) {
             onlineOnly,
           });
         }
-        if (!def.submitUrl && !def.resultsUrl && def.url && hasAccess(role, def.access || 'admin')) {
+        if (!def.submitUrl && !def.resultsUrl && def.url && hasAccess(role, def.access || 'Admin')) {
           items.push({
             kind: def.kind || 'url',
             label: def.label || def.title || def.id,

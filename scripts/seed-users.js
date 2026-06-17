@@ -6,7 +6,7 @@ import bcrypt from 'bcryptjs';
 
 const PASSWORD = 'ZSO1234';
 const USERS = [
-  { username: 'admin', role: 'admin' },
+  { username: 'Admin', role: 'Admin' },
   { username: 'Of',    role: 'Offizier' },
   { username: 'Uof',   role: 'Unteroffizier' },
   { username: 'AdZS',  role: 'Soldat' },

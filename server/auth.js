@@ -4,11 +4,16 @@ import path from 'node:path';
 import bcrypt from 'bcryptjs';
 import YAML from 'yaml';
 
-export const ROLE_RANK = { public: 0, Soldat: 1, Unteroffizier: 2, Offizier: 3, admin: 4 };
+export const ROLE_RANK = { public: 0, Soldat: 1, Unteroffizier: 2, Offizier: 3, Admin: 4 };
 export const ROLES = Object.keys(ROLE_RANK);
 
+export function normalizeRole(role) {
+  const value = String(role || 'public').trim();
+  return value === 'admin' ? 'Admin' : value;
+}
+
 export function hasAccess(userRole, requiredRole) {
-  return (ROLE_RANK[userRole] ?? 0) >= (ROLE_RANK[requiredRole] ?? 0);
+  return (ROLE_RANK[normalizeRole(userRole)] ?? 0) >= (ROLE_RANK[normalizeRole(requiredRole)] ?? 0);
 }
 
 const SECRET_FILE = path.resolve('data/.session-secret');
@@ -66,13 +71,13 @@ export async function checkLogin(username, password) {
   if (!u) return null;
   const ok = await bcrypt.compare(password, u.passwordHash);
   if (!ok) return null;
-  return { username, role: u.role };
+  return { username, role: normalizeRole(u.role) };
 }
 
 export function sessionMiddleware(req, res, next) {
   const c = req.cookies?.session;
   const session = c ? verify(c) : null;
-  req.user = session ? { username: session.u, role: session.r } : null;
+  req.user = session ? { username: session.u, role: normalizeRole(session.r) } : null;
   res.locals = res.locals || {};
   res.locals.user = req.user;
   next();
