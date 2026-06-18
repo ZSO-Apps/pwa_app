@@ -305,6 +305,214 @@ function initResultPrinting() {
   });
 }
 
+
+function initContentActions() {
+  document.querySelectorAll('[data-content-actions]').forEach((root) => {
+    const toggle = root.querySelector('[data-content-menu-toggle]');
+    const menu = root.querySelector('[data-content-menu]');
+    const dialog = root.querySelector('[data-content-import-dialog]');
+    const form = root.querySelector('[data-content-import-form]');
+    const title = root.querySelector('[data-content-import-title]');
+    const nameInput = root.querySelector('[data-content-import-name]');
+    const fileInput = root.querySelector('[data-content-import-file]');
+    const dropzone = root.querySelector('[data-content-dropzone]');
+    const fileName = root.querySelector('[data-content-import-file-name]');
+    const errorEl = root.querySelector('[data-content-import-error]');
+    const kachelId = root.getAttribute('data-kachel-id');
+    const dir = root.getAttribute('data-content-dir') || '';
+    let currentType = '';
+    let selectedFile = null;
+
+    const setMenu = (open) => {
+      if (!menu || !toggle) return;
+      menu.hidden = !open;
+      toggle.setAttribute('aria-expanded', String(open));
+    };
+    const setError = (message = '') => {
+      if (!errorEl) return;
+      errorEl.hidden = !message;
+      errorEl.textContent = message;
+    };
+    const setFile = (file) => {
+      selectedFile = file || null;
+      if (fileName) fileName.textContent = selectedFile ? selectedFile.name : 'Keine Datei ausgewählt.';
+      if (selectedFile && nameInput && !nameInput.value) nameInput.value = selectedFile.name.replace(/\.[^.]+$/, '');
+    };
+    const openDialog = (button) => {
+      currentType = button.getAttribute('data-content-import') || '';
+      if (title) title.textContent = button.getAttribute('data-import-title') || 'Importieren';
+      if (fileInput) fileInput.accept = button.getAttribute('data-import-accept') || '';
+      if (nameInput) nameInput.value = '';
+      setFile(null);
+      setError('');
+      setMenu(false);
+      if (dialog?.showModal) dialog.showModal();
+      else dialog?.setAttribute('open', '');
+    };
+
+    toggle?.addEventListener('click', (event) => {
+      event.stopPropagation();
+      setMenu(menu?.hidden !== false);
+    });
+    root.querySelectorAll('[data-content-import]').forEach((button) => button.addEventListener('click', () => openDialog(button)));
+    root.querySelectorAll('[data-content-import-close]').forEach((button) => {
+      button.addEventListener('click', () => dialog?.close ? dialog.close() : dialog?.removeAttribute('open'));
+    });
+    fileInput?.addEventListener('change', () => setFile(fileInput.files?.[0]));
+    dropzone?.addEventListener('click', () => fileInput?.click());
+    dropzone?.addEventListener('keydown', (event) => {
+      if (event.key === 'Enter' || event.key === ' ') {
+        event.preventDefault();
+        fileInput?.click();
+      }
+    });
+    ['dragenter', 'dragover'].forEach((name) => {
+      dropzone?.addEventListener(name, (event) => {
+        event.preventDefault();
+        dropzone.classList.add('is-dragging');
+      });
+    });
+    ['dragleave', 'drop'].forEach((name) => {
+      dropzone?.addEventListener(name, () => dropzone.classList.remove('is-dragging'));
+    });
+    dropzone?.addEventListener('drop', (event) => {
+      event.preventDefault();
+      setFile(event.dataTransfer?.files?.[0]);
+    });
+
+    form?.addEventListener('submit', async (event) => {
+      event.preventDefault();
+      setError('');
+      const name = nameInput?.value?.trim() || '';
+      if (!name) return setError('Bitte einen Dateinamen angeben.');
+      if (!selectedFile) return setError('Bitte eine Datei auswählen.');
+      const params = new URLSearchParams({ dir, type: currentType, name });
+      const submit = form.querySelector('button[type="submit"]');
+      const oldText = submit?.textContent;
+      if (submit) {
+        submit.disabled = true;
+        submit.textContent = 'Importiere…';
+      }
+      try {
+        const response = await fetch('/content-admin/' + encodeURIComponent(kachelId) + '/import?' + params.toString(), {
+          method: 'POST',
+          body: selectedFile,
+          headers: {
+            'Content-Type': selectedFile.type || 'application/octet-stream',
+            'X-Original-Filename': encodeURIComponent(selectedFile.name),
+          },
+          credentials: 'same-origin',
+        });
+        const data = await response.json().catch(() => ({}));
+        if (!response.ok || data.ok === false) throw new Error(data.error || 'Import fehlgeschlagen.');
+        window.location.href = data.url || window.location.href;
+      } catch (error) {
+        setError(error?.message || 'Import fehlgeschlagen.');
+      } finally {
+        if (submit) {
+          submit.disabled = false;
+          submit.textContent = oldText;
+        }
+      }
+    });
+  });
+
+  document.addEventListener('click', (event) => {
+    document.querySelectorAll('[data-content-actions]').forEach((root) => {
+      if (root.contains(event.target)) return;
+      const menu = root.querySelector('[data-content-menu]');
+      const toggle = root.querySelector('[data-content-menu-toggle]');
+      if (menu) menu.hidden = true;
+      toggle?.setAttribute('aria-expanded', 'false');
+    });
+  });
+}
+
+function initMarkdownEditor() {
+  const root = document.querySelector('[data-markdown-editor-page]');
+  if (!root) return;
+  const textarea = root.querySelector('[data-markdown-editor]');
+  const preview = root.querySelector('[data-markdown-preview]');
+  if (!textarea || !preview) return;
+
+  const htmlEscape = (value) => String(value || '').replace(/[&<>"']/g, (char) => ({
+    '&': '&amp;',
+    '<': '&lt;',
+    '>': '&gt;',
+    '"': '&quot;',
+    "'": '&#39;',
+  }[char]));
+  const inline = (value) => htmlEscape(value)
+    .replace(/\[([^\]]+)\]\(([^)]+)\)/g, '<a href="$2">$1</a>')
+    .replace(/\*\*([^*]+)\*\*/g, '<strong>$1</strong>')
+    .replace(/\*([^*]+)\*/g, '<em>$1</em>');
+  const renderPreview = () => {
+    const lines = textarea.value.split(/\r?\n/);
+    let html = '';
+    let inList = false;
+    const closeList = () => {
+      if (inList) {
+        html += '</ul>';
+        inList = false;
+      }
+    };
+    for (const line of lines) {
+      if (!line.trim()) {
+        closeList();
+        continue;
+      }
+      const list = line.match(/^\s*[-*]\s+(.+)$/);
+      if (list) {
+        if (!inList) {
+          html += '<ul>';
+          inList = true;
+        }
+        html += '<li>' + inline(list[1]) + '</li>';
+        continue;
+      }
+      closeList();
+      const heading = line.match(/^(#{1,3})\s+(.+)$/);
+      if (heading) {
+        const level = heading[1].length;
+        html += '<h' + level + '>' + inline(heading[2]) + '</h' + level + '>';
+      } else {
+        html += '<p>' + inline(line) + '</p>';
+      }
+    }
+    closeList();
+    preview.innerHTML = html || '<p class="muted">Vorschau</p>';
+  };
+  const selectedText = () => textarea.value.slice(textarea.selectionStart, textarea.selectionEnd);
+  const replaceSelection = (value) => {
+    const start = textarea.selectionStart;
+    const end = textarea.selectionEnd;
+    textarea.setRangeText(value, start, end, 'select');
+    textarea.focus();
+    renderPreview();
+  };
+  const wrapSelection = (before, after = before, fallback = 'Text') => {
+    const text = selectedText() || fallback;
+    replaceSelection(before + text + after);
+  };
+  root.querySelectorAll('[data-md-action]').forEach((button) => {
+    button.addEventListener('click', () => {
+      const action = button.getAttribute('data-md-action');
+      if (action === 'heading') wrapSelection('## ', '', 'Überschrift');
+      else if (action === 'bold') wrapSelection('**', '**');
+      else if (action === 'italic') wrapSelection('*', '*');
+      else if (action === 'link') wrapSelection('[', '](https://)', 'Linktext');
+      else if (action === 'list') {
+        const lines = (selectedText() || 'Listenpunkt').split(/\r?\n/);
+        replaceSelection(lines.map((line) => '- ' + line.replace(/^[-*]\s+/, '')).join('\n'));
+      }
+    });
+  });
+  textarea.addEventListener('input', renderPreview);
+  renderPreview();
+}
+
 initThemeSelector();
 initEnhancedForms();
+initContentActions();
+initMarkdownEditor();
 initResultPrinting();

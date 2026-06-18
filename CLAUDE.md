@@ -332,6 +332,10 @@ results view automatically filters to the active WK.
 - Content authors (often non-developers) interact mainly with the
   `content_*/` roots and documented logo folder — keep them human-editable
   and documented.
+- The public content editor is currently limited to Admin users and the
+  four public Kacheln `lage`, `telematik`, `ntp`, and `unterstuetzung`.
+  It writes new Markdown/PDF/image files only into `content_zso_specific/`
+  under the currently viewed Kachel folder; generic content remains untouched.
 - Avoid adding a build step for content if possible; markdown should be
   renderable directly by the running server.
 

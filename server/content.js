@@ -19,6 +19,7 @@ const ROOT_DIRS = {
 // Order: later entries override earlier ones on name collision (ZSO overrides
 // generic). Same list regardless of access level.
 const ROOTS = [ROOT_DIRS.generic, ROOT_DIRS.zso];
+const IMAGE_EXTENSIONS = new Set(['.png', '.jpg', '.jpeg', '.gif', '.webp']);
 
 export function safeResolve(absRoot, ...parts) {
   const p = path.resolve(absRoot, ...parts);
@@ -84,7 +85,8 @@ export function listKachelDir(kachel, relPath, urlPrefix, role) {
     .filter((e) => {
       if (e.isDir) return true;
       const ext = path.extname(e.name).toLowerCase();
-      return ext === '.md' || ext === '.pdf' || ext === '.url' || ext === '.json';
+      const isZsoSpecific = e.abs.startsWith(ROOT_DIRS.zso + path.sep);
+      return ext === '.md' || ext === '.pdf' || ext === '.url' || ext === '.json' || (IMAGE_EXTENSIONS.has(ext) && isZsoSpecific);
     })
     .sort((a, b) => a.name.localeCompare(b.name, 'de'));
 
@@ -158,10 +160,10 @@ export function listKachelDir(kachel, relPath, urlPrefix, role) {
         });
       }
     } else {
-      const kind = ext === '.pdf' ? 'pdf' : 'md';
+      const kind = ext === '.pdf' ? 'pdf' : IMAGE_EXTENSIONS.has(ext) ? 'image' : 'md';
       items.push({
         kind,
-        label: e.name.replace(/\.(md)$/i, '').replace(/_/g, ' '),
+        label: e.name.replace(/\.[^.]+$/i, '').replace(/_/g, ' '),
         url: urlPrefix.replace(/\/$/, '') + '/' + encodeURIComponent(e.name),
       });
     }

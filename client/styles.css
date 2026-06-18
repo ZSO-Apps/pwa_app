@@ -231,6 +231,89 @@ a { color: inherit; }
 .listing a:hover { background: var(--surface-hover); }
 .listing .ic { display: inline-block; width: 1.4em; }
 
+
+/* Content admin actions */
+.content-page-top {
+  display: flex; align-items: flex-start; justify-content: space-between; gap: 1rem;
+  margin-bottom: .6rem;
+}
+.content-actions { position: relative; flex: 0 0 auto; }
+.content-add-button {
+  display: inline-flex; align-items: center; justify-content: center;
+  width: 2.4rem; height: 2.4rem; border-radius: 50%;
+  border: 1px solid var(--border); background: var(--primary-bg); color: #fff;
+  cursor: pointer; box-shadow: var(--shadow);
+}
+.content-add-button:hover { background: var(--primary-hover); }
+.content-actions-menu {
+  position: absolute; right: 0; top: calc(100% + .35rem); z-index: 20;
+  min-width: 210px; padding: .35rem; border-radius: 8px;
+  background: var(--content-bg); border: 1px solid var(--border); box-shadow: var(--shadow);
+}
+.content-actions-menu a,
+.content-actions-menu button {
+  display: block; width: 100%; padding: .55rem .65rem; border: 0; border-radius: 6px;
+  background: transparent; color: var(--fg); text-align: left; text-decoration: none;
+  font: inherit; cursor: pointer;
+}
+.content-actions-menu a:hover,
+.content-actions-menu button:hover { background: var(--surface-hover); }
+.content-import-dialog {
+  width: min(520px, calc(100vw - 2rem)); padding: 0; border: 0; border-radius: 12px;
+  background: var(--content-bg); color: var(--fg); box-shadow: var(--shadow);
+}
+.content-import-dialog::backdrop { background: rgba(0, 32, 64, .45); }
+.content-import-card { display: flex; flex-direction: column; gap: .8rem; padding: 1rem; position: relative; }
+.content-import-card h2 { margin: 0; }
+.content-import-card label { display: flex; flex-direction: column; gap: .25rem; font-weight: 700; }
+.content-import-card input[type="text"],
+.content-import-card input:not([type]) {
+  font: inherit; padding: .55rem .65rem; border: 1px solid var(--border);
+  border-radius: 6px; background: var(--field-bg); color: var(--field-fg);
+}
+.dialog-close {
+  position: absolute; top: .55rem; right: .55rem;
+  width: 2rem; height: 2rem; border-radius: 50%; border: 1px solid var(--border);
+  background: var(--surface); color: var(--fg); cursor: pointer; font-size: 1.3rem;
+}
+.content-dropzone {
+  display: flex; flex-direction: column; align-items: center; justify-content: center; gap: .25rem;
+  min-height: 130px; padding: 1rem; border: 2px dashed var(--border); border-radius: 10px;
+  background: var(--surface); text-align: center; cursor: pointer;
+}
+.content-dropzone:hover,
+.content-dropzone.is-dragging { border-color: var(--primary-bg); background: var(--surface-hover); }
+.dialog-actions { display: flex; justify-content: flex-end; gap: .6rem; }
+.dialog-actions button[type="submit"] {
+  font: inherit; font-weight: 600; padding: .55rem .85rem;
+  background: var(--accent); color: var(--accent-contrast); border: 0; border-radius: 6px; cursor: pointer;
+}
+
+/* Markdown editor */
+.markdown-editor-form { max-width: none; }
+.markdown-toolbar { display: flex; flex-wrap: wrap; gap: .4rem; flex: 1 1 100%; }
+.markdown-toolbar button {
+  font: inherit; font-weight: 600; padding: .4rem .65rem; border: 1px solid var(--border);
+  border-radius: 6px; background: var(--surface-hover); color: var(--primary-bg); cursor: pointer;
+}
+.markdown-editor-grid {
+  flex: 1 1 100%; display: grid; grid-template-columns: minmax(0, 1fr) minmax(0, 1fr);
+  gap: .8rem; align-items: stretch;
+}
+.markdown-input-field { grid-column: 1; }
+.markdown-editor-grid textarea {
+  grid-column: 1; width: 100%; min-height: 420px; resize: vertical; font-family: ui-monospace, SFMono-Regular, Menlo, Consolas, monospace;
+}
+.markdown-preview {
+  grid-column: 2; grid-row: 1 / span 2; min-height: 420px; padding: .75rem;
+  border: 1px solid var(--border); border-radius: 6px; background: var(--surface);
+  overflow: auto;
+}
+@media (max-width: 780px) {
+  .markdown-editor-grid { grid-template-columns: 1fr; }
+  .markdown-preview { grid-column: 1; grid-row: auto; min-height: 220px; }
+}
+
 /* Prose (rendered markdown) */
 .prose { line-height: 1.55; }
 .prose img { max-width: 100%; height: auto; border-radius: 6px; }

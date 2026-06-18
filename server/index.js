@@ -5,6 +5,7 @@ import fs from 'node:fs';
 import { loadLayout, findKachel } from './layout.js';
 import { sessionMiddleware, checkLogin, setSessionCookie, clearSessionCookie, hasAccess } from './auth.js';
 import { listKachelDir, renderMarkdown, mimeOf, resolveKachelPath, kachelRoots, effectiveKachel } from './content.js';
+import { contentActionContext, importContentFile, renderNewMarkdownPage, saveMarkdownContent } from './content-admin.js';
 import { renderHome, renderListing, renderMarkdownPage, renderLogin, renderOffline, renderError } from './templates/index.js';
 import { archiveWks, renderArchivedWkSubmission, renderForm, renderResults, renderSubmission, renderWkArchive, submitForm, unarchiveWks } from './forms.js';
 import { buildServiceWorker } from './sw.js';
@@ -57,6 +58,10 @@ app.post('/login', async (req, res) => {
 });
 app.all('/logout', (_req, res) => { clearSessionCookie(res); res.redirect('/'); });
 
+app.get('/content-admin/:id/markdown/new', (req, res) => renderNewMarkdownPage(req, res, req.params.id));
+app.post('/content-admin/:id/markdown', (req, res) => saveMarkdownContent(req, res, req.params.id));
+app.post('/content-admin/:id/import', express.raw({ type: '*/*', limit: '30mb' }), (req, res) => importContentFile(req, res, req.params.id));
+
 app.post('/wk/select', (req, res) => {
   if (!req.user) return res.redirect('/login');
   const wantedId = String(req.body?.wkId || '');
@@ -93,17 +98,25 @@ app.get('/k/:id', (req, res) => {
   // rather than a 404 once a WK is active.
   if (!kachelRoots(k).length) {
     if (kachel.wkScoped) {
-      return res.send(renderListing(req, kachel, [], [{ label: kachel.title, url: `/k/${kachel.id}` }]));
+      return res.send(renderListing(req, kachel, [], [{ label: kachel.title, url: `/k/${kachel.id}` }], {
+        contentActions: contentActionContext(req, kachel, ''),
+      }));
     }
     return res.status(404).send(renderError(req, 404, 'Inhalt nicht gefunden'));
   }
 
   // index.md anywhere in the merged roots gets rendered as the Kachel landing.
   const idx = resolveKachelPath(k, 'index.md');
-  if (idx) return res.send(renderMarkdownPage(req, kachel, renderMarkdown(idx), '/'));
+  if (idx) {
+    return res.send(renderMarkdownPage(req, kachel, renderMarkdown(idx), '/', {
+      contentActions: contentActionContext(req, kachel, ''),
+    }));
+  }
 
   const entries = listKachelDir(k, '', `/k/${kachel.id}/`, role);
-  return res.send(renderListing(req, kachel, entries, [{ label: kachel.title, url: `/k/${kachel.id}` }]));
+  return res.send(renderListing(req, kachel, entries, [{ label: kachel.title, url: `/k/${kachel.id}` }], {
+    contentActions: contentActionContext(req, kachel, ''),
+  }));
 });
 
 app.get('/k/:id/*', (req, res) => {
@@ -125,18 +138,27 @@ app.get('/k/:id/*', (req, res) => {
   const stat = fs.statSync(abs);
   if (stat.isDirectory()) {
     const idx = resolveKachelPath(k, path.join(rel, 'index.md'));
-    if (idx) return res.send(renderMarkdownPage(req, kachel, renderMarkdown(idx), `/k/${kachel.id}/`));
+    if (idx) {
+      return res.send(renderMarkdownPage(req, kachel, renderMarkdown(idx), `/k/${kachel.id}/`, {
+        contentActions: contentActionContext(req, kachel, rel),
+      }));
+    }
     const urlPrefix = `/k/${kachel.id}/${rel.replace(/\/$/, '')}/`;
     const entries = listKachelDir(k, rel, urlPrefix, role);
     const parts = rel.split('/').filter(Boolean);
     const crumbs = [{ label: kachel.title, url: `/k/${kachel.id}` }];
     let acc = `/k/${kachel.id}`;
     for (const p of parts) { acc += '/' + encodeURIComponent(p); crumbs.push({ label: decodeURIComponent(p), url: acc }); }
-    return res.send(renderListing(req, kachel, entries, crumbs));
+    return res.send(renderListing(req, kachel, entries, crumbs, {
+      contentActions: contentActionContext(req, kachel, rel),
+    }));
   }
   if (abs.endsWith('.md')) {
-    const parentUrl = `/k/${kachel.id}/${rel.split('/').slice(0, -1).join('/')}`.replace(/\/$/, '') + '/';
-    return res.send(renderMarkdownPage(req, { ...kachel, title: path.basename(abs, '.md') }, renderMarkdown(abs), parentUrl));
+    const parentDir = rel.split('/').slice(0, -1).join('/');
+    const parentUrl = `/k/${kachel.id}/${parentDir}`.replace(/\/$/, '') + '/';
+    return res.send(renderMarkdownPage(req, { ...kachel, title: path.basename(abs, '.md') }, renderMarkdown(abs), parentUrl, {
+      contentActions: contentActionContext(req, kachel, parentDir),
+    }));
   }
   res.type(mimeOf(abs));
   res.sendFile(abs);
