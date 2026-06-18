@@ -24,10 +24,10 @@ organizations can deploy too. Goals, in priority order:
      not be able to create or submit forms.
 4. **Easy for other orgs to fork/contribute** — single language (JavaScript /
    Node ESM everywhere), readable code, file-based content and data (no
-   database server to install). ZSO-Brugg-specific overrides live in the
-   dedicated `content_zso_specific/` root so a fork can replace them without
-   touching the generic `content_generic/` content.
-5. The old project is in the folder old_app.
+   database server to install). ZSO-specific overrides live in
+   `content_zso_specific/`; public tenant branding assets live in
+   `content_zso_specific_public/`, so a fork can replace local material
+   without touching `content_generic/`.
 
 ## Tech Stack Decisions
 
@@ -50,14 +50,18 @@ organizations can deploy too. Goals, in priority order:
 /layout.yaml                       Kacheln: slug + access level per Kachel
 /content_generic/                  generic content shipped with the project
 /content_zso_specific/             org-specific overrides/additions
+/content_zso_specific_public/
+  logos/                            public tenant logos + fallback logo
 /data/
-  users.yaml                       user accounts (bcrypt + role), hand-edited
+  users.yaml                       user accounts (bcrypt + role), local runtime file
   forms/<form-id>/<wk-id>/         one JSON per submission, scoped to active WK
   forms/wk/_global/                WK records themselves (the wk form is scope=global)
 /server/                           Node/Express app
   - merges the 2 content roots when serving a Kachel slug
   - renders markdown -> HTML server-side
   - serves /service-worker.js with a precache manifest of public assets
+    including the logo files that currently exist
+  - serves /logos/* from content_zso_specific_public/logos
   - serves protected Kacheln behind session auth (role hierarchy)
   - serves /forms: GET schema, POST submission, GET results — all scoped to active WK
   - active-WK middleware: cookie wkId, auto-pick nearest to today
@@ -151,12 +155,11 @@ checks are simple rank comparisons (e.g. `userRole >= requiredRole`), with
 | `telematik`       | FU Telematik       | public     | `Telematik`       |                                                      |
 | `ntp`             | Notfall-Treffpunkt | public     | `NTP`             |                                                      |
 | `unterstuetzung`  | Unterstützung      | public     | `Unterstützung`   |                                                      |
-| `handkarten`      | Handkarten         | public     | `Handkarten`      |                                                      |
 | `wk-organisation` | WK Organisation    | Unteroffizier | `wk_organisation` | hosts `essensbestellung.json`, `beurteilung*.json` |
 | `wk-infos`        | WK Infos           | Soldat     | `wk_infos`        | `wkScoped` — shows the active WK's subfolder          |
 | `wk-infos-kader`  | WK Infos Kader     | Unteroffizier | `wk_infos_kader` | `wkScoped` — Kader-only per-WK content              |
 | `quiz`            | Quiz               | Soldat     | `quiz`            | hosts `quiz-leitungsbau.json` and future quizzes     |
-| `admin`           | Admin              | Offizier   | `admin`           | hosts the global-scope `wk.json` form (WK erfassen)  |
+| `admin`           | Admin              | Offizier   | `admin`           | hosts `wk.json` (Offizier+) and user management (Admin only) |
 
 ### Example `layout.yaml`
 
@@ -246,9 +249,33 @@ results view automatically filters to the active WK.
 
 ### Handkarten
 
-- Handkarten are normal Markdown/PDF content.
-- They are public and offline-capable like the other public content Kacheln.
+- Handkarten are expected to be normal Markdown/PDF content.
+- In the current repository snapshot they are **not** wired as a Kachel in
+  `layout.yaml`, and there is no `content_generic/Handkarten` folder.
+- If reintroduced, they should be a `public` Kachel with normal Markdown/PDF
+  content so they are offline-capable like the other public content Kacheln.
 - The app name remains "ZSO App".
+
+### Branding and logos
+
+- Tenant-specific public branding lives under
+  `content_zso_specific_public/logos/`.
+- The tracked fallback logo is `zivilschutz_logo.jpg`. It may be committed and
+  is used wherever no tenant-specific logo exists.
+- The local organization logos are intentionally ignored by Git:
+  `org_logo_wide.png`, `org_logo_wide_transparent.png`,
+  `org_logo_square.png`, `org_logo_square_transparent.png`.
+- Logo resolution is centralized in `server/branding.js`.
+  - Header order: wide transparent → wide → square transparent → square →
+    fallback.
+  - Print order: wide → square → fallback.
+  - Favicon order: square → fallback.
+- `/logos/*` serves these files publicly. `/favicon.ico` uses the branding
+  resolver. The service worker adds existing logo URLs to its cache/fingerprint
+  so the active branding survives offline after a successful online visit.
+- Print templates render the logo in the same header row as the title. CSS
+  positions it absolutely in print mode, with min/max dimensions, so it does
+  not push metadata or form content onto a second page.
 
 ### Forms
 
@@ -274,15 +301,20 @@ results view automatically filters to the active WK.
   instead of a WK id. Append-only; safe from file-locking; inspectable
   via plain file tools (rsync, etc.).
 - Results views automatically scope to the active WK (or to `_global`).
-- `users.yaml`: single file containing accounts + assigned role; small,
-  rarely changes — read into memory at startup, edited by hand.
+- `users.yaml`: single file containing accounts + assigned role; local
+  runtime file ignored by Git. It can be managed through the Admin UI or by
+  direct file edits when necessary.
 
 ## Deployment Story
 
-- Single Node/Bun process, runnable with `npm start` / `bun run start` or
-  packaged via `pkg`/`nexe`/Bun compile for a near-single-binary experience.
-- Optional Docker image (future):
-  `docker run -p 80:8080 -v ./content_zso_specific:/app/content_zso_specific -v ./data:/app/data <image>`
+- Single Node process, runnable with `npm start`; default port is `8080`
+  and can be overridden with `PORT=`.
+- `Dockerfile` and `docker-compose.yml` exist. The current compose file
+  builds the app, exposes `8080`, mounts `./data:/app/data`, and contains
+  Traefik labels using `APP_DOMAIN` from `.env` / `.env.example`.
+- Tenant content/logos are currently copied into the image at build time. If a
+  deployment should update them without rebuilding, add volumes for
+  `content_zso_specific/` and/or `content_zso_specific_public/logos/`.
 - Discoverable on LAN via mDNS (`*.local`) or a printed QR code with the
   LAN IP, so devices can connect to the local server without internet.
 
@@ -292,8 +324,9 @@ results view automatically filters to the active WK.
   "easy for other orgs to deploy/contribute."
 - Prefer plain file I/O over abstractions; the data model should be
   legible by opening files directly (JSON/YAML), no opaque binary formats.
-- Content authors (often non-developers) interact only with the four
-  `content_*/` roots — keep them human-editable and documented.
+- Content authors (often non-developers) interact mainly with the
+  `content_*/` roots and documented logo folder — keep them human-editable
+  and documented.
 - Avoid adding a build step for content if possible; markdown should be
   renderable directly by the running server.
 
@@ -321,9 +354,9 @@ These resolve the previously open questions and reflect the current code.
   protected pages can be shown from cache while offline, based on the last
   authenticated online access on that device.
 - **Form placement**: forms attach themselves to a Kachel by being placed
-  inside that Kachel's content folder (in any of the four content roots).
-  No `submitKachel` / `resultsKachel` field anymore; the JSON file's
-  location is the source of truth.
+  inside that Kachel's content folder in `content_generic/` or
+  `content_zso_specific/`. No `submitKachel` / `resultsKachel` field
+  anymore; the JSON file's location is the source of truth.
 - **Auth UI**: there is no Login/Logout Kachel. The top bar shows a
   login icon in the top-right when anonymous and a logout icon (POST
   form) when signed in. The hamburger top-left opens the side nav with
@@ -331,8 +364,12 @@ These resolve the previously open questions and reflect the current code.
 - **Accounts**: individual users and group accounts are both supported via
   `data/users.yaml`. The signed role remains valid until logout, even if
   `users.yaml` changes while the user is signed in.
-- **Admin UI**: user/form/layout management will be exposed through an admin
-  interface that only the `Admin` role can edit.
+- **Admin UI**: user management is implemented under the Admin Kachel.
+  `content_generic/admin/users.json` exposes the overview/create entries;
+  routes live in `server/user-admin.js`. Only `Admin` may create/edit/delete
+  custom users. Protected base accounts (`Admin`, `Of`, `Uof`, `AdZS`)
+  can have their password changed, but their name/role cannot be changed and
+  they cannot be deleted. Form/layout management is not implemented yet.
 - **Sync indicator**: timestamp `Offline-Inhalte aktualisiert: …` shown
   in small text under the top bar, written by the SW via `postMessage`
   on activate and persisted in `localStorage.lastSync`.
@@ -350,10 +387,12 @@ These resolve the previously open questions and reflect the current code.
 
 ## Still open
 
-- Admin UI for managing users/forms/layout (currently hand-edited files
-  only).
+- Admin UI for managing forms/layout. User management already exists for the
+  `Admin` role.
 - mDNS / QR-code discovery on the LAN (not yet implemented).
-- Docker image (documented in `README.md` as future work, not built).
+- Docker deployment refinements: current Docker support exists, but compose
+  only mounts `data/`. Decide per deployment whether tenant content/logos
+  should also be mounted as volumes.
 - ToDos: targets can be roles and/or individual users. ToDos need comment
   fields for addressing specific people inside roles. Completed ToDos remain
   visible, are struck through, and are sorted after open ToDos.

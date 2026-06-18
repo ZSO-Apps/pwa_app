@@ -10,6 +10,7 @@ import { renderForm, submitForm, renderResults, renderSubmission } from './forms
 import { buildServiceWorker } from './sw.js';
 import { wkMiddleware, setActiveWk, listWks } from './wk.js';
 import { createUser, deleteUser, renderDeleteUser, renderEditUser, renderNewUser, renderUsers, updateUser } from './user-admin.js';
+import { resolveLogo } from './branding.js';
 
 const PORT = process.env.PORT ? Number(process.env.PORT) : 8080;
 
@@ -23,7 +24,10 @@ app.use(sessionMiddleware);
 app.use(wkMiddleware);
 
 app.use('/client', express.static(path.resolve('client'), { maxAge: '1h' }));
+app.use('/logos', express.static(path.resolve('content_zso_specific_public/logos'), { maxAge: '1h' }));
 app.get('/favicon.ico', (_req, res) => {
+  const logo = resolveLogo('favicon');
+  if (logo) return res.sendFile(logo.path);
   const f = path.resolve('client/favicon.ico');
   if (fs.existsSync(f)) res.sendFile(f); else res.status(404).end();
 });

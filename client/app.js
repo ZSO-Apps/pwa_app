@@ -11,6 +11,53 @@ ham?.addEventListener('click', () => setNav(sidenav?.getAttribute('aria-hidden')
 overlay?.addEventListener('click', () => setNav(false));
 document.addEventListener('keydown', (e) => { if (e.key === 'Escape') setNav(false); });
 
+// Design theme
+const THEME_STORAGE_KEY = 'zso-theme';
+const themeQuery = window.matchMedia?.('(prefers-color-scheme: dark)');
+
+function validThemeChoice(value) {
+  return value === 'light' || value === 'dark' || value === 'system';
+}
+
+function storedThemeChoice() {
+  try {
+    const stored = localStorage.getItem(THEME_STORAGE_KEY);
+    return validThemeChoice(stored) ? stored : 'system';
+  } catch {
+    return 'system';
+  }
+}
+
+function resolveTheme(choice) {
+  if (choice === 'light' || choice === 'dark') return choice;
+  return themeQuery?.matches ? 'dark' : 'light';
+}
+
+function applyTheme(choice = storedThemeChoice()) {
+  const normalized = validThemeChoice(choice) ? choice : 'system';
+  const resolved = resolveTheme(normalized);
+  document.documentElement.dataset.theme = resolved;
+  document.documentElement.dataset.themeChoice = normalized;
+  document.querySelector('meta[name="theme-color"]')?.setAttribute('content', resolved === 'dark' ? '#003B6F' : '#005A9C');
+  document.querySelectorAll('[data-theme-select]').forEach((select) => {
+    select.value = normalized;
+  });
+}
+
+function initThemeSelector() {
+  applyTheme();
+  document.querySelectorAll('[data-theme-select]').forEach((select) => {
+    select.addEventListener('change', () => {
+      const choice = validThemeChoice(select.value) ? select.value : 'system';
+      try { localStorage.setItem(THEME_STORAGE_KEY, choice); } catch {}
+      applyTheme(choice);
+    });
+  });
+  themeQuery?.addEventListener?.('change', () => {
+    if (storedThemeChoice() === 'system') applyTheme('system');
+  });
+}
+
 // Sync timestamp
 function formatTs(ts) {
   try {
@@ -107,7 +154,29 @@ function fillDraftPrintTemplate(article, form) {
   if (generated) generated.textContent = 'Druckvorschau, noch nicht gespeichert';
 }
 
-function printArticleElements(articles) {
+function waitForImages(root) {
+  const images = Array.from(root.querySelectorAll('img'));
+  return Promise.all(images.map((img) => {
+    if (img.complete) return Promise.resolve();
+    return new Promise((resolve) => {
+      const timeout = window.setTimeout(resolve, 1500);
+      const done = () => {
+        window.clearTimeout(timeout);
+        resolve();
+      };
+      img.addEventListener('load', done, { once: true });
+      img.addEventListener('error', done, { once: true });
+    });
+  }));
+}
+
+function nextPaint() {
+  return new Promise((resolve) => {
+    window.requestAnimationFrame(() => window.requestAnimationFrame(resolve));
+  });
+}
+
+async function printArticleElements(articles) {
   if (!articles.length) return;
   const bundle = ensurePrintBundle();
   articles.forEach((article) => {
@@ -115,6 +184,8 @@ function printArticleElements(articles) {
     bundle.appendChild(article);
   });
   document.body.classList.add('print-detail-bundle');
+  await waitForImages(bundle);
+  await nextPaint();
   window.print();
   window.setTimeout(removePrintBundle, 500);
 }
@@ -231,5 +302,6 @@ function initResultPrinting() {
   });
 }
 
+initThemeSelector();
 initEnhancedForms();
 initResultPrinting();

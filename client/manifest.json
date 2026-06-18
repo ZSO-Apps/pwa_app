@@ -3,8 +3,8 @@
   "short_name": "ZSO",
   "lang": "de-CH",
   "start_url": "/",
-  "background_color": "#2C3E50",
-  "theme_color": "#18BC9C",
+  "background_color": "#005A9C",
+  "theme_color": "#005A9C",
   "display": "standalone",
   "icons": [
     {"src": "/client/icons/android-icon-48x48.png",   "sizes": "48x48",   "type": "image/png"},

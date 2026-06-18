@@ -37,3 +37,8 @@ Thumbs.db
 .cache/
 .npm/
 .parcel-cache/
+
+# Organisation-specific logos (local tenant branding)
+content_zso_specific_public/logos/org_logo_*.png
+!content_zso_specific_public/logos/README.md
+!content_zso_specific_public/logos/.gitkeep

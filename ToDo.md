@@ -3,9 +3,9 @@
 ## Prio 1
 
 - [X] Offline Funktion
-- [ ] Mandanten Fähigkeit (Logos)
-- [ ] Print -> WK Hinzufügen
-- [ ] Farbe/Design
+- [x] Mandanten Fähigkeit (Logos)
+- [x] Print -> WK Hinzufügen
+- [x] Farbe/Design
 - [ ] MD Editor
 - [ ] Hinzufügen von Dateien (zB MD, PDF, ...) in eine Kachel (statt den Editor öffnen, einfach file upload)
 - [ ] Quiz verbessern (Auswertung, was war richtig/falsch, Punkte)

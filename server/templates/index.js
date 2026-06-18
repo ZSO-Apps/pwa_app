@@ -2,6 +2,7 @@ import fs from 'node:fs';
 import path from 'node:path';
 import { marked } from 'marked';
 import { visibleKacheln, findKachelBySlug } from '../layout.js';
+import { resolveLogo } from '../branding.js';
 import { isDisplay, isStored } from '../form-elements.js';
 
 export function esc(s) {
@@ -28,6 +29,45 @@ function assetUrl(urlPath) {
   } catch {
     return urlPath;
   }
+}
+
+function logoAssetUrl(kind) {
+  const logo = resolveLogo(kind);
+  return logo ? assetUrl(logo.url) : '';
+}
+
+function renderBrandLogo() {
+  const logo = logoAssetUrl('header');
+  if (!logo) return 'ZSO App';
+  return `<img class="brand-logo" src="${esc(logo)}" alt="ZSO App">`;
+}
+
+function renderPrintLogo() {
+  const logo = logoAssetUrl('print');
+  if (!logo) return '';
+  return `<div class="print-logo-wrap"><img class="print-logo" src="${esc(logo)}" alt="ZSO App"></div>`;
+}
+
+function formatDateTime(value) {
+  if (!value) return '';
+  const date = new Date(value);
+  if (Number.isNaN(date.getTime())) return String(value);
+  return new Intl.DateTimeFormat('de-CH', {
+    day: '2-digit',
+    month: '2-digit',
+    year: 'numeric',
+    hour: '2-digit',
+    minute: '2-digit',
+    timeZone: 'Europe/Zurich',
+  }).format(date) + ' Uhr';
+}
+
+function submissionWkLabel(req, def, submission) {
+  if (def.scope === 'global') return '-';
+  const wkId = submission._meta?.wkId || req.activeWk?.id || '';
+  const wk = (req.wkList || []).find((item) => item.id === wkId)
+    || (req.activeWk?.id === wkId ? req.activeWk : null);
+  return wk?.label || wkId || '-';
 }
 
 function renderWkBanner(req) {
@@ -64,7 +104,18 @@ function layout(req, { title, body, extraHead = '' }) {
 <link rel="manifest" href="/client/manifest.json">
 <link rel="apple-touch-icon" href="/client/icons/apple-icon-152x152.png">
 <link rel="icon" href="/favicon.ico">
-<meta name="theme-color" content="#2C3E50">
+<meta name="theme-color" content="#005A9C">
+<script>
+(() => {
+  try {
+    const choice = localStorage.getItem('zso-theme') || 'system';
+    const systemDark = window.matchMedia && window.matchMedia('(prefers-color-scheme: dark)').matches;
+    const resolved = choice === 'dark' || (choice !== 'light' && systemDark) ? 'dark' : 'light';
+    document.documentElement.dataset.theme = resolved;
+    document.documentElement.dataset.themeChoice = choice;
+  } catch {}
+})();
+</script>
 ${extraHead}
 </head>
 <body>
@@ -72,7 +123,7 @@ ${extraHead}
   <button class="hamburger" id="hamburger" aria-label="Navigation öffnen" aria-expanded="false">
     <span></span><span></span><span></span>
   </button>
-  <a class="brand" href="/">ZSO App</a>
+  <a class="brand brand--logo" href="/" aria-label="ZSO App">${renderBrandLogo()}</a>
   <div class="userinfo">${user ? `<span class="role">${esc(user.role)}</span> ${esc(user.username)}` : ''}</div>
   ${user
     ? `<form method="POST" action="/logout" class="auth-form"><button type="submit" class="auth-btn" title="Logout (${esc(user.username)})" aria-label="Logout">${LOGOUT_ICON}</button></form>`
@@ -95,7 +146,17 @@ ${body}
 function renderSideNav(req) {
   const role = req.user?.role || 'public';
   const list = visibleKacheln(role);
-  return `<ul class="nav-root">${list.map((k) => `<li><a href="/k/${esc(k.id)}">${esc(k.title || k.id)}</a></li>`).join('')}</ul>`;
+  const items = list.map((k) => `<li><a href="/k/${esc(k.id)}">${esc(k.title || k.id)}</a></li>`).join('');
+  return `<ul class="nav-root">${items}
+    <li class="nav-theme">
+      <label for="theme-select">Design</label>
+      <select id="theme-select" data-theme-select>
+        <option value="light">Hell</option>
+        <option value="dark">Dunkel</option>
+        <option value="system" selected>System</option>
+      </select>
+    </li>
+  </ul>`;
 }
 
 function renderKachel(k) {
@@ -291,7 +352,10 @@ function renderFormPrintTemplate(def) {
     .join('\n');
   return `<template data-form-print-template>
     <article class="content sub-detail print-page">
-      <h1>${esc(def.title || def.id)}</h1>
+      <div class="content-header print-title-row">
+        <h1>${esc(def.title || def.id)}</h1>
+        ${renderPrintLogo()}
+      </div>
       <p class="muted" data-print-generated>Druckvorschau, noch nicht gespeichert</p>
       <div class="sub-elements">${elements || '<em>Keine Felder</em>'}</div>
     </article>
@@ -330,7 +394,7 @@ function submissionTitle(def, submission) {
     .find(Boolean);
   const fallback = preferred || fields.find(isStored);
   const value = fallback ? submission[fallback.name] : '';
-  return value || submission._meta?.submittedBy || submission._meta?.submittedAt || 'Eintrag';
+  return value || submission._meta?.submittedBy || formatDateTime(submission._meta?.submittedAt) || 'Eintrag';
 }
 
 function submissionUrl(def, submission) {
@@ -352,7 +416,7 @@ function renderResultsTable(def, submissions) {
     return `<tr data-print-row data-print-url="${esc(url)}">
       <td class="select-col"><input type="checkbox" data-print-select aria-label="${esc(title)} auswählen"></td>
       <td><a href="${esc(url)}">${esc(title)}</a></td>
-      <td>${esc(s._meta?.submittedAt || '')}</td>
+      <td>${esc(formatDateTime(s._meta?.submittedAt))}</td>
       <td>${esc(s._meta?.submittedBy || '')}</td>
       ${storedFields.map((f) => `<td>${esc(fmtCell(f, s[f.name]))}</td>`).join('')}
     </tr>`;
@@ -433,11 +497,12 @@ export function renderSubmissionPage(req, def, submission) {
   const body = `<article class="content sub-detail">
     <nav class="crumbs no-print"><a href="/forms/${esc(def.id)}/results">Auswertung</a> / <span>${esc(heading)}</span></nav>
     <p class="no-print"><a href="/forms/${esc(def.id)}/results" class="back">← Zurück zur Auswertung</a></p>
-    <div class="content-header">
+    <div class="content-header print-title-row">
       <h1>${esc(def.title || def.id)}</h1>
+      ${renderPrintLogo()}
       <button type="button" class="secondary-button no-print" onclick="window.print()">Print</button>
     </div>
-    <p class="muted">Gesendet am: ${esc(submission._meta?.submittedAt || '')}<br>Gesendet von: ${esc(submission._meta?.submittedBy || '')}</p>
+    <p class="muted">Gesendet am: ${esc(formatDateTime(submission._meta?.submittedAt) || '-')}<br>Gesendet von: ${esc(submission._meta?.submittedBy || '-')} · WK: ${esc(submissionWkLabel(req, def, submission))}</p>
     <div class="sub-elements">${elements || '<em>Keine Felder</em>'}</div>
     <p class="no-print"><a href="/forms/${esc(def.id)}/results" class="back">← Zurück zur Auswertung</a></p>
   </article>`;

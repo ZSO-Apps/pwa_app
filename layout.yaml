@@ -3,54 +3,54 @@ kacheln:
     title: "FU Lage"
     access: public
     content: Lage
-    color: "#e8772e"
+    color: "#f28c00"
 
   - id: telematik
     title: "FU Telematik"
     access: public
     content: Telematik
-    color: "#e8772e"
+    color: "#005a9c"
 
   - id: ntp
     title: "Notfall-Treffpunkt"
     access: public
     content: NTP
-    color: "#7ac74f"
+    color: "#f28c00"
 
   - id: unterstuetzung
     title: "Unterstützung"
     access: public
     content: Unterstützung
-    color: "#3aa0e0"
+    color: "#005a9c"
 
   - id: wk-organisation
     title: "WK Organisation"
     access: Unteroffizier
     content: wk_organisation
-    color: "#9b7bd4"
+    color: "#f28c00"
 
   - id: wk-infos
     title: "WK Infos"
     access: Soldat
     content: wk_infos
     wkScoped: true
-    color: "#6c8ebf"
+    color: "#005a9c"
 
   - id: wk-infos-kader
     title: "WK Infos Kader"
     access: Unteroffizier
     content: wk_infos_kader
     wkScoped: true
-    color: "#d79b00"
+    color: "#f28c00"
 
   - id: quiz
     title: "Quiz"
     access: Soldat
     content: quiz
-    color: "#4a90a4"
+    color: "#005a9c"
 
   - id: admin
     title: "Admin"
     access: Offizier
     content: admin
-    color: "#b8474e"
+    color: "#f28c00"

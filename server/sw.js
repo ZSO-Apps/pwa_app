@@ -2,6 +2,7 @@ import crypto from 'node:crypto';
 import fs from 'node:fs';
 import path from 'node:path';
 import { listKachelPublicAssets } from './content.js';
+import { existingLogoUrls, logoFileForUrl } from './branding.js';
 import { getLayout } from './layout.js';
 
 const STATIC_CLIENT_ASSETS = [
@@ -36,6 +37,31 @@ function publicKachelUrls() {
     .flatMap((kachel) => listKachelPublicAssets(kachel));
 }
 
+function logoAssetStamp(urlPath) {
+  try {
+    const filePath = logoFileForUrl(urlPath);
+    if (!filePath) return 'missing';
+    const stat = fs.statSync(filePath);
+    return `${Math.round(stat.mtimeMs)}-${stat.size}`;
+  } catch {
+    return 'missing';
+  }
+}
+
+function tenantLogoFingerprint() {
+  const h = crypto.createHash('sha1');
+  for (const urlPath of existingLogoUrls()) {
+    h.update(urlPath).update(logoAssetStamp(urlPath));
+    try {
+      const filePath = logoFileForUrl(urlPath);
+      if (filePath) h.update(fs.readFileSync(filePath));
+    } catch {
+      // Missing assets are omitted by existingLogoUrls.
+    }
+  }
+  return h.digest('hex');
+}
+
 function clientAssetsFingerprint() {
   const h = crypto.createHash('sha1');
   for (const urlPath of STATIC_CLIENT_ASSETS) {
@@ -50,10 +76,11 @@ function clientAssetsFingerprint() {
 }
 
 export function buildServiceWorker() {
-  const urls = [...new Set([...STATIC_PRECACHE, ...publicKachelUrls()])];
+  const urls = [...new Set([...STATIC_PRECACHE, ...existingLogoUrls(), ...publicKachelUrls()])];
   const hash = crypto.createHash('sha1')
     .update(urls.join('\n'))
     .update(clientAssetsFingerprint())
+    .update(tenantLogoFingerprint())
     .digest('hex').slice(0, 10);
   const cacheName = `zso-public-${hash}`;
   return `// Auto-generated. Cache version busts when public content or client assets change.
