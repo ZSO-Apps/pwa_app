@@ -6,7 +6,7 @@ import { loadLayout, findKachel } from './layout.js';
 import { sessionMiddleware, checkLogin, setSessionCookie, clearSessionCookie, hasAccess } from './auth.js';
 import { listKachelDir, renderMarkdown, mimeOf, resolveKachelPath, kachelRoots, effectiveKachel } from './content.js';
 import { renderHome, renderListing, renderMarkdownPage, renderLogin, renderOffline, renderError } from './templates/index.js';
-import { renderForm, submitForm, renderResults, renderSubmission } from './forms.js';
+import { archiveWks, renderArchivedWkSubmission, renderForm, renderResults, renderSubmission, renderWkArchive, submitForm, unarchiveWks } from './forms.js';
 import { buildServiceWorker } from './sw.js';
 import { wkMiddleware, setActiveWk, listWks } from './wk.js';
 import { createUser, deleteUser, renderDeleteUser, renderEditUser, renderNewUser, renderUsers, updateUser } from './user-admin.js';
@@ -149,6 +149,11 @@ app.get('/admin/users/:username/edit', (req, res) => renderEditUser(req, res));
 app.post('/admin/users/:username/edit', (req, res) => updateUser(req, res));
 app.get('/admin/users/:username/delete', (req, res) => renderDeleteUser(req, res));
 app.post('/admin/users/:username/delete', (req, res) => deleteUser(req, res));
+
+app.get('/forms/wk/archive', (req, res) => renderWkArchive(req, res));
+app.post('/forms/wk/archive', (req, res) => archiveWks(req, res));
+app.post('/forms/wk/unarchive', (req, res) => unarchiveWks(req, res));
+app.get('/forms/wk/archive/:submissionId', (req, res) => renderArchivedWkSubmission(req, res, req.params.submissionId));
 
 app.get('/forms/:id', (req, res) => renderForm(req, res, req.params.id));
 app.post('/forms/:id', (req, res) => submitForm(req, res, req.params.id));

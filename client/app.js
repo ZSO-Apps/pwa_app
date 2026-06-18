@@ -263,12 +263,14 @@ function initResultPrinting() {
     const checks = rows.map((row) => row.querySelector('[data-print-select]')).filter(Boolean);
     const selectAll = container.querySelector('[data-print-select-all]');
     const printButton = container.querySelector('[data-print-selected]');
+    const actionButtons = Array.from(container.querySelectorAll('[data-selected-action]'));
     const count = container.querySelector('[data-print-count]');
-    if (!checks.length || !printButton) return;
+    if (!checks.length || (!printButton && !actionButtons.length)) return;
 
     const update = () => {
       const selected = checks.filter((check) => check.checked);
-      printButton.disabled = selected.length === 0;
+      if (printButton) printButton.disabled = selected.length === 0;
+      actionButtons.forEach((button) => { button.disabled = selected.length === 0; });
       if (count) count.textContent = selected.length === 1 ? '1 ausgewählt' : selected.length + ' ausgewählt';
       if (selectAll) {
         selectAll.checked = selected.length === checks.length;
@@ -281,20 +283,21 @@ function initResultPrinting() {
       checks.forEach((check) => { check.checked = selectAll.checked; });
       update();
     });
-    printButton.addEventListener('click', async () => {
+    printButton?.addEventListener('click', async () => {
       const selectedRows = rows.filter((row) => row.querySelector('[data-print-select]')?.checked);
       const urls = selectedRows.map((row) => row.getAttribute('data-print-url')).filter(Boolean);
       if (!urls.length) return;
       cleanup();
-      const oldText = printButton.textContent;
+      const oldHtml = printButton.innerHTML;
       printButton.disabled = true;
-      printButton.textContent = 'Lade Detailansichten…';
+      printButton.setAttribute('aria-busy', 'true');
       try {
         await window.ZSOPrint.details(urls);
       } catch (error) {
         window.alert(error?.message || 'Detailansichten konnten nicht gedruckt werden.');
       } finally {
-        printButton.textContent = oldText;
+        printButton.innerHTML = oldHtml;
+        printButton.removeAttribute('aria-busy');
         update();
       }
     });

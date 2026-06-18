@@ -1,0 +1,97 @@
+import { visibleKacheln } from '../layout.js';
+import { assetUrl, esc, LOGIN_ICON, LOGOUT_ICON, logoAssetUrl } from './shared.js';
+
+function renderBrandLogo() {
+  const logo = logoAssetUrl('header');
+  if (!logo) return 'ZSO App';
+  return `<img class="brand-logo" src="${esc(logo)}" alt="ZSO App">`;
+}
+
+function renderWkBanner(req) {
+  if (!req.user) return '';
+  const wks = req.wkList || [];
+  if (!wks.length) {
+    return `<div class="wk-banner wk-banner--empty">
+      <span>Kein WK angelegt.</span>
+      <a href="/k/admin">Admin → WK erfassen</a>
+    </div>`;
+  }
+  const active = req.activeWk;
+  const options = wks.map((w) => {
+    const label = [w.nummer, w.name].filter(Boolean).join(' ') + (w.range ? ` (${w.range})` : '');
+    const sel = active && w.id === active.id ? ' selected' : '';
+    return `<option value="${esc(w.id)}"${sel}>${esc(label)}</option>`;
+  }).join('');
+  return `<form method="POST" action="/wk/select" class="wk-banner">
+    <label for="wk-select">Aktiver WK:</label>
+    <select id="wk-select" name="wkId" onchange="this.form.submit()">${options}</select>
+    <noscript><button type="submit">Wählen</button></noscript>
+  </form>`;
+}
+
+export function layout(req, { title, body, extraHead = '' }) {
+  const user = req.user;
+  return `<!doctype html>
+<html lang="de">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
+<title>${esc(title || 'ZSO App')}</title>
+<link rel="stylesheet" href="${assetUrl('/client/styles.css')}">
+<link rel="manifest" href="/client/manifest.json">
+<link rel="apple-touch-icon" href="/client/icons/apple-icon-152x152.png">
+<link rel="icon" href="/favicon.ico">
+<meta name="theme-color" content="#005A9C">
+<script>
+(() => {
+  try {
+    const choice = localStorage.getItem('zso-theme') || 'system';
+    const systemDark = window.matchMedia && window.matchMedia('(prefers-color-scheme: dark)').matches;
+    const resolved = choice === 'dark' || (choice !== 'light' && systemDark) ? 'dark' : 'light';
+    document.documentElement.dataset.theme = resolved;
+    document.documentElement.dataset.themeChoice = choice;
+  } catch {}
+})();
+</script>
+${extraHead}
+</head>
+<body>
+<header class="topbar">
+  <button class="hamburger" id="hamburger" aria-label="Navigation öffnen" aria-expanded="false">
+    <span></span><span></span><span></span>
+  </button>
+  <a class="brand brand--logo" href="/" aria-label="ZSO App">${renderBrandLogo()}</a>
+  <div class="userinfo">${user ? `<span class="role">${esc(user.role)}</span> ${esc(user.username)}` : ''}</div>
+  ${user
+    ? `<form method="POST" action="/logout" class="auth-form"><button type="submit" class="auth-btn" title="Logout (${esc(user.username)})" aria-label="Logout">${LOGOUT_ICON}</button></form>`
+    : `<a href="/login" class="auth-btn" title="Login" aria-label="Login">${LOGIN_ICON}</a>`}
+</header>
+${renderWkBanner(req)}
+<div class="sync-info" id="sync-info"></div>
+<nav id="sidenav" class="sidenav" aria-hidden="true">
+  ${renderSideNav(req)}
+</nav>
+<div class="overlay" id="overlay"></div>
+<main class="main">
+${body}
+</main>
+<script src="${assetUrl('/client/app.js')}" defer></script>
+</body>
+</html>`;
+}
+
+function renderSideNav(req) {
+  const role = req.user?.role || 'public';
+  const list = visibleKacheln(role);
+  const items = list.map((k) => `<li><a href="/k/${esc(k.id)}">${esc(k.title || k.id)}</a></li>`).join('');
+  return `<ul class="nav-root">${items}
+    <li class="nav-theme">
+      <label for="theme-select">Design</label>
+      <select id="theme-select" data-theme-select>
+        <option value="light">Hell</option>
+        <option value="dark">Dunkel</option>
+        <option value="system" selected>System</option>
+      </select>
+    </li>
+  </ul>`;
+}

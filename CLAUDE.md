@@ -213,6 +213,11 @@ results view automatically filters to the active WK.
 - WKs are themselves form submissions of the `wk` form
   (`content_generic/admin/wk.json`, `"scope": "global"`) and live at
   `data/forms/wk/_global/<id>.json`.
+- WK archiving is tag-based, not folder-based: archived WK files stay
+  in `data/forms/wk/_global/<id>.json` and receive
+  `_meta.tags: ["archiviert"]` plus archive metadata. Active WK lists filter
+  that tag out, `/forms/wk/archive` shows tagged WKs, and unarchiving removes
+  the tag/metadata. Do not move WK files into an archive folder.
 - Creating a WK auto-creates its per-WK content folders
   `content_zso_specific/wk_infos/<wk-id>/` and
   `content_zso_specific/wk_infos_kader/<wk-id>/` (see "Per-WK content
@@ -337,8 +342,9 @@ These resolve the previously open questions and reflect the current code.
 - **Server**: Node + Express (not Fastify, not Bun). Single ESM process,
   port `8080` (override with `PORT=`).
 - **Frontend**: zero build step. Server renders HTML via small string
-  templates in `server/templates/index.js`; client is vanilla JS
-  (`client/app.js`) + hand-written CSS (`client/styles.css`).
+  templates in `server/templates/` (`index.js` only re-exports the split
+  template modules); client is vanilla JS (`client/app.js`) + hand-written
+  CSS (`client/styles.css`).
 - **Auth**: stateless signed-cookie sessions, HMAC-SHA256 over
   `{username, role}` with a 32-byte secret from `SESSION_SECRET` or
   auto-generated and persisted to `data/.session-secret`. Passwords

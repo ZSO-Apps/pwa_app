@@ -9,6 +9,11 @@ function parseDate(value) {
   return Number.isFinite(t) ? t : null;
 }
 
+function isArchivedWk(submission) {
+  const tags = Array.isArray(submission?._meta?.tags) ? submission._meta.tags.map(String) : [];
+  return tags.includes('archiviert');
+}
+
 function summarize(submission, id) {
   const start = submission.start || '';
   const ende = submission.ende || '';
@@ -36,6 +41,7 @@ export function listWks() {
     .map((f) => {
       try {
         const parsed = JSON.parse(fs.readFileSync(path.join(WK_DIR, f), 'utf8'));
+        if (isArchivedWk(parsed)) return null;
         return summarize(parsed, path.basename(f, '.json'));
       } catch (e) {
         console.error(`wk: failed to parse ${f}:`, e.message);
@@ -75,6 +81,7 @@ export function getWk(id) {
   if (!fs.existsSync(file)) return null;
   try {
     const parsed = JSON.parse(fs.readFileSync(file, 'utf8'));
+    if (isArchivedWk(parsed)) return null;
     return summarize(parsed, id);
   } catch {
     return null;
