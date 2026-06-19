@@ -9,7 +9,7 @@
 - [x] MD Editor
 - [x] Hinzufügen von Dateien (zB MD, PDF, ...) in eine Kachel (statt den Editor öffnen, einfach file upload)
 - [x] Quiz verbessern (Auswertung, was war richtig/falsch, Punkte)
-- [x] WK-Archivieren
+- [x] WK-Archivieren 
 - [ ] Bugfixes
 
 ## Prio 2
