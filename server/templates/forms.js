@@ -19,6 +19,71 @@ function formBackUrl(def) {
   return k ? `/k/${k.id}` : '/';
 }
 
+
+function renderFieldImage(f) {
+  if (!f?.image) return '';
+  return '<img class="form-field-image" src="' + esc(f.image) + '" alt="">';
+}
+
+function answerArray(value) {
+  if (Array.isArray(value)) return value.map(String).filter(Boolean);
+  if (value === undefined || value === null || value === '') return [];
+  return [String(value)];
+}
+
+function correctArray(field) {
+  return answerArray(field?.correct);
+}
+
+function sameAnswerSet(a, b) {
+  const left = answerArray(a).map((value) => value.toLocaleLowerCase('de-CH')).sort();
+  const right = answerArray(b).map((value) => value.toLocaleLowerCase('de-CH')).sort();
+  if (left.length !== right.length) return false;
+  return left.every((value, index) => value === right[index]);
+}
+
+function fieldIsCorrect(field, submission) {
+  if (field?.correct === undefined) return null;
+  return sameAnswerSet(submission[field.name], field.correct);
+}
+
+function scoreableFields(def) {
+  return (def.fields || []).filter((field) => isStored(field) && field.correct !== undefined);
+}
+
+function isQuizDef(def) {
+  return Boolean(def?.quiz || scoreableFields(def).length);
+}
+
+const QUIZ_NAME_FIELD = { name: 'name', type: 'text', label: 'Name', required: true, width: 'half' };
+
+function quizNeedsVirtualNameField(def) {
+  return isQuizDef(def) && !(def.fields || []).some((field) => field?.name === 'name');
+}
+
+function fieldsForForm(def) {
+  const fields = def.fields || [];
+  return quizNeedsVirtualNameField(def) ? [QUIZ_NAME_FIELD, ...fields] : fields;
+}
+
+function quizSubmissionTitle(submission) {
+  return submission?.name || ('Quiz vom ' + (formatDateTime(submission?._meta?.submittedAt) || 'Eintrag'));
+}
+
+function quizScore(def, submission) {
+  const fields = scoreableFields(def);
+  let correct = 0;
+  for (const field of fields) {
+    if (fieldIsCorrect(field, submission)) correct++;
+  }
+  return { correct, wrong: fields.length - correct, total: fields.length };
+}
+
+function formatAnswerValue(value) {
+  const values = answerArray(value);
+  return values.length ? values.join(', ') : '-';
+}
+
 function renderDupNameWarning(def) {
   const dups = def?._dupNames || [];
   if (!dups.length) return '';
@@ -56,6 +121,15 @@ function renderField(f, value = '') {
   const common = `name="${esc(f.name)}" id="f-${esc(f.name)}"${f.required ? ' required' : ''}`;
   if (f.type === 'checkbox') {
     return `<label class="checkbox"><input type="checkbox" ${common}${current ? ' checked' : ''}> ${esc(f.label || f.name)}</label>`;
+  }
+  if (f.type === 'checkboxes') {
+    const selected = answerArray(current);
+    const required = f.required ? ' data-required="true"' : '';
+    return '<div class="checkbox-group" data-checkbox-group="' + esc(f.name) + '"' + required + '>' + (f.options || []).map((o) => {
+      const option = String(o);
+      const checked = selected.includes(option) ? ' checked' : '';
+      return '<label class="checkbox"><input type="checkbox" name="' + esc(f.name) + '" value="' + esc(option) + '"' + checked + '> ' + esc(option) + '</label>';
+    }).join('') + '</div>';
   }
   if (f.type === 'textarea') return `<textarea ${common} rows="4">${esc(currentString)}</textarea>`;
   if (f.type === 'radio') {
@@ -112,6 +186,7 @@ function renderFormElement(f, values) {
   const compact = f.compact ? ' field--compact' : '';
   return `<div class="field${compact}">
     <label for="f-${esc(f.name)}">${esc(f.label || f.name)}${f.required ? ' *' : ''}</label>
+    ${renderFieldImage(f)}
     ${renderField(f, values[f.name])}
   </div>`;
 }
@@ -119,27 +194,30 @@ function renderFormElement(f, values) {
 function renderDraftDetailElement(f) {
   if (isDisplay(f)) return renderDisplayElement(f);
   const label = esc(f.label || f.name || '');
+  const image = renderFieldImage(f);
   if (f.type === 'checkbox') {
     if (f.printOnly) {
-      return `<div class="sub-check"><span class="box">☐</span> <span>${label}</span></div>`;
+      return `<div class="sub-check">${image}<span class="box">☐</span> <span>${label}</span></div>`;
     }
-    return `<div class="sub-check" data-print-check="${esc(f.name)}"><span class="box">☐</span> <span>${label}</span></div>`;
+    return `<div class="sub-check" data-print-check="${esc(f.name)}">${image}<span class="box">☐</span> <span>${label}</span></div>`;
   }
   if (f.printOnly) {
     const big = f.type === 'textarea';
     return `<div class="sub-field${big ? ' sub-field--block' : ''}">
+      ${image}
       <div class="sub-label">${label}</div>
       <div class="sub-write${big ? ' sub-write--block' : ''}"></div>
     </div>`;
   }
   return `<div class="sub-field">
+    ${image}
     <div class="sub-label">${label}</div>
     <div class="sub-value" data-print-value="${esc(f.name)}"></div>
   </div>`;
 }
 
 function renderFormPrintTemplate(def) {
-  const elements = (def.fields || [])
+  const elements = fieldsForForm(def)
     .map((f) => `<div class="sub-el${widthClass(f)}">${renderDraftDetailElement(f)}</div>`)
     .join('\n');
   return `<template data-form-print-template>
@@ -155,7 +233,7 @@ function renderFormPrintTemplate(def) {
 }
 
 export function renderFormPage(req, def, { submitted = false, values = {}, detailUrl = '' } = {}) {
-  const elements = (def.fields || []).filter((f) => !f.printOnly);
+  const elements = fieldsForForm(def).filter((f) => !f.printOnly);
   const submitLabel = submitted ? 'Neue Eingabe mit diesen Daten speichern' : 'Senden';
   const detailAttr = detailUrl ? ` data-detail-url="${esc(detailUrl)}"` : '';
   const body = `
@@ -203,6 +281,7 @@ function submissionUrl(def, submission, { archiveMode = false } = {}) {
 
 function fmtCell(field, value) {
   if (field.type === 'checkbox') return value ? '☑' : '☐';
+  if (Array.isArray(value)) return value.join(', ');
   return value ?? '';
 }
 
@@ -212,6 +291,25 @@ function wkNameFor(submission) {
 
 function resultColumnsFor(def, { archiveMode = false } = {}) {
   const storedFields = (def.fields || []).filter(isStored);
+  if (isQuizDef(def)) {
+    return {
+      storedFields,
+      headers: ['Name', 'Richtig', 'Falsch', 'Punkte', 'Erstellungsdatum', 'Benutzer'],
+      cells(definition, submission) {
+        const score = quizScore(definition, submission);
+        const url = submissionUrl(definition, submission, { archiveMode });
+        const title = quizSubmissionTitle(submission);
+        return [
+          `<td><a href="${esc(url)}">${esc(title)}</a></td>`,
+          `<td>${esc(score.correct)}</td>`,
+          `<td>${esc(score.wrong)}</td>`,
+          `<td>${esc(score.correct + '/' + score.total)}</td>`,
+          `<td>${esc(formatDateTime(submission._meta?.submittedAt))}</td>`,
+          `<td>${esc(submission._meta?.submittedBy || '')}</td>`,
+        ];
+      },
+    };
+  }
   if (def.id !== 'wk') {
     const titleField = submissionTitleField(def);
     const visibleFields = titleField
@@ -265,21 +363,6 @@ function renderResultsTable(def, submissions, { archiveMode = false, canArchive 
     </tr>`;
   }).join('');
 
-  let quizSummary = '';
-  if (columns.storedFields.some((f) => f.correct !== undefined)) {
-    const totals = submissions.map((s) => {
-      let correct = 0, total = 0;
-      for (const f of columns.storedFields) {
-        if (f.correct === undefined) continue;
-        total++;
-        if (s[f.name] === f.correct) correct++;
-      }
-      return { correct, total, name: s._meta?.submittedBy || '?' };
-    });
-    quizSummary = `<h2>Quiz-Zusammenfassung</h2>
-      <ul class="quiz-summary">${totals.map((t) => `<li>${esc(t.name)}: ${t.correct}/${t.total}</li>`).join('')}</ul>`;
-  }
-
   const printButton = `<button type="button" class="secondary-button icon-button" data-print-selected data-selected-action disabled title="Ausgewählte drucken" aria-label="Ausgewählte drucken">${PRINT_ICON}</button>`;
   const archiveButton = hasArchiveAction
     ? '<button type="submit" class="secondary-button" data-selected-action data-online-only disabled>Archivieren</button>'
@@ -294,20 +377,21 @@ function renderResultsTable(def, submissions, { archiveMode = false, canArchive 
       ? '<form method="POST" action="/forms/wk/unarchive">'
       : '';
   const formEnd = hasFormAction ? '</form>' : '';
+  const sortableHeaders = columns.headers.map((h, index) => '<th aria-sort="none"><button type="button" class="table-sort-button" data-sort-col="' + index + '">' + esc(h) + '<span class="sort-indicator" aria-hidden="true"></span></button></th>').join('');
 
   return `
     <p>${submissions.length} Eingabe(n)</p>
-    ${quizSummary}
     ${submissions.length ? `
     ${formStart}
+    <label class="results-filter no-print">Filter<input type="search" data-results-filter placeholder="Tabelle filtern"></label>
     <div class="result-print-actions no-print">
       ${printButton}
       ${archiveButton}
       ${unarchiveButton}
       <span class="muted" data-print-count>0 ausgewählt</span>
     </div>
-    <div class="tablewrap"><table class="results">
-      <thead><tr><th class="select-col"><input type="checkbox" data-print-select-all aria-label="Alle auswählen"></th>${columns.headers.map((h) => `<th>${esc(h)}</th>`).join('')}</tr></thead>
+    <div class="tablewrap"><table class="results" data-results-table>
+      <thead><tr><th class="select-col"><input type="checkbox" data-print-select-all aria-label="Alle auswählen"></th>${sortableHeaders}</tr></thead>
       <tbody>${rows}</tbody>
     </table></div>
     ${formEnd}` : '<p><em>Noch keine Eingaben.</em></p>'}`;
@@ -343,34 +427,48 @@ export function renderResultsPage(req, def, submissions, { wkLabel, canCreate = 
   return layout(req, { title: archiveMode ? 'Archiv' : 'Auswertung', body });
 }
 
-function renderSubmissionElement(_def, submission, f) {
+function renderSubmissionElement(def, submission, f) {
   if (isDisplay(f)) return renderDisplayElement(f);
   const label = esc(f.label || f.name || '');
+  const image = renderFieldImage(f);
   if (f.type === 'checkbox') {
     const checked = !f.printOnly && submission[f.name];
-    return `<div class="sub-check"><span class="box">${checked ? '☑' : '☐'}</span> <span>${label}</span></div>`;
+    return '<div class="sub-check">' + image + '<span class="box">' + (checked ? '☑' : '☐') + '</span> <span>' + label + '</span></div>';
   }
   const compact = f.compact ? ' sub-field--compact' : '';
   if (f.printOnly) {
     const big = f.type === 'textarea';
-    return `<div class="sub-field${big ? ' sub-field--block' : ''}${big ? '' : compact}">
-      <div class="sub-label">${label}</div>
-      <div class="sub-write${big ? ' sub-write--block' : ''}"></div>
-    </div>`;
+    return '<div class="sub-field' + (big ? ' sub-field--block' : '') + (big ? '' : compact) + '">' +
+      image +
+      '<div class="sub-label">' + label + '</div>' +
+      '<div class="sub-write' + (big ? ' sub-write--block' : '') + '"></div>' +
+    '</div>';
   }
-  return `<div class="sub-field${compact}">
-    <div class="sub-label">${label}</div>
-    <div class="sub-value">${esc(submission[f.name] ?? '')}</div>
-  </div>`;
+  if (isQuizDef(def) && f.correct !== undefined) {
+    const correct = fieldIsCorrect(f, submission);
+    return '<div class="sub-field quiz-result ' + (correct ? 'is-correct' : 'is-wrong') + '">' +
+      image +
+      '<div class="sub-label">' + label + '</div>' +
+      '<div class="sub-value">Antwort: ' + esc(formatAnswerValue(submission[f.name])) + '</div>' +
+      '<div class="quiz-correct-answer">Korrekt: ' + esc(formatAnswerValue(f.correct)) + '</div>' +
+    '</div>';
+  }
+  return '<div class="sub-field' + compact + '">' +
+    image +
+    '<div class="sub-label">' + label + '</div>' +
+    '<div class="sub-value">' + esc(formatAnswerValue(submission[f.name])) + '</div>' +
+  '</div>';
 }
 
 export function renderSubmissionPage(req, def, submission, { archiveMode = false } = {}) {
-  const heading = submissionTitle(def, submission);
+  const heading = isQuizDef(def) ? quizSubmissionTitle(submission) : submissionTitle(def, submission);
   const resultsUrl = archiveMode && def.id === 'wk' ? '/forms/wk/archive' : `/forms/${esc(def.id)}/results`;
   const resultsLabel = archiveMode && def.id === 'wk' ? 'Archiv' : 'Auswertung';
-  const elements = (def.fields || [])
+  const elements = fieldsForForm(def)
     .map((f) => `<div class="sub-el${widthClass(f)}">${renderSubmissionElement(def, submission, f)}</div>`)
     .join('\n');
+  const score = isQuizDef(def) ? quizScore(def, submission) : null;
+  const scoreHtml = score && score.total ? `<p class="quiz-score">Punkte: ${esc(score.correct + '/' + score.total)} · Richtig: ${esc(score.correct)} · Falsch: ${esc(score.wrong)}</p>` : '';
   const body = `<article class="content sub-detail">
     <nav class="crumbs no-print"><a href="${resultsUrl}">${resultsLabel}</a> / <span>${esc(heading)}</span></nav>
     <p class="no-print"><a href="${resultsUrl}" class="back">← Zurück</a></p>
@@ -380,6 +478,7 @@ export function renderSubmissionPage(req, def, submission, { archiveMode = false
       <button type="button" class="secondary-button no-print" onclick="window.print()">Print</button>
     </div>
     <p class="muted">Gesendet am: ${esc(formatDateTime(submission._meta?.submittedAt) || '-')}<br>Gesendet von: ${esc(submission._meta?.submittedBy || '-')} · WK: ${esc(submissionWkLabel(req, def, submission))}</p>
+    ${scoreHtml}
     <div class="sub-elements">${elements || '<em>Keine Felder</em>'}</div>
     <p class="no-print"><a href="${resultsUrl}" class="back">← Zurück</a></p>
   </article>`;

@@ -78,7 +78,7 @@ function targetDirFor(kachel, relDir) {
 
 function safeFileBase(value) {
   let base = String(value || '').trim();
-  base = base.replace(/\.(md|markdown|txt|pdf|png|jpe?g|gif|webp)$/i, '');
+  base = base.replace(/\.(md|markdown|txt|pdf|png|jpe?g|gif|webp|url)$/i, '');
   base = base
     .normalize('NFC')
     .replace(/[\\/:*?"<>|#%{}^~[\]]/g, '_')
@@ -94,6 +94,23 @@ function uniqueTargetFile(targetDir, fileBase, ext) {
   const filePath = safeResolve(targetDir, fileName);
   if (fs.existsSync(filePath)) throw new Error('Eine Datei mit diesem Namen existiert bereits.');
   return filePath;
+}
+
+
+function normalizeWebsiteUrl(value) {
+  const raw = String(value || '').trim();
+  if (!raw) throw new Error('Bitte einen Link angeben.');
+  const candidate = /^[a-z][a-z0-9+.-]*:\/\//i.test(raw) ? raw : 'https://' + raw;
+  let parsed;
+  try {
+    parsed = new URL(candidate);
+  } catch {
+    throw new Error('Bitte einen gültigen Link angeben.');
+  }
+  if (parsed.protocol !== 'http:' && parsed.protocol !== 'https:') {
+    throw new Error('Nur http- und https-Links sind erlaubt.');
+  }
+  return parsed.toString();
 }
 
 function decodeOriginalFilename(req) {
@@ -170,6 +187,23 @@ export function importContentFile(req, res, kachelId) {
     const filePath = uniqueTargetFile(targetDir, req.query?.name, config.targetExt || originalExt);
     fs.mkdirSync(targetDir, { recursive: true });
     fs.writeFileSync(filePath, body);
+    res.json({ ok: true, url: folderUrl(kachel.id, relDir) });
+  } catch (error) {
+    res.status(400).json({ ok: false, error: error.message });
+  }
+}
+
+
+export function saveContentLink(req, res, kachelId) {
+  const kachel = findKachel(kachelId);
+  if (!requireManageContent(req, res, kachel)) return;
+  try {
+    const relDir = normalizeRelDir(req.body?.dir);
+    const targetDir = targetDirFor(kachel, relDir);
+    const filePath = uniqueTargetFile(targetDir, req.body?.filename, '.url');
+    const url = normalizeWebsiteUrl(req.body?.url);
+    fs.mkdirSync(targetDir, { recursive: true });
+    fs.writeFileSync(filePath, '[InternetShortcut]\nURL=' + url + '\n');
     res.json({ ok: true, url: folderUrl(kachel.id, relDir) });
   } catch (error) {
     res.status(400).json({ ok: false, error: error.message });

@@ -409,3 +409,14 @@ These resolve the previously open questions and reflect the current code.
 - Per-WK roster / Appell. The old YAML model with `kader`, `mannschaft`
   and an Appell sub-tree is gone for now. If reintroduced, it should
   layer on top of the current WK submission, not replace it.
+
+## Globale Suche
+
+- Unten rechts ist eine rollenbasierte Suche eingebunden. Die API `GET /api/search?q=...` nutzt `visibleKacheln(role)` und durchsucht nur Kacheln, welche für die aktuelle Rolle sichtbar sind.
+- Markdown-Dateien werden nach Dateiname und Inhalt durchsucht. PDF- und URL-Dateien werden über Dateiname bzw. Ziel-URL gefunden, ohne zusätzliche Datenbank oder Index-Datei.
+
+## Quiz Builder
+
+- Quizdefinitionen werden als normale Formular-JSON unter `content_zso_specific/quiz` erstellt. Optional hochgeladene Bilder liegen unter `content_zso_specific/quiz/.assets` und werden über `/k/quiz/.assets/...` ausgeliefert.
+- Quiz hinzufügen ist für `Unteroffizier` und höher verfügbar. Ausfüllen bleibt `Soldat`, Auswertungen bleiben `Unteroffizier`.
+- Single- und Multiple-Choice-Fragen werden erst in der Auswertung bewertet. Freitextfragen werden gespeichert, aber nicht automatisch bepunktet.

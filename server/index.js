@@ -5,13 +5,15 @@ import fs from 'node:fs';
 import { loadLayout, findKachel } from './layout.js';
 import { sessionMiddleware, checkLogin, setSessionCookie, clearSessionCookie, hasAccess } from './auth.js';
 import { listKachelDir, renderMarkdown, mimeOf, resolveKachelPath, kachelRoots, effectiveKachel } from './content.js';
-import { contentActionContext, importContentFile, renderNewMarkdownPage, saveMarkdownContent } from './content-admin.js';
+import { contentActionContext, importContentFile, renderNewMarkdownPage, saveContentLink, saveMarkdownContent } from './content-admin.js';
 import { renderHome, renderListing, renderMarkdownPage, renderLogin, renderOffline, renderError } from './templates/index.js';
+import { searchContent } from './search.js';
 import { archiveWks, renderArchivedWkSubmission, renderForm, renderResults, renderSubmission, renderWkArchive, submitForm, unarchiveWks } from './forms.js';
 import { buildServiceWorker } from './sw.js';
 import { wkMiddleware, setActiveWk, listWks } from './wk.js';
 import { createUser, deleteUser, renderDeleteUser, renderEditUser, renderNewUser, renderUsers, updateUser } from './user-admin.js';
 import { resolveLogo } from './branding.js';
+import { createQuiz, quizActionContext, renderNewQuiz } from './quiz-admin.js';
 
 const PORT = process.env.PORT ? Number(process.env.PORT) : 8080;
 
@@ -20,7 +22,8 @@ loadLayout();
 const app = express();
 app.disable('x-powered-by');
 app.use(cookieParser());
-app.use(express.urlencoded({ extended: false }));
+app.use(express.json({ limit: '20mb' }));
+app.use(express.urlencoded({ limit: '20mb', extended: false }));
 app.use(sessionMiddleware);
 app.use(wkMiddleware);
 
@@ -43,6 +46,10 @@ app.get('/api/sync-manifest', (_req, res) => {
   res.json({ urls: [], note: 'See /service-worker.js for the precache list.' });
 });
 
+app.get('/api/search', (req, res) => {
+  res.json(searchContent(req, req.query?.q));
+});
+
 app.get('/offline', (req, res) => res.send(renderOffline(req)));
 
 app.get('/', (req, res) => res.send(renderHome(req)));
@@ -61,6 +68,10 @@ app.all('/logout', (_req, res) => { clearSessionCookie(res); res.redirect('/'); 
 app.get('/content-admin/:id/markdown/new', (req, res) => renderNewMarkdownPage(req, res, req.params.id));
 app.post('/content-admin/:id/markdown', (req, res) => saveMarkdownContent(req, res, req.params.id));
 app.post('/content-admin/:id/import', express.raw({ type: '*/*', limit: '30mb' }), (req, res) => importContentFile(req, res, req.params.id));
+app.post('/content-admin/:id/link', (req, res) => saveContentLink(req, res, req.params.id));
+
+app.get('/quiz/new', (req, res) => renderNewQuiz(req, res));
+app.post('/quiz', (req, res) => createQuiz(req, res));
 
 app.post('/wk/select', (req, res) => {
   if (!req.user) return res.redirect('/login');
@@ -100,6 +111,7 @@ app.get('/k/:id', (req, res) => {
     if (kachel.wkScoped) {
       return res.send(renderListing(req, kachel, [], [{ label: kachel.title, url: `/k/${kachel.id}` }], {
         contentActions: contentActionContext(req, kachel, ''),
+        quizActions: quizActionContext(req, kachel),
       }));
     }
     return res.status(404).send(renderError(req, 404, 'Inhalt nicht gefunden'));
@@ -116,6 +128,7 @@ app.get('/k/:id', (req, res) => {
   const entries = listKachelDir(k, '', `/k/${kachel.id}/`, role);
   return res.send(renderListing(req, kachel, entries, [{ label: kachel.title, url: `/k/${kachel.id}` }], {
     contentActions: contentActionContext(req, kachel, ''),
+    quizActions: quizActionContext(req, kachel),
   }));
 });
 
@@ -156,9 +169,7 @@ app.get('/k/:id/*', (req, res) => {
   if (abs.endsWith('.md')) {
     const parentDir = rel.split('/').slice(0, -1).join('/');
     const parentUrl = `/k/${kachel.id}/${parentDir}`.replace(/\/$/, '') + '/';
-    return res.send(renderMarkdownPage(req, { ...kachel, title: path.basename(abs, '.md') }, renderMarkdown(abs), parentUrl, {
-      contentActions: contentActionContext(req, kachel, parentDir),
-    }));
+    return res.send(renderMarkdownPage(req, { ...kachel, title: path.basename(abs, '.md') }, renderMarkdown(abs), parentUrl));
   }
   res.type(mimeOf(abs));
   res.sendFile(abs);

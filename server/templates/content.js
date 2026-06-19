@@ -9,6 +9,11 @@ function editorUrl(actions) {
   return '/content-admin/' + encodeURIComponent(actions.kachelId) + '/markdown/new?' + qs.toString();
 }
 
+function renderQuizActions(actions) {
+  if (!actions?.enabled) return '';
+  return '<a class="secondary-button no-print" data-online-only="true" href="/quiz/new">+ Quiz hinzufügen</a>';
+}
+
 function renderContentActions(actions) {
   if (!actions?.enabled) return '';
   const kachelId = esc(actions.kachelId);
@@ -21,13 +26,15 @@ function renderContentActions(actions) {
     '<button type="button" data-content-import="markdown" data-import-title="Markdown importieren" data-import-accept=".md,.markdown,.txt,text/markdown,text/plain">Markdown importieren</button>',
     '<button type="button" data-content-import="pdf" data-import-title="PDF importieren" data-import-accept=".pdf,application/pdf">PDF importieren</button>',
     '<button type="button" data-content-import="picture" data-import-title="Bild importieren" data-import-accept="image/png,image/jpeg,image/webp,image/gif,.png,.jpg,.jpeg,.webp,.gif">Bild importieren</button>',
+    '<button type="button" data-content-link data-link-title="Webseite verlinken">Webseite verlinken</button>',
     '</div>',
     '<dialog class="content-import-dialog" data-content-import-dialog>',
     '<form class="content-import-card" data-content-import-form>',
     '<button type="button" class="dialog-close" data-content-import-close aria-label="Schliessen">×</button>',
     '<h2 data-content-import-title>Importieren</h2>',
     '<label>Dateiname<input name="filename" data-content-import-name required autocomplete="off"></label>',
-    '<div class="content-dropzone" data-content-dropzone tabindex="0">',
+    '<label data-content-link-url-field hidden>Link<input name="url" type="url" data-content-link-url autocomplete="url" placeholder="https://example.ch"></label>',
+    '<div class="content-dropzone" data-content-dropzone data-content-import-file-area tabindex="0">',
     '<input type="file" data-content-import-file hidden>',
     '<strong>Datei hier ablegen oder klicken</strong>',
     '<span>Der Dateiname wird mit der passenden Endung gespeichert.</span>',
@@ -36,7 +43,7 @@ function renderContentActions(actions) {
     '<p class="err" data-content-import-error hidden></p>',
     '<div class="dialog-actions">',
     '<button type="button" class="secondary-button" data-content-import-close>Abbrechen</button>',
-    '<button type="submit">Importieren</button>',
+    '<button type="submit" data-content-submit>Importieren</button>',
     '</div>',
     '</form>',
     '</dialog>',
@@ -66,8 +73,8 @@ export function renderHome(req) {
   return layout(req, { title: 'ZSO App', body });
 }
 
-export function renderListing(req, kachel, entries, breadcrumbs, { contentActions = null } = {}) {
-  const actions = renderContentActions(contentActions);
+export function renderListing(req, kachel, entries, breadcrumbs, { contentActions = null, quizActions = null } = {}) {
+  const actions = renderQuizActions(quizActions) + renderContentActions(contentActions);
   const items = entries.map((e) => {
     const icon = LISTING_ICON[e.kind] || (e.kind === 'image' ? '🖼️' : '📄');
     const attrs = e.external ? ' target="_blank" rel="noopener noreferrer"' : '';

@@ -6,15 +6,16 @@
 - [x] Mandanten Fähigkeit (Logos)
 - [x] Print -> WK Hinzufügen
 - [x] Farbe/Design
-- [ ] MD Editor
-- [ ] Hinzufügen von Dateien (zB MD, PDF, ...) in eine Kachel (statt den Editor öffnen, einfach file upload)
-- [ ] Quiz verbessern (Auswertung, was war richtig/falsch, Punkte)
-- [ ] Bugfixes
+- [x] MD Editor
+- [x] Hinzufügen von Dateien (zB MD, PDF, ...) in eine Kachel (statt den Editor öffnen, einfach file upload)
+- [x] Quiz verbessern (Auswertung, was war richtig/falsch, Punkte)
 - [x] WK-Archivieren
+- [ ] Bugfixes
 
 ## Prio 2
 
-- [ ] Filter Auswertungn (Tabellen sortierbar und filterbar machen)
+- [x] Filter Auswertungn (Tabellen sortierbar und filterbar machen)
+- [x] Suchfunktion (PDF Textsuche offen)
 - [ ] Transport Formular
 - [ ] Appell
 

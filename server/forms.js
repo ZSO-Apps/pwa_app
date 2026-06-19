@@ -103,6 +103,14 @@ function canCreateEntry(req, def) {
   return hasAccess(role, submitAccessFor(def));
 }
 
+function isQuizDef(def) {
+  return Boolean(def?.quiz || (def?.fields || []).some((field) => field?.correct !== undefined));
+}
+
+function quizNeedsVirtualNameField(def) {
+  return isQuizDef(def) && !(def.fields || []).some((field) => field?.name === 'name');
+}
+
 export function renderForm(req, res, formId) {
   const def = getForm(formId);
   if (!def) return res.status(404).send(renderError(req, 404, 'Formular nicht gefunden'));
@@ -126,10 +134,24 @@ export function submitForm(req, res, formId) {
       wkId: def.scope === 'global' ? null : scope,
     },
   };
+  if (quizNeedsVirtualNameField(def)) {
+    const name = String(req.body?.name || '').trim();
+    if (!name) return res.status(400).send(renderError(req, 400, "Feld 'Name' ist erforderlich."));
+    submission.name = name;
+  }
   for (const f of def.fields || []) {
     if (!isStored(f)) continue; // skip display + printOnly elements
     if (f.type === 'checkbox') {
       submission[f.name] = req.body?.[f.name] !== undefined;
+      continue;
+    }
+    if (f.type === 'checkboxes') {
+      const raw = req.body?.[f.name];
+      const values = (Array.isArray(raw) ? raw : raw ? [raw] : []).map(String);
+      if (f.required && values.length === 0) {
+        return res.status(400).send(renderError(req, 400, `Feld '${f.label || f.name}' ist erforderlich.`));
+      }
+      submission[f.name] = values;
       continue;
     }
     const v = req.body?.[f.name];

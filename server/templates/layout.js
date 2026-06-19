@@ -1,10 +1,26 @@
 import { visibleKacheln } from '../layout.js';
 import { assetUrl, esc, LOGIN_ICON, LOGOUT_ICON, logoAssetUrl } from './shared.js';
 
+const SEARCH_ICON = `<svg viewBox="0 0 24 24" width="24" height="24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><circle cx="11" cy="11" r="7"/><path d="m21 21-4.3-4.3"/></svg>`;
+
 function renderBrandLogo() {
   const logo = logoAssetUrl('header');
   if (!logo) return 'ZSO App';
   return `<img class="brand-logo" src="${esc(logo)}" alt="ZSO App">`;
+}
+
+function renderGlobalSearch() {
+  return `<section class="global-search no-print" data-global-search>
+    <button type="button" class="global-search-toggle" data-global-search-toggle aria-label="Suche öffnen" aria-expanded="false">${SEARCH_ICON}</button>
+    <div class="global-search-panel" data-global-search-panel hidden>
+      <form class="global-search-form" data-global-search-form>
+        <label class="sr-only" for="global-search-input">Suche</label>
+        <input id="global-search-input" type="search" autocomplete="off" placeholder="Dokumente suchen" data-global-search-input>
+      </form>
+      <div class="global-search-status muted" data-global-search-status>Mindestens 2 Zeichen eingeben.</div>
+      <div class="global-search-results" data-global-search-results></div>
+    </div>
+  </section>`;
 }
 
 function renderWkBanner(req) {
@@ -75,6 +91,7 @@ ${renderWkBanner(req)}
 <main class="main">
 ${body}
 </main>
+${renderGlobalSearch()}
 <script src="${assetUrl('/client/app.js')}" defer></script>
 </body>
 </html>`;
