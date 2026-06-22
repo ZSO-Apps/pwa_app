@@ -36,6 +36,8 @@
   function initOverview(root) {
     const today = root.dataset.today;
     const canImport = root.dataset.canImport === 'true';
+    const printLogo = root.dataset.printLogo || '';
+    const wkLabel = root.dataset.wkLabel || '';
     const mount = root.querySelector('[data-appell-root]');
     const state = {
       data: null,
@@ -182,8 +184,9 @@
       const listName = state.listId === '__all' ? 'Alle Appelllisten' : (state.data.list && state.data.list.name) || '';
       const dt = new Date();
       const stand = `${String(dt.getDate()).padStart(2, '0')}.${String(dt.getMonth() + 1).padStart(2, '0')}.${dt.getFullYear()}`;
-      head.innerHTML = `<h2>Appell – ${esc(listName)}</h2>
-        <div class="print-meta">${parts.length ? esc(parts.join(' · ')) + ' · ' : ''}${count} Personen · Stand ${stand}</div>
+      const logoHtml = printLogo ? `<div class="print-logo-wrap"><img class="print-logo" src="${esc(printLogo)}" alt="Logo"></div>` : '';
+      head.innerHTML = `<div class="content-header print-title-row"><h2>Appell – ${esc(listName)}</h2>${logoHtml}</div>
+        <div class="print-meta">${wkLabel ? 'WK: ' + esc(wkLabel) + ' · ' : ''}${parts.length ? esc(parts.join(' · ')) + ' · ' : ''}${count} Personen · Stand ${stand}</div>
         <div class="print-legend">✓ anwesend · ✗ abwesend · K krank · ☐ aufgeboten/offen</div>`;
     }
 

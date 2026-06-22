@@ -15,7 +15,7 @@ organizations can deploy too. Goals, in priority order:
    WLAN itself has no internet uplink. Public content must work as a PWA
    even with zero connectivity at all (previously cached).
 3. **Hierarchical permission levels**, each level includes all levels below
-   it: `Admin` > `Offizier` > `Unteroffizier` > `Soldat` > `public`.
+   it: `Admin` > `Offizier` > `Unteroffizier` > `Fahrer` > `Soldat` > `public`.
    - `public` = no auth needed, content must be offline-cachable via the PWA
      service worker.
    - All other levels require login; content is only available when the
@@ -113,8 +113,13 @@ field anymore.
 ### Role hierarchy
 
 ```
-Admin > Offizier > Unteroffizier > Soldat > public
+Admin > Offizier > Unteroffizier > Fahrer > Soldat > public
 ```
+
+`Fahrer` sits between `Soldat` and `Unteroffizier`: a (typically shared,
+generic) driver login that can read transport orders / the Transportzentrale
+overview and mark trips abgefahren/angekommen, but cannot dispatch. The shared
+base account `Fahrer` is added like `AdZS` (see Accounts below).
 
 Each role inherits access to everything visible to roles below it. Access
 checks are simple rank comparisons (e.g. `userRole >= requiredRole`), with
@@ -155,11 +160,12 @@ checks are simple rank comparisons (e.g. `userRole >= requiredRole`), with
 | `telematik`       | FU Telematik       | public     | `Telematik`       |                                                      |
 | `ntp`             | Notfall-Treffpunkt | public     | `NTP`             |                                                      |
 | `unterstuetzung`  | Unterstützung      | public     | `Unterstützung`   |                                                      |
-| `wk-organisation` | WK Organisation    | Unteroffizier | `wk_organisation` | hosts `essensbestellung.json`, `beurteilung*.json` |
+| `wk-organisation` | WK Organisation    | Unteroffizier | `wk_organisation` | hosts `essensbestellung.json`, `beurteilung*.json`, `transport-bestellung.json` |
 | `wk-infos`        | WK Infos           | Soldat     | `wk_infos`        | `wkScoped` — shows the active WK's subfolder          |
 | `wk-infos-kader`  | WK Infos Kader     | Unteroffizier | `wk_infos_kader` | `wkScoped` — Kader-only per-WK content              |
 | `quiz`            | Quiz               | Soldat     | `quiz`            | hosts `quiz-leitungsbau.json` and future quizzes     |
 | `appell`          | Appell             | Unteroffizier | — (route `/appell`) | per-WK attendance; own module, not content-folder based      |
+| `transportzentrale` | Transportzentrale | Fahrer    | — (route `/transport`) | per-WK dispatch; own module. View Fahrer+, dispatch Uof+ |
 | `admin`           | Admin              | Offizier   | `admin`           | hosts `wk.json` (Offizier+) and user management (Admin only) |
 
 ### Example `layout.yaml`
@@ -393,8 +399,9 @@ These resolve the previously open questions and reflect the current code.
   are referenced from inside markdown — they are not listed as standalone
   items.
 - **Role naming** stays with the current model:
-  `Admin > Offizier > Unteroffizier > Soldat > public`. The `Soldat` role is
-  intentional and is not renamed to `ZSO User`.
+  `Admin > Offizier > Unteroffizier > Fahrer > Soldat > public`. The `Soldat`
+  role is intentional and is not renamed to `ZSO User`. `Fahrer` is a driver
+  role between `Soldat` and `Unteroffizier` (see Transport below).
 
 ## Still open
 
@@ -493,3 +500,66 @@ data/appell/<wk-id>/lists/<list-id>/
   Voller Kontakt + Tag-Verwaltung im Personen-Detail (Klick auf den Namen).
 - **Status/Tags erfassen ab `Unteroffizier`.** Dynamische Schreibaktionen sind
   LAN-only und werden offline blockiert.
+
+## Transport (Transportzentrale)
+
+Durchgängiger Transport-Workflow: Bestellung → Disposition → Fahrauftrag →
+Fahrer. Eigenständiges, file-basiertes Modul pro WK (wie Appell), **nicht** über
+den generischen Formular-Mechanismus (Aufträge müssen editierbar sein, Zeitstrahl,
+Status, Timestamps).
+
+### Rolle `Fahrer`
+- Neuer Rang zwischen `Soldat` und `Unteroffizier` in `ROLE_RANK`
+  (`server/auth.js`). In der Admin-UI wählbar (`USER_ROLES` in
+  `server/user-admin.js`); geteiltes Basiskonto `Fahrer` (wie `AdZS`) in
+  `users.example.yaml`. Fahrer sehen Übersicht + Aufträge und melden
+  abgefahren/angekommen, **disponieren aber nicht**.
+
+### Bestellung
+- `content_generic/wk_organisation/transport-bestellung.json` — normales
+  generisches Formular (Uof+). Felder: Besteller (Name/Mobile), Fahrt
+  (Datum/Zeit/Abfahrts-/Zielort/Anzahl Personen), Fahrt-Details (Einfache /
+  Hin- und Rückfahrt / Besondere Fahrt), Anhänger-Details (Checkbox+Anzahl pro
+  Typ als Wunsch), Beschreibung. Submissions wie üblich unter
+  `data/forms/transport-bestellung/<wk-id>/`.
+
+### Modul (`server/transport.js`, `client/transport.js`)
+- Kachel `transportzentrale`, Route `/transport`, Zugriff `Fahrer`+.
+- Datenmodell (`data/transport/<wk-id>/`, gitignored):
+  `fleet.json` (`{vehicles, trailers}`), `orders/<order-id>.json` (editierbarer
+  Fahrauftrag), `dispatched.json` (`{bestellungId: [orderId,...]}`).
+- **Fuhrpark pro WK, on-the-fly**: tippt die Dispo beim Auftrag „PTF1", wird das
+  Fahrzeug/der Anhänger automatisch angelegt (ganze WK-Dauer). Lightweight
+  Fuhrpark-Verwaltung (Modal) für Uof+; Ressourcen lassen sich an einzelnen
+  Daten als „nicht verfügbar" sperren.
+- **Dispo** (Uof+): offene Bestellungen → Fahraufträge. Bei „Hin- und Rückfahrt"
+  wahlweise **ein oder zwei** Aufträge (pro Fall entscheidbar). Zuteilung von
+  Fahrzeug + konkreten benannten Anhängern, je mit Flag `bleibtAmZielort` +
+  Standort.
+- **Anhänger** erscheinen als eigene Zeitstrahl-Zeilen; `bleibtAmZielort` zeigt
+  „steht auswärts an <Ort>" (Übersicht „Anhänger auswärts"). Fail-safe:
+  Button **„freigeben"** (Uof+) setzt den Anhänger zurück.
+- **Fahrer** (`Fahrer`+) tragen im Auftrag **Name + Mobile** ein (in
+  `localStorage` gecacht wie bei anderen Formularen, zusätzlich auf dem Auftrag
+  gespeichert für Dispo/Ausdruck) und melden `abgefahren`/`angekommen` mit
+  Kommentar. Der Button stempelt „jetzt", das Zeitfeld erlaubt manuelle
+  Eingabe/Korrektur. Im Zeitstrahl bleibt der **blaue Plan-Balken immer sichtbar**;
+  die Ist-Situation ist ein dünner Strich darunter. **Fail-safe** (`GRACE=60`
+  min in `computeBar`): ein laufender Auftrag ohne „angekommen" wird auf
+  `plannedEnd + GRACE` begrenzt und danach als „überfällig" markiert — kein
+  24h-Balken bei vergessener Zeitangabe.
+- **Übersicht**: Zeitstrahl (15-min-Slots, dynamischer Tagesbereich) Ressource ×
+  Zeit, plus „Aufträge"-Listenansicht für Fahrer. Überlappende Aufträge werden
+  wasserfallartig in Lanes gestapelt. **Fahrzeug-Filter** wird in `localStorage`
+  gemerkt (geteiltes Fahrer-Login).
+- **Drucken**: Einzelauftrag (Button im Auftrag) druckt eine saubere Zusammen-
+  fassung **mit WK-Kontext**; „Drucken" in der Übersicht skaliert den Zeitstrahl
+  auf eine Querformat-Seite (mit WK-Kopf), da der Zeitstrahl sonst scrollbar/zu
+  breit ist.
+- API: `GET /api/transport/data?date=`, `POST /api/transport/fleet`,
+  `POST /api/transport/order` (+ `/:id`, `/:id/delete`, `/:id/status`),
+  `POST /api/transport/trailer/release`. Schreiben Uof+ (Status Fahrer+).
+- **Offline**: `/transport`, `/forms/...` und `GET /api/transport/...` werden
+  network-first geholt und als letzter Online-Stand gecacht (`server/sw.js`),
+  damit Fahrer+ Inhalte offline lesen können. Erstellen/Bearbeiten bleibt
+  LAN-only und wird offline blockiert.

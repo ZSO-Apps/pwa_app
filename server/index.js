@@ -18,6 +18,10 @@ import {
   renderAppellPage, apiLists, apiData, apiSetStatus, apiSetTags,
   renderImportPage, handleImport, renderReviewPage, handleConfirm, handleDiscard, handleDeleteList,
 } from './appell.js';
+import {
+  renderTransportPage, apiData as apiTransportData, apiSaveFleet, apiCreateOrder,
+  apiUpdateOrder, apiDeleteOrder, apiOrderStatus, apiReleaseTrailer,
+} from './transport.js';
 
 const PORT = process.env.PORT ? Number(process.env.PORT) : 8080;
 
@@ -109,6 +113,16 @@ app.get('/api/appell/lists', (req, res) => apiLists(req, res));
 app.get('/api/appell/data', (req, res) => apiData(req, res));
 app.post('/api/appell/status', (req, res) => apiSetStatus(req, res));
 app.post('/api/appell/tags', (req, res) => apiSetTags(req, res));
+
+// Transportzentrale (per-WK dispatch) — own routes, not content-folder based.
+app.get('/transport', (req, res) => renderTransportPage(req, res));
+app.get('/api/transport/data', (req, res) => apiTransportData(req, res));
+app.post('/api/transport/fleet', (req, res) => apiSaveFleet(req, res));
+app.post('/api/transport/order', (req, res) => apiCreateOrder(req, res));
+app.post('/api/transport/order/:id', (req, res) => apiUpdateOrder(req, res));
+app.post('/api/transport/order/:id/delete', (req, res) => apiDeleteOrder(req, res));
+app.post('/api/transport/order/:id/status', (req, res) => apiOrderStatus(req, res));
+app.post('/api/transport/trailer/release', (req, res) => apiReleaseTrailer(req, res));
 
 app.get('/k/:id', (req, res) => {
   const kachel = findKachel(req.params.id);

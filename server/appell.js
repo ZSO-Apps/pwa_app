@@ -20,7 +20,7 @@ import crypto from 'node:crypto';
 import { parseAppellXlsx } from './appell-import.js';
 import { hasAccess } from './auth.js';
 import { layout } from './templates/layout.js';
-import { esc } from './templates/shared.js';
+import { esc, logoAssetUrl } from './templates/shared.js';
 
 const ROOT = path.resolve('data/appell');
 const STATUS_VALUES = new Set(['anwesend', 'abwesend', 'krank']);
@@ -384,7 +384,7 @@ export function renderAppellPage(req, res) {
     return res.status(409).send(layout(req, { title: 'Appell', body }));
   }
   const canImport = hasAccess(req.user?.role, IMPORT_ROLE);
-  const body = `<article class="content appell-page" data-appell data-today="${esc(todayIso())}" data-can-import="${canImport}">
+  const body = `<article class="content appell-page" data-appell data-today="${esc(todayIso())}" data-can-import="${canImport}" data-print-logo="${esc(logoAssetUrl('print'))}" data-wk-label="${esc(req.activeWk?.label || '')}">
     <p><a href="/" class="back">← Zurück zur Übersicht</a></p>
     <div class="content-header"><h1>Appell</h1>
       ${canImport ? '<a class="btn" href="/appell/import">Liste importieren</a>' : ''}</div>

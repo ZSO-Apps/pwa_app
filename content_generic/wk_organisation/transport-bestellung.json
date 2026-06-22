@@ -1,0 +1,40 @@
+{
+  "id": "transport-bestellung",
+  "title": "Transport-Bestellung",
+  "submitLabel": "Transport bestellen",
+  "resultsLabel": "Transport-Bestellungen",
+  "submitAccess": "Unteroffizier",
+  "resultsAccess": "Unteroffizier",
+  "fields": [
+    { "type": "heading", "label": "Besteller" },
+    { "name": "name",   "type": "text", "label": "Name",   "required": true, "width": "half" },
+    { "name": "mobile", "type": "text", "label": "Mobile", "width": "half" },
+
+    { "type": "heading", "label": "Fahrt" },
+    { "name": "datum",          "type": "date",   "label": "Datum",          "required": true, "width": "half" },
+    { "name": "zeit",           "type": "time",   "label": "Zeit",           "width": "half" },
+    { "name": "abfahrtsort",    "type": "text",   "label": "Abfahrtsort",    "required": true, "width": "half" },
+    { "name": "zielort",        "type": "text",   "label": "Zielort",        "required": true, "width": "half" },
+    { "name": "anzahlPersonen", "type": "number", "label": "Anzahl Personen", "min": 0, "width": "half", "compact": true },
+
+    { "type": "heading", "label": "Fahrt-Details" },
+    { "name": "fahrtTyp", "type": "radio", "label": "Art der Fahrt", "options": ["Einfache Fahrt", "Hin- und Rückfahrt", "Besondere Fahrt"], "required": true },
+
+    { "type": "heading", "label": "Anhänger-Details" },
+    { "name": "anh_ersteinsatz",   "type": "checkbox", "label": "Ersteinsatzanhänger", "width": "half" },
+    { "name": "anh_ersteinsatz_n", "type": "number", "label": "Anzahl", "min": 0, "width": "half", "compact": true },
+    { "name": "anh_koffer",        "type": "checkbox", "label": "Kofferanhänger", "width": "half" },
+    { "name": "anh_koffer_n",      "type": "number", "label": "Anzahl", "min": 0, "width": "half", "compact": true },
+    { "name": "anh_material_gruen", "type": "checkbox", "label": "Materialanhänger grün", "width": "half" },
+    { "name": "anh_material_gruen_n", "type": "number", "label": "Anzahl", "min": 0, "width": "half", "compact": true },
+    { "name": "anh_dreiseitenkipper",   "type": "checkbox", "label": "Dreiseitenkipper", "width": "half" },
+    { "name": "anh_dreiseitenkipper_n", "type": "number", "label": "Anzahl", "min": 0, "width": "half", "compact": true },
+    { "name": "anh_zelt",   "type": "checkbox", "label": "Zeltanhänger", "width": "half" },
+    { "name": "anh_zelt_n", "type": "number", "label": "Anzahl", "min": 0, "width": "half", "compact": true },
+    { "name": "anh_andere",   "type": "checkbox", "label": "Andere", "width": "half" },
+    { "name": "anh_andere_n", "type": "number", "label": "Anzahl", "min": 0, "width": "half", "compact": true },
+
+    { "type": "heading", "label": "Beschreibung" },
+    { "name": "beschreibung", "type": "textarea", "label": "Beschreibung (Arbeitsplatz, Hindernisse, Transport-Details, Gewicht, etc.)" }
+  ]
+}

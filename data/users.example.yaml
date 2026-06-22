@@ -11,6 +11,9 @@ users:
   Uof:
     role: Unteroffizier
     passwordHash: "$2a$10$bBY19rXWq6VG/vLCBD5KpeEJCSCprDnB/GQTVp90WRUveDxgC/jbS"
+  Fahrer:
+    role: Fahrer
+    passwordHash: "$2a$10$bBY19rXWq6VG/vLCBD5KpeEJCSCprDnB/GQTVp90WRUveDxgC/jbS"
   AdZS:
     role: Soldat
     passwordHash: "$2a$10$bBY19rXWq6VG/vLCBD5KpeEJCSCprDnB/GQTVp90WRUveDxgC/jbS"

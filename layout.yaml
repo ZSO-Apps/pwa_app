@@ -55,6 +55,12 @@ kacheln:
     route: /appell
     color: "#4a90a4"
 
+  - id: transportzentrale
+    title: "Transportzentrale"
+    access: Fahrer
+    route: /transport
+    color: "#7a4ea0"
+
   - id: admin
     title: "Admin"
     access: Offizier

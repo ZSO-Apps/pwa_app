@@ -4,7 +4,7 @@ import path from 'node:path';
 import bcrypt from 'bcryptjs';
 import YAML from 'yaml';
 
-export const ROLE_RANK = { public: 0, Soldat: 1, Unteroffizier: 2, Offizier: 3, Admin: 4 };
+export const ROLE_RANK = { public: 0, Soldat: 1, Fahrer: 2, Unteroffizier: 3, Offizier: 4, Admin: 5 };
 export const ROLES = Object.keys(ROLE_RANK);
 
 export function normalizeRole(role) {

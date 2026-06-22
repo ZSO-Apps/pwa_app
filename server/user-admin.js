@@ -11,8 +11,8 @@ import {
 } from './templates/index.js';
 
 const USERS_FILE = path.resolve('data/users.yaml');
-const BASE_USERS = new Set(['Admin', 'admin', 'Of', 'Uof', 'AdZS']);
-const USER_ROLES = ['Admin', 'Offizier', 'Unteroffizier', 'Soldat'];
+const BASE_USERS = new Set(['Admin', 'admin', 'Of', 'Uof', 'Fahrer', 'AdZS']);
+const USER_ROLES = ['Admin', 'Offizier', 'Unteroffizier', 'Fahrer', 'Soldat'];
 
 function requireAdmin(req, res) {
   const role = req.user?.role || 'public';

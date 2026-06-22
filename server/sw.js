@@ -120,7 +120,9 @@ self.addEventListener('fetch', (event) => {
       const cacheableNavigation =
         url.pathname === '/' ||
         url.pathname === '/offline' ||
-        url.pathname.startsWith('/k/');
+        url.pathname.startsWith('/k/') ||
+        url.pathname.startsWith('/forms/') ||
+        url.pathname.startsWith('/transport');
       try {
         const fresh = await fetch(req);
         if (fresh.ok && cacheableNavigation) {
@@ -152,6 +154,24 @@ self.addEventListener('fetch', (event) => {
         const cached = await cache.match(req) || await cache.match(url.pathname, { ignoreSearch: true });
         if (cached) return cached;
         return new Response('Offline', { status: 503 });
+      }
+    })());
+    return;
+  }
+
+  // Client-rendered transport overview data: network-first, cache the last
+  // online state so logged-in Fahrer+ can still read it offline.
+  if (url.pathname.startsWith('/api/transport/')) {
+    event.respondWith((async () => {
+      const cache = await caches.open(CACHE);
+      try {
+        const fresh = await fetch(req);
+        if (fresh.ok) cache.put(req, fresh.clone()).catch(() => {});
+        return fresh;
+      } catch {
+        const cached = await cache.match(req, { ignoreSearch: false });
+        if (cached) return cached;
+        return new Response(JSON.stringify({ error: 'Offline – kein zwischengespeicherter Stand.' }), { status: 503, headers: { 'Content-Type': 'application/json' } });
       }
     })());
     return;

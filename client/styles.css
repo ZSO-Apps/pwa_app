@@ -883,3 +883,133 @@ a { color: inherit; }
   .appell-matrix tbody tr { break-inside: avoid; }
   .tag-chips { display: none; }
 }
+
+/* ===== Transportzentrale ============================================== */
+.transport-page .content-header { display: flex; align-items: center; gap: 1rem; }
+.tz-controls { display: flex; flex-wrap: wrap; align-items: center; gap: .6rem; margin: .6rem 0 1rem; }
+.tz-date { display: inline-flex; align-items: center; gap: .3rem; }
+.tz-date button { border: 1px solid var(--border); background: var(--surface); color: var(--fg); border-radius: 6px; cursor: pointer; padding: .3rem .55rem; font: inherit; }
+.tz-date input[type="date"] { font: inherit; padding: .3rem .4rem; border: 1px solid var(--border); border-radius: 6px; background: var(--field-bg); color: var(--fg); }
+.tz-weekday { color: var(--muted); font-size: .9rem; }
+.tz-veh select, .tz-add-form select, .tz-add-form input, .tz-f input, .tz-f select, .tz-f textarea,
+.tz-trailer-row input, .tz-trailer-row select { font: inherit; padding: .35rem .45rem; border: 1px solid var(--border); border-radius: 6px; background: var(--field-bg); color: var(--fg); }
+
+.tz-away { background: var(--ok-bg); color: var(--ok-fg); border-radius: 8px; padding: .45rem .7rem; margin-bottom: .7rem; font-size: .9rem; }
+.tz-away-chip { display: inline-block; margin: .15rem .35rem .15rem 0; background: var(--card-bg); border: 1px solid var(--border); border-radius: 20px; padding: .15rem .6rem; }
+.tz-away-chip button { font: inherit; font-size: .8rem; margin-left: .3rem; border: 0; background: none; color: var(--link); cursor: pointer; text-decoration: underline; }
+.tz-away-chip.is-released { opacity: .7; }
+.tz-rel-info { font-size: .78rem; color: var(--muted); margin-left: .3rem; }
+.tz-trailer-row .tz-rel-info { flex-basis: 100%; }
+.tz-trailer-row .tz-rel-info button { font: inherit; font-size: .78rem; border: 0; background: none; color: var(--link); cursor: pointer; text-decoration: underline; }
+
+.tz-bestellungen { margin-bottom: 1rem; }
+.tz-bestellungen > summary { cursor: pointer; font-weight: 600; margin-bottom: .4rem; }
+.tz-best-card { display: flex; align-items: center; gap: .7rem; padding: .5rem .7rem; border: 1px solid var(--border); border-radius: 8px; margin: .3rem 0; background: var(--card-bg); }
+.tz-best-main { display: flex; flex-direction: column; gap: .1rem; flex: 1; min-width: 0; }
+.tz-best-main .muted { font-size: .85rem; }
+.tz-best-desc { font-size: .85rem; }
+
+/* timeline */
+.tz-timeline { overflow-x: auto; border: 1px solid var(--border); border-radius: 8px; background: var(--card-bg); }
+.tz-ruler-row, .tz-row { display: flex; align-items: stretch; border-bottom: 1px solid var(--border); width: max-content; min-width: 100%; }
+.tz-row:last-child { border-bottom: 0; }
+.tz-row-label { flex: 0 0 8.5rem; width: 8.5rem; padding: .4rem .5rem; box-sizing: border-box; border-right: 1px solid var(--border); position: sticky; left: 0; background: var(--card-bg); z-index: 2; }
+.tz-res-name { display: block; font-weight: 600; font-size: .9rem; }
+.tz-res-sub { display: block; color: var(--muted); font-size: .75rem; }
+.tz-ruler { position: relative; height: 1.6rem; }
+.tz-track { position: relative; min-height: 2.5rem; }
+.tz-tick { position: absolute; top: 0; font-size: .7rem; color: var(--muted); border-left: 1px solid var(--border); padding-left: 2px; height: 100%; }
+.tz-now { position: absolute; top: 0; bottom: 0; width: 2px; background: var(--accent); z-index: 3; }
+.tz-row.is-unavail { background: repeating-linear-gradient(45deg, transparent, transparent 6px, rgba(128,128,128,.12) 6px, rgba(128,128,128,.12) 12px); }
+.tz-tag { font-size: .7rem; border-radius: 4px; padding: 0 .3rem; }
+.tz-tag--off { background: var(--danger-bg); color: var(--danger-fg); }
+
+/* plan bar (always shown, blue) + thin "ist" line underneath + grey park block */
+.tz-bar { position: absolute; height: 1.4rem; border-radius: 5px; padding: 0 .35rem; box-sizing: border-box; cursor: pointer; overflow: hidden; color: #fff; display: flex; align-items: center; box-shadow: var(--shadow); z-index: 2; }
+.tz-bar.is-overdue { outline: 2px solid #ff7b6b; }
+.tz-bar-label { font-size: .78rem; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.tz-ist { position: absolute; height: .45rem; border-radius: 3px; cursor: pointer; z-index: 2; }
+.tz-grey { position: absolute; top: 2px; bottom: 2px; background: repeating-linear-gradient(45deg, rgba(120,120,120,.30), rgba(120,120,120,.30) 7px, rgba(120,120,120,.15) 7px, rgba(120,120,120,.15) 14px); border: 1px solid rgba(120,120,120,.5); border-radius: 4px; z-index: 1; display: flex; align-items: center; overflow: hidden; }
+.tz-grey span { font-size: .72rem; color: var(--fg); opacity: .8; padding: 0 .3rem; white-space: nowrap; }
+
+.ph-geplant { background: #2563a8; }
+.ph-laufend { background: #d9822b; }
+.ph-abgeschlossen { background: #2e8b57; }
+.ph-overdue { background: #c0392b; }
+
+.tz-legend { display: flex; flex-wrap: wrap; gap: .5rem; align-items: center; margin-top: .5rem; font-size: .8rem; }
+.tz-chip { color: #fff; border-radius: 4px; padding: .05rem .45rem; }
+.tz-ist-chip { display: inline-block; width: 1.4rem; height: .4rem; border-radius: 3px; vertical-align: middle; }
+.tz-grey-chip { display: inline-block; width: 1.4rem; height: .8rem; border-radius: 3px; vertical-align: middle; background: repeating-linear-gradient(45deg, rgba(120,120,120,.30), rgba(120,120,120,.30) 5px, rgba(120,120,120,.12) 5px, rgba(120,120,120,.12) 10px); border: 1px solid rgba(120,120,120,.5); }
+
+/* order list (driver) */
+.tz-order-list { display: flex; flex-direction: column; gap: .4rem; }
+.tz-order-card { display: flex; gap: .7rem; align-items: stretch; border: 1px solid var(--border); border-left-width: 5px; border-radius: 8px; padding: .5rem .7rem; background: var(--card-bg); cursor: pointer; }
+.tz-order-card.ph-geplant { border-left-color: #2563a8; }
+.tz-order-card.ph-laufend { border-left-color: #d9822b; }
+.tz-order-card.ph-abgeschlossen { border-left-color: #2e8b57; }
+.tz-order-card.ph-overdue { border-left-color: #c0392b; }
+.tz-oc-time { font-weight: 700; font-variant-numeric: tabular-nums; min-width: 3.2rem; }
+.tz-oc-time span { display: block; font-weight: 400; color: var(--muted); font-size: .85rem; }
+.tz-oc-main { display: flex; flex-direction: column; gap: .1rem; }
+.tz-oc-status { font-size: .8rem; color: var(--muted); }
+
+/* modals */
+.tz-modal { max-width: 38rem; }
+.tz-form { display: flex; flex-direction: column; gap: .6rem; margin-top: .6rem; }
+.tz-grid2 { display: grid; grid-template-columns: 1fr 1fr; gap: .5rem; }
+.tz-f { display: flex; flex-direction: column; gap: .2rem; font-size: .85rem; }
+.tz-f span { color: var(--muted); }
+.tz-f textarea { font: inherit; }
+.tz-check, .tz-stay { display: flex; align-items: center; gap: .4rem; font-size: .9rem; }
+.tz-trailer-row { display: flex; flex-wrap: wrap; align-items: center; gap: .35rem; padding: .35rem; border: 1px solid var(--border); border-radius: 6px; margin: .25rem 0; }
+.tz-trailer-row [data-tname] { flex: 1 1 8rem; }
+.tz-trailer-row [data-trm] { border: 0; background: none; color: var(--danger-fg); font-size: 1.2rem; cursor: pointer; }
+.tz-actions { display: flex; gap: .6rem; margin-top: .4rem; }
+.btn-danger { background: var(--danger-bg); color: var(--danger-fg); border-color: var(--danger-border); }
+
+.tz-driver { background: var(--surface); border-radius: 8px; padding: .6rem; margin: .5rem 0; display: flex; flex-direction: column; gap: .4rem; }
+.tz-driver-row { display: flex; flex-wrap: wrap; gap: .4rem; }
+.tz-driver .is-done { background: var(--ok-bg); color: var(--ok-fg); border-color: var(--ok-fg); }
+.tz-driver [data-dcomment], .tz-driver input[type="time"], .tz-driver-id input { font: inherit; padding: .35rem .45rem; border: 1px solid var(--border); border-radius: 6px; background: var(--field-bg); color: var(--fg); }
+.tz-driver-row { align-items: center; }
+.tz-driver-row .btn { min-width: 8rem; }
+.tz-driver-id { display: flex; gap: .4rem; }
+.tz-driver-id input { flex: 1; }
+
+/* print-only blocks (Auftrag + Dispo-Übersicht) */
+.tz-print-head { display: none; }
+.tz-print-title { display: flex; justify-content: space-between; align-items: flex-start; gap: 1rem; border-bottom: 2px solid #000; margin-bottom: .4rem; padding-bottom: .2rem; }
+.tz-print-title h2 { margin: 0; }
+.tz-print-wk { font-weight: 600; }
+.tz-print-logo { max-height: 15mm; max-width: 60mm; object-fit: contain; }
+.tz-print-table { width: 100%; border-collapse: collapse; }
+.tz-print-table th { text-align: left; width: 11rem; vertical-align: top; padding: .15rem .4rem .15rem 0; color: #333; }
+.tz-print-table td { padding: .15rem 0; }
+
+@media print {
+  /* Order detail: print only the clean summary, not the form/inputs. */
+  body.tz-print-order .main, body.tz-print-order .global-search { display: none !important; }
+  body.tz-print-order .appell-modal-overlay { position: static; background: none; display: block; padding: 0; z-index: auto; }
+  body.tz-print-order .appell-modal { box-shadow: none; max-width: none; max-height: none; overflow: visible; padding: 0; }
+  body.tz-print-order .appell-modal > *:not(.tz-print-head) { display: none !important; }
+  body.tz-print-order .tz-print-head { display: block !important; }
+
+  /* Dispo overview: show a WK header and scale the timeline to fit the page. */
+  body.tz-print-overview [data-print-head] { display: block !important; margin-bottom: .5rem; }
+  body.tz-print-overview .tz-timeline { overflow: visible !important; transform: scale(var(--tz-print-scale, 1)); transform-origin: top left; }
+  body.tz-print-overview .tz-row-label { position: static !important; }
+  body.tz-print-overview .tz-bar, body.tz-print-overview .tz-ist, body.tz-print-overview .tz-grey { print-color-adjust: exact; -webkit-print-color-adjust: exact; }
+}
+
+.tz-fleet-row { display: flex; flex-wrap: wrap; align-items: center; gap: .35rem; padding: .35rem 0; border-bottom: 1px solid var(--border); }
+.tz-fleet-name { flex: 1 1 9rem; }
+.tz-fleet-name em { color: var(--muted); font-size: .8rem; }
+.tz-fleet-un { color: var(--danger-fg); font-size: .75rem; flex-basis: 100%; }
+.tz-fleet-row [data-del-res] { border: 0; background: none; color: var(--danger-fg); font-size: 1.2rem; cursor: pointer; }
+.tz-add-form { display: flex; flex-wrap: wrap; gap: .4rem; margin: .5rem 0 1rem; }
+
+@media (max-width: 560px) {
+  .tz-grid2 { grid-template-columns: 1fr; }
+  .tz-row-label { flex-basis: 6rem; width: 6rem; }
+}

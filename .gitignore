@@ -12,6 +12,7 @@ data/.session-secret
 data/users.yaml
 data/forms/
 data/appell/
+data/transport/
 
 # Appell source spreadsheets (contain real personal data: names, AHV, phone)
 Appellliste*.xlsx
