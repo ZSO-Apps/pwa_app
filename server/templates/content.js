@@ -9,6 +9,11 @@ function editorUrl(actions) {
   return '/content-admin/' + encodeURIComponent(actions.kachelId) + '/markdown/new?' + qs.toString();
 }
 
+function formBuilderUrl(actions) {
+  const qs = new URLSearchParams({ dir: actions.dir || '' });
+  return '/content-admin/' + encodeURIComponent(actions.kachelId) + '/form/new?' + qs.toString();
+}
+
 function renderQuizActions(actions) {
   if (!actions?.enabled) return '';
   return '<a class="secondary-button no-print" data-online-only="true" href="/quiz/new">+ Quiz hinzufügen</a>';
@@ -23,16 +28,18 @@ function renderContentActions(actions) {
     '<button type="button" class="content-add-button" data-content-menu-toggle aria-expanded="false" aria-label="Inhalt hinzufügen">' + PLUS_ICON + '</button>',
     '<div class="content-actions-menu" data-content-menu hidden>',
     '<a href="' + esc(editorUrl(actions)) + '">Markdown erstellen</a>',
+    '<a href="' + esc(formBuilderUrl(actions)) + '">Formular erstellen</a>',
     '<button type="button" data-content-import="markdown" data-import-title="Markdown importieren" data-import-accept=".md,.markdown,.txt,text/markdown,text/plain">Markdown importieren</button>',
     '<button type="button" data-content-import="pdf" data-import-title="PDF importieren" data-import-accept=".pdf,application/pdf">PDF importieren</button>',
     '<button type="button" data-content-import="picture" data-import-title="Bild importieren" data-import-accept="image/png,image/jpeg,image/webp,image/gif,.png,.jpg,.jpeg,.webp,.gif">Bild importieren</button>',
     '<button type="button" data-content-link data-link-title="Webseite verlinken">Webseite verlinken</button>',
+    '<button type="button" data-content-folder data-folder-title="Ordner erstellen">Ordner erstellen</button>',
     '</div>',
     '<dialog class="content-import-dialog" data-content-import-dialog>',
     '<form class="content-import-card" data-content-import-form>',
     '<button type="button" class="dialog-close" data-content-import-close aria-label="Schliessen">×</button>',
     '<h2 data-content-import-title>Importieren</h2>',
-    '<label>Dateiname<input name="filename" data-content-import-name required autocomplete="off"></label>',
+    '<label><span data-content-name-label>Dateiname</span><input name="filename" data-content-import-name required autocomplete="off"></label>',
     '<label data-content-link-url-field hidden>Link<input name="url" type="url" data-content-link-url autocomplete="url" placeholder="https://example.ch"></label>',
     '<div class="content-dropzone" data-content-dropzone data-content-import-file-area tabindex="0">',
     '<input type="file" data-content-import-file hidden>',
@@ -134,8 +141,9 @@ export function renderMarkdownEditorPage(req, kachel, { dir = '', backUrl = '', 
     '<p><a href="' + esc(backUrl || folderUrl(kachel.id, dir)) + '" class="back">← Zurück</a></p>',
     '<h1>Markdown erstellen</h1>',
     error ? '<p class="err">' + esc(error) + '</p>' : '',
-    '<form method="POST" action="' + esc(action) + '" class="genform wide markdown-editor-form">',
+    '<form method="POST" action="' + esc(action) + '" class="genform wide markdown-editor-form" data-markdown-editor-form>',
     '<input type="hidden" name="dir" value="' + esc(dir) + '">',
+    '<input type="hidden" name="imagesJson" data-markdown-images-json value="' + esc(values.imagesJson || '') + '">',
     '<div class="field"><label for="md-filename">Dateiname *</label><input id="md-filename" name="filename" required autocomplete="off" value="' + esc(values.filename || '') + '"></div>',
     '<div class="markdown-toolbar no-print" aria-label="Markdown Werkzeuge">',
     '<button type="button" data-md-action="heading">Überschrift</button>',
@@ -143,7 +151,19 @@ export function renderMarkdownEditorPage(req, kachel, { dir = '', backUrl = '', 
     '<button type="button" data-md-action="italic">Kursiv</button>',
     '<button type="button" data-md-action="list">Liste</button>',
     '<button type="button" data-md-action="link">Link</button>',
+    '<button type="button" data-md-image-trigger>Bild einfügen</button>',
     '</div>',
+    '<section class="markdown-image-import no-print" data-markdown-image-import>',
+    '<h2>Bilder</h2>',
+    '<p class="muted">Bilder werden beim Speichern im Ordner <code>Dateiname.content</code> neben der Markdown-Datei abgelegt.</p>',
+    '<div class="content-dropzone markdown-image-dropzone" data-markdown-image-dropzone tabindex="0">',
+    '<input type="file" accept="image/png,image/jpeg,image/webp,image/gif" data-markdown-image-file hidden>',
+    '<strong>Bild hier ablegen oder klicken</strong>',
+    '<span>PNG, JPG, WebP oder GIF · maximal 5 MB</span>',
+    '</div>',
+    '<p class="muted" data-markdown-image-status>Kein Bild ausgewählt.</p>',
+    '<div class="markdown-image-list" data-markdown-image-list></div>',
+    '</section>',
     '<div class="markdown-editor-grid">',
     '<label class="field markdown-input-field" for="md-content">Markdown *</label>',
     '<textarea id="md-content" name="content" rows="18" data-markdown-editor required>' + esc(values.content || '') + '</textarea>',
@@ -154,6 +174,37 @@ export function renderMarkdownEditorPage(req, kachel, { dir = '', backUrl = '', 
     '</article>',
   ].join('');
   return layout(req, { title: 'Markdown erstellen', body });
+}
+
+
+export function renderFormBuilderPage(req, kachel, { dir = '', backUrl = '', values = {}, error = '' } = {}) {
+  const action = '/content-admin/' + encodeURIComponent(kachel.id) + '/form';
+  const submitAccess = values.submitAccess || 'Soldat';
+  const resultsAccess = values.resultsAccess || 'Unteroffizier';
+  const roleOption = (role, current) => '<option value="' + esc(role) + '"' + (current === role ? ' selected' : '') + '>' + esc(role) + '</option>';
+  const roles = ['Soldat', 'Unteroffizier', 'Offizier', 'Admin'];
+  const body = [
+    '<article class="content form-builder-page" data-form-builder-page>',
+    '<p><a href="' + esc(backUrl || folderUrl(kachel.id, dir)) + '" class="back">← Zurück</a></p>',
+    '<h1>Formular erstellen</h1>',
+    error ? '<p class="err">' + esc(error) + '</p>' : '',
+    '<form method="POST" action="' + esc(action) + '" class="genform wide form-builder-form" data-form-builder>',
+    '<input type="hidden" name="dir" value="' + esc(dir) + '">',
+    '<input type="hidden" name="fieldsJson" data-form-builder-fields-json value="' + esc(values.fieldsJson || '') + '">',
+    '<div class="form-el w-half"><label class="field">Formular-Titel *<input name="title" required autocomplete="off" value="' + esc(values.title || '') + '"></label></div>',
+    '<div class="form-el w-half"><label class="field">Technischer Name optional<input name="id" autocomplete="off" value="' + esc(values.id || '') + '" placeholder="wird sonst aus dem Titel erzeugt"></label></div>',
+    '<div class="form-el w-half"><label class="field">Ausfüllen ab Rolle<select name="submitAccess">' + roles.map((role) => roleOption(role, submitAccess)).join('') + '</select></label></div>',
+    '<div class="form-el w-half"><label class="field">Auswertung ab Rolle<select name="resultsAccess">' + roles.map((role) => roleOption(role, resultsAccess)).join('') + '</select></label></div>',
+    '<section class="form-el form-builder-fields">',
+    '<div class="content-header"><h2>Felder</h2><button type="button" class="secondary-button" data-form-builder-add>+ Feld hinzufügen</button></div>',
+    '<div data-form-builder-fields></div>',
+    '</section>',
+    '<button type="submit">Formular speichern</button>',
+    '</form>',
+    '<p><a href="' + esc(backUrl || folderUrl(kachel.id, dir)) + '" class="back">← Zurück</a></p>',
+    '</article>',
+  ].join('');
+  return layout(req, { title: 'Formular erstellen', body });
 }
 
 export function renderOffline(req) {

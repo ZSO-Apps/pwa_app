@@ -67,7 +67,7 @@ function readMergedDir(kachel, relPath = '') {
     const dir = path.join(root, relPath);
     if (!fs.existsSync(dir) || !fs.statSync(dir).isDirectory()) continue;
     for (const e of fs.readdirSync(dir, { withFileTypes: true })) {
-      if (e.name.startsWith('.')) continue;
+      if (e.name.startsWith('.') || isHiddenContentDirName(e.name)) continue;
       byName.set(e.name, {
         name: e.name,
         isDir: e.isDirectory(),
@@ -76,6 +76,10 @@ function readMergedDir(kachel, relPath = '') {
     }
   }
   return [...byName.values()];
+}
+
+function isHiddenContentDirName(name) {
+  return String(name || '').toLowerCase().endsWith('.content');
 }
 
 // Public listing: directories, .md, .pdf, .url, plus form definitions (.json).
@@ -209,14 +213,14 @@ export function listKachelPublicAssets(kachel) {
     if (!fs.existsSync(rootDir)) return;
     const stack = [{ abs: rootDir, rel: '' }];
     while (stack.length) {
-      const { abs, rel } = stack.pop();
-      urls.add(base + (rel ? '/' + rel : '') + '/');
+      const { abs, rel, hidden = false } = stack.pop();
+      if (!hidden) urls.add(base + (rel ? '/' + rel : '') + '/');
       for (const e of fs.readdirSync(abs, { withFileTypes: true })) {
         if (e.name.startsWith('.')) continue;
         const ext = path.extname(e.name).toLowerCase();
         const childRel = rel ? rel + '/' + encodeURIComponent(e.name) : encodeURIComponent(e.name);
         if (e.isDirectory()) {
-          stack.push({ abs: path.join(abs, e.name), rel: childRel });
+          stack.push({ abs: path.join(abs, e.name), rel: childRel, hidden: hidden || isHiddenContentDirName(e.name) });
         } else if (ext === '.url' || ext === '.json') {
           // external link or form definition — not a cacheable asset
         } else {
@@ -252,7 +256,7 @@ export function scanForms() {
   const walk = (abs, slug) => {
     if (!fs.existsSync(abs)) return;
     for (const e of fs.readdirSync(abs, { withFileTypes: true })) {
-      if (e.name.startsWith('.')) continue;
+      if (e.name.startsWith('.') || isHiddenContentDirName(e.name)) continue;
       const child = path.join(abs, e.name);
       if (e.isDirectory()) walk(child, slug || e.name);
       else if (e.name.toLowerCase().endsWith('.json')) {

@@ -58,6 +58,10 @@ function readUrlFile(abs) {
   }
 }
 
+function isHiddenContentDirName(name) {
+  return String(name || '').toLowerCase().endsWith('.content');
+}
+
 function collectDocs(kachel) {
   const docs = new Map();
   for (const root of kachelRoots(kachel)) {
@@ -71,7 +75,7 @@ function collectDocs(kachel) {
         continue;
       }
       for (const entry of entries) {
-        if (entry.name.startsWith('.')) continue;
+        if (entry.name.startsWith('.') || isHiddenContentDirName(entry.name)) continue;
         const childRel = rel ? rel + '/' + entry.name : entry.name;
         let childAbs;
         try {

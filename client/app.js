@@ -410,6 +410,7 @@ function initContentActions() {
     const linkField = root.querySelector('[data-content-link-url-field]');
     const linkInput = root.querySelector('[data-content-link-url]');
     const submitButton = root.querySelector('[data-content-submit]');
+    const nameLabel = root.querySelector('[data-content-name-label]');
     const errorEl = root.querySelector('[data-content-import-error]');
     const kachelId = root.getAttribute('data-kachel-id');
     const dir = root.getAttribute('data-content-dir') || '';
@@ -433,11 +434,13 @@ function initContentActions() {
     };
     const setDialogMode = (mode) => {
       const isLink = mode === 'link';
-      if (fileArea) fileArea.hidden = isLink;
-      if (fileName) fileName.hidden = isLink;
+      const isFolder = mode === 'folder';
+      const usesFile = !isLink && !isFolder;
+      if (fileArea) fileArea.hidden = !usesFile;
+      if (fileName) fileName.hidden = !usesFile;
       if (fileInput) {
-        fileInput.disabled = isLink;
-        if (isLink) fileInput.value = '';
+        fileInput.disabled = !usesFile;
+        if (!usesFile) fileInput.value = '';
       }
       if (linkField) linkField.hidden = !isLink;
       if (linkInput) {
@@ -445,7 +448,8 @@ function initContentActions() {
         linkInput.required = isLink;
         linkInput.value = '';
       }
-      if (submitButton) submitButton.textContent = isLink ? 'Verlinken' : 'Importieren';
+      if (nameLabel) nameLabel.textContent = isFolder ? 'Ordnername' : 'Dateiname';
+      if (submitButton) submitButton.textContent = isLink ? 'Verlinken' : isFolder ? 'Ordner erstellen' : 'Importieren';
     };
     const showDialog = () => {
       setError('');
@@ -470,6 +474,14 @@ function initContentActions() {
       setFile(null);
       showDialog();
     };
+    const openFolderDialog = (button) => {
+      currentType = 'folder';
+      setDialogMode('folder');
+      if (title) title.textContent = button.getAttribute('data-folder-title') || 'Ordner erstellen';
+      if (nameInput) nameInput.value = '';
+      setFile(null);
+      showDialog();
+    };
 
     toggle?.addEventListener('click', (event) => {
       event.stopPropagation();
@@ -477,6 +489,7 @@ function initContentActions() {
     });
     root.querySelectorAll('[data-content-import]').forEach((button) => button.addEventListener('click', () => openDialog(button)));
     root.querySelectorAll('[data-content-link]').forEach((button) => button.addEventListener('click', () => openLinkDialog(button)));
+    root.querySelectorAll('[data-content-folder]').forEach((button) => button.addEventListener('click', () => openFolderDialog(button)));
     root.querySelectorAll('[data-content-import-close]').forEach((button) => {
       button.addEventListener('click', () => dialog?.close ? dialog.close() : dialog?.removeAttribute('open'));
     });
@@ -514,11 +527,18 @@ function initContentActions() {
       const oldText = submit?.textContent;
       if (submit) {
         submit.disabled = true;
-        submit.textContent = currentType === 'link' ? 'Speichere…' : 'Importiere…';
+        submit.textContent = currentType === 'link' ? 'Speichere…' : currentType === 'folder' ? 'Erstelle…' : 'Importiere…';
       }
       try {
         let response;
-        if (currentType === 'link') {
+        if (currentType === 'folder') {
+          response = await fetch('/content-admin/' + encodeURIComponent(kachelId) + '/folder', {
+            method: 'POST',
+            body: new URLSearchParams({ dir, name }),
+            headers: { 'Content-Type': 'application/x-www-form-urlencoded;charset=UTF-8' },
+            credentials: 'same-origin',
+          });
+        } else if (currentType === 'link') {
           const url = linkInput?.value?.trim() || '';
           if (!url) return setError('Bitte einen Link angeben.');
           response = await fetch('/content-admin/' + encodeURIComponent(kachelId) + '/link', {
@@ -541,10 +561,10 @@ function initContentActions() {
           });
         }
         const data = await response.json().catch(() => ({}));
-        if (!response.ok || data.ok === false) throw new Error(data.error || (currentType === 'link' ? 'Verlinkung fehlgeschlagen.' : 'Import fehlgeschlagen.'));
+        if (!response.ok || data.ok === false) throw new Error(data.error || (currentType === 'link' ? 'Verlinkung fehlgeschlagen.' : currentType === 'folder' ? 'Ordner konnte nicht erstellt werden.' : 'Import fehlgeschlagen.'));
         window.location.href = data.url || window.location.href;
       } catch (error) {
-        setError(error?.message || (currentType === 'link' ? 'Verlinkung fehlgeschlagen.' : 'Import fehlgeschlagen.'));
+        setError(error?.message || (currentType === 'link' ? 'Verlinkung fehlgeschlagen.' : currentType === 'folder' ? 'Ordner konnte nicht erstellt werden.' : 'Import fehlgeschlagen.'));
       } finally {
         if (submit) {
           submit.disabled = false;
@@ -903,12 +923,133 @@ function initGlobalSearch() {
   });
 }
 
+
+function initFormBuilder() {
+  const form = document.querySelector('[data-form-builder]');
+  if (!form) return;
+  const fieldsRoot = form.querySelector('[data-form-builder-fields]');
+  const hidden = form.querySelector('[data-form-builder-fields-json]');
+  const addButton = form.querySelector('[data-form-builder-add]');
+  let fieldSeq = 0;
+
+  const escHtml = (value) => String(value || '').replace(/[&<>"']/g, (char) => ({
+    '&': '&amp;',
+    '<': '&lt;',
+    '>': '&gt;',
+    '"': '&quot;',
+    "'": '&#39;',
+  }[char]));
+
+  const syncOptionsVisibility = (row) => {
+    const type = row.querySelector('[data-form-field-type]')?.value || 'text';
+    const options = row.querySelector('[data-form-field-options-wrap]');
+    if (options) options.hidden = !['select', 'radio', 'checkboxes'].includes(type);
+  };
+
+  const renumber = () => {
+    Array.from(fieldsRoot.querySelectorAll('[data-form-builder-field]')).forEach((row, index) => {
+      const number = row.querySelector('[data-form-builder-field-number]');
+      if (number) number.textContent = String(index + 1);
+      const remove = row.querySelector('[data-form-builder-remove]');
+      if (remove) remove.hidden = fieldsRoot.querySelectorAll('[data-form-builder-field]').length <= 1;
+    });
+  };
+
+  const addField = (initial = {}) => {
+    fieldSeq += 1;
+    const row = document.createElement('section');
+    row.className = 'form-builder-field';
+    row.setAttribute('data-form-builder-field', '');
+    row.innerHTML =
+      '<div class="quiz-question-head">' +
+        '<h3>Feld <span data-form-builder-field-number></span></h3>' +
+        '<button type="button" class="secondary-button compact" data-form-builder-remove>Feld entfernen</button>' +
+      '</div>' +
+      '<div class="field-row">' +
+        '<label class="field">Bezeichnung *<input data-form-field-label required value="' + escHtml(initial.label || '') + '"></label>' +
+        '<label class="field">Typ<select data-form-field-type>' +
+          '<option value="text">Text</option>' +
+          '<option value="textarea">Freitext</option>' +
+          '<option value="number">Zahl</option>' +
+          '<option value="date">Datum</option>' +
+          '<option value="time">Zeit</option>' +
+          '<option value="select">Dropdown</option>' +
+          '<option value="radio">Single Choice</option>' +
+          '<option value="checkboxes">Mehrfachauswahl</option>' +
+          '<option value="checkbox">Checkbox</option>' +
+        '</select></label>' +
+      '</div>' +
+      '<label class="checkbox"><input type="checkbox" data-form-field-required' + (initial.required ? ' checked' : '') + '> Pflichtfeld</label>' +
+      '<label class="field" data-form-field-options-wrap hidden>Optionen, eine pro Zeile<textarea data-form-field-options rows="4">' + escHtml((initial.options || []).join('\n')) + '</textarea></label>';
+    fieldsRoot.appendChild(row);
+    const typeSelect = row.querySelector('[data-form-field-type]');
+    if (initial.type) typeSelect.value = initial.type;
+    typeSelect.addEventListener('change', () => syncOptionsVisibility(row));
+    row.querySelector('[data-form-builder-remove]')?.addEventListener('click', () => {
+      row.remove();
+      if (!fieldsRoot.querySelector('[data-form-builder-field]')) addField();
+      renumber();
+    });
+    syncOptionsVisibility(row);
+    renumber();
+  };
+
+  const collectFields = () => Array.from(fieldsRoot.querySelectorAll('[data-form-builder-field]')).map((row, index) => {
+    const label = row.querySelector('[data-form-field-label]')?.value?.trim() || '';
+    if (!label) throw new Error('Feld ' + (index + 1) + ': Bitte eine Bezeichnung angeben.');
+    const type = row.querySelector('[data-form-field-type]')?.value || 'text';
+    const field = {
+      label,
+      type,
+      required: Boolean(row.querySelector('[data-form-field-required]')?.checked),
+    };
+    if (['select', 'radio', 'checkboxes'].includes(type)) {
+      field.options = (row.querySelector('[data-form-field-options]')?.value || '')
+        .split(/\r?\n/)
+        .map((line) => line.trim())
+        .filter(Boolean);
+      if (field.options.length < 2) throw new Error('Feld ' + (index + 1) + ': Bitte mindestens zwei Optionen angeben.');
+    }
+    return field;
+  });
+
+  addButton?.addEventListener('click', () => addField());
+  form.addEventListener('submit', (event) => {
+    try {
+      const fields = collectFields();
+      if (!fields.length) throw new Error('Bitte mindestens ein Feld erfassen.');
+      hidden.value = JSON.stringify(fields);
+    } catch (error) {
+      event.preventDefault();
+      window.alert(error?.message || 'Formular ist unvollständig.');
+    }
+  });
+
+  let restored = false;
+  try {
+    const values = hidden?.value ? JSON.parse(hidden.value) : [];
+    if (Array.isArray(values) && values.length) {
+      values.forEach(addField);
+      restored = true;
+    }
+  } catch {}
+  if (!restored) addField();
+}
+
 function initMarkdownEditor() {
   const root = document.querySelector('[data-markdown-editor-page]');
   if (!root) return;
   const textarea = root.querySelector('[data-markdown-editor]');
   const preview = root.querySelector('[data-markdown-preview]');
+  const form = root.querySelector('[data-markdown-editor-form]');
+  const hiddenImages = root.querySelector('[data-markdown-images-json]');
+  const imageInput = root.querySelector('[data-markdown-image-file]');
+  const imageDropzone = root.querySelector('[data-markdown-image-dropzone]');
+  const imageStatus = root.querySelector('[data-markdown-image-status]');
+  const imageList = root.querySelector('[data-markdown-image-list]');
   if (!textarea || !preview) return;
+  const pendingImages = [];
+  let imageSeq = 0;
 
   const htmlEscape = (value) => String(value || '').replace(/[&<>"']/g, (char) => ({
     '&': '&amp;',
@@ -918,6 +1059,7 @@ function initMarkdownEditor() {
     "'": '&#39;',
   }[char]));
   const inline = (value) => htmlEscape(value)
+    .replace(/!\[([^\]]*)\]\(([^)]+)\)/g, '<img src="$2" alt="$1">')
     .replace(/\[([^\]]+)\]\(([^)]+)\)/g, '<a href="$2">$1</a>')
     .replace(/\*\*([^*]+)\*\*/g, '<strong>$1</strong>')
     .replace(/\*([^*]+)\*/g, '<em>$1</em>');
@@ -958,6 +1100,53 @@ function initMarkdownEditor() {
     preview.innerHTML = html || '<p class="muted">Vorschau</p>';
   };
   const selectedText = () => textarea.value.slice(textarea.selectionStart, textarea.selectionEnd);
+  const renderImageList = () => {
+    if (!imageList) return;
+    imageList.innerHTML = pendingImages.map((image, index) =>
+      '<div class="markdown-image-item">' +
+        '<img src="' + htmlEscape(image.data) + '" alt="Vorschau">' +
+        '<span>' + htmlEscape(image.name) + '</span>' +
+        '<button type="button" class="secondary-button compact" data-md-remove-image="' + index + '">Entfernen</button>' +
+      '</div>'
+    ).join('');
+    imageList.querySelectorAll('[data-md-remove-image]').forEach((button) => {
+      button.addEventListener('click', () => {
+        const image = pendingImages[Number(button.getAttribute('data-md-remove-image'))];
+        if (image) {
+          textarea.value = textarea.value.split(image.token).join('');
+          pendingImages.splice(pendingImages.indexOf(image), 1);
+          renderImageList();
+          renderPreview();
+        }
+      });
+    });
+  };
+  const insertImageFile = (file) => {
+    setMarkdownImageStatus('');
+    if (!file) return;
+    if (!file.type.startsWith('image/')) {
+      setMarkdownImageStatus('Bitte ein Bild auswählen.');
+      return;
+    }
+    if (file.size > 5 * 1024 * 1024) {
+      setMarkdownImageStatus('Bilder dürfen maximal 5 MB gross sein.');
+      return;
+    }
+    const reader = new FileReader();
+    reader.onload = () => {
+      imageSeq += 1;
+      const token = '__MARKDOWN_IMAGE_' + Date.now() + '_' + imageSeq + '__';
+      const alt = file.name.replace(/\.[^.]+$/, '') || 'Bild';
+      pendingImages.push({ token, name: file.name, data: String(reader.result || '') });
+      replaceSelection('![' + alt + '](' + token + ')');
+      if (imageStatus) imageStatus.textContent = file.name + ' eingefügt.';
+      renderImageList();
+    };
+    reader.readAsDataURL(file);
+  };
+  const setMarkdownImageStatus = (message) => {
+    if (imageStatus) imageStatus.textContent = message || 'Kein Bild ausgewählt.';
+  };
   const replaceSelection = (value) => {
     const start = textarea.selectionStart;
     const end = textarea.selectionEnd;
@@ -982,6 +1171,34 @@ function initMarkdownEditor() {
       }
     });
   });
+  root.querySelector('[data-md-image-trigger]')?.addEventListener('click', () => imageInput?.click());
+  imageInput?.addEventListener('change', () => {
+    insertImageFile(imageInput.files?.[0]);
+    imageInput.value = '';
+  });
+  imageDropzone?.addEventListener('click', () => imageInput?.click());
+  imageDropzone?.addEventListener('keydown', (event) => {
+    if (event.key === 'Enter' || event.key === ' ') {
+      event.preventDefault();
+      imageInput?.click();
+    }
+  });
+  ['dragenter', 'dragover'].forEach((name) => {
+    imageDropzone?.addEventListener(name, (event) => {
+      event.preventDefault();
+      imageDropzone.classList.add('is-dragging');
+    });
+  });
+  ['dragleave', 'drop'].forEach((name) => {
+    imageDropzone?.addEventListener(name, () => imageDropzone.classList.remove('is-dragging'));
+  });
+  imageDropzone?.addEventListener('drop', (event) => {
+    event.preventDefault();
+    insertImageFile(event.dataTransfer?.files?.[0]);
+  });
+  form?.addEventListener('submit', () => {
+    if (hiddenImages) hiddenImages.value = JSON.stringify(pendingImages);
+  });
   textarea.addEventListener('input', renderPreview);
   renderPreview();
 }
@@ -991,6 +1208,7 @@ initEnhancedForms();
 initContentActions();
 initQuizBuilder();
 initGlobalSearch();
+initFormBuilder();
 initMarkdownEditor();
 initResultsTables();
 initResultPrinting();

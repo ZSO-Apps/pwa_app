@@ -28,6 +28,7 @@ function versionedClientAsset(urlPath) {
 const STATIC_PRECACHE = [
   '/',
   ...STATIC_CLIENT_ASSETS.map(versionedClientAsset),
+  '/favicon.ico',
   '/offline',
 ];
 
@@ -151,6 +152,25 @@ self.addEventListener('fetch', (event) => {
       } catch {
         const cached = await cache.match(req) || await cache.match(url.pathname, { ignoreSearch: true });
         if (cached) return cached;
+        return new Response('Offline', { status: 503 });
+      }
+    })());
+    return;
+  }
+
+  if (url.pathname.startsWith('/logos/') || url.pathname === '/favicon.ico') {
+    event.respondWith((async () => {
+      const cache = await caches.open(CACHE);
+      const cached = await cache.match(req, { ignoreSearch: true }) || await cache.match(url.pathname, { ignoreSearch: true });
+      if (cached) return cached;
+      try {
+        const fresh = await fetch(new Request(req, { cache: 'reload' }));
+        if (fresh.ok) {
+          cache.put(req, fresh.clone()).catch(() => {});
+          cache.put(url.pathname, fresh.clone()).catch(() => {});
+        }
+        return fresh;
+      } catch {
         return new Response('Offline', { status: 503 });
       }
     })());

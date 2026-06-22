@@ -5,7 +5,7 @@ import fs from 'node:fs';
 import { loadLayout, findKachel } from './layout.js';
 import { sessionMiddleware, checkLogin, setSessionCookie, clearSessionCookie, hasAccess } from './auth.js';
 import { listKachelDir, renderMarkdown, mimeOf, resolveKachelPath, kachelRoots, effectiveKachel } from './content.js';
-import { contentActionContext, importContentFile, renderNewMarkdownPage, saveContentLink, saveMarkdownContent } from './content-admin.js';
+import { contentActionContext, createContentFolder, importContentFile, renderNewFormPage, renderNewMarkdownPage, saveContentLink, saveFormDefinition, saveMarkdownContent } from './content-admin.js';
 import { renderHome, renderListing, renderMarkdownPage, renderLogin, renderOffline, renderError } from './templates/index.js';
 import { searchContent } from './search.js';
 import { archiveWks, renderArchivedWkSubmission, renderForm, renderResults, renderSubmission, renderWkArchive, submitForm, unarchiveWks } from './forms.js';
@@ -71,8 +71,11 @@ app.all('/logout', (_req, res) => { clearSessionCookie(res); res.redirect('/'); 
 
 app.get('/content-admin/:id/markdown/new', (req, res) => renderNewMarkdownPage(req, res, req.params.id));
 app.post('/content-admin/:id/markdown', (req, res) => saveMarkdownContent(req, res, req.params.id));
+app.get('/content-admin/:id/form/new', (req, res) => renderNewFormPage(req, res, req.params.id));
+app.post('/content-admin/:id/form', (req, res) => saveFormDefinition(req, res, req.params.id));
 app.post('/content-admin/:id/import', express.raw({ type: '*/*', limit: '30mb' }), (req, res) => importContentFile(req, res, req.params.id));
 app.post('/content-admin/:id/link', (req, res) => saveContentLink(req, res, req.params.id));
+app.post('/content-admin/:id/folder', (req, res) => createContentFolder(req, res, req.params.id));
 
 app.get('/quiz/new', (req, res) => renderNewQuiz(req, res));
 app.post('/quiz', (req, res) => createQuiz(req, res));
@@ -126,9 +129,10 @@ app.get('/k/:id', (req, res) => {
   // wkScoped Kacheln may have an as-yet-empty WK folder — show an empty listing
   // rather than a 404 once a WK is active.
   if (!kachelRoots(k).length) {
-    if (kachel.wkScoped) {
+    const contentActions = contentActionContext(req, kachel, '');
+    if (kachel.wkScoped || contentActions) {
       return res.send(renderListing(req, kachel, [], [{ label: kachel.title, url: `/k/${kachel.id}` }], {
-        contentActions: contentActionContext(req, kachel, ''),
+        contentActions,
         quizActions: quizActionContext(req, kachel),
       }));
     }
