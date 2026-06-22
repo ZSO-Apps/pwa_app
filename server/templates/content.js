@@ -58,7 +58,8 @@ function folderUrl(kachelId, dir = '') {
 
 function renderKachel(k) {
   const color = k.color || '#444';
-  return `<a class="kachel" href="/k/${esc(k.id)}" style="--c:${esc(color)}">
+  const href = k.route || `/k/${esc(k.id)}`;
+  return `<a class="kachel" href="${esc(href)}" style="--c:${esc(color)}">
     <span class="k-title">${esc(k.title || k.id)}</span>
   </a>`;
 }

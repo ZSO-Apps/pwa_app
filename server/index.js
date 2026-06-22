@@ -14,6 +14,10 @@ import { wkMiddleware, setActiveWk, listWks } from './wk.js';
 import { createUser, deleteUser, renderDeleteUser, renderEditUser, renderNewUser, renderUsers, updateUser } from './user-admin.js';
 import { resolveLogo } from './branding.js';
 import { createQuiz, quizActionContext, renderNewQuiz } from './quiz-admin.js';
+import {
+  renderAppellPage, apiLists, apiData, apiSetStatus, apiSetTags,
+  renderImportPage, handleImport, renderReviewPage, handleConfirm, handleDiscard, handleDeleteList,
+} from './appell.js';
 
 const PORT = process.env.PORT ? Number(process.env.PORT) : 8080;
 
@@ -93,10 +97,24 @@ function ensureKachelAccess(req, res, kachel) {
   return false;
 }
 
+// Appell module (per-WK attendance) — own routes, not content-folder based.
+app.get('/appell', (req, res) => renderAppellPage(req, res));
+app.get('/appell/import', (req, res) => renderImportPage(req, res));
+app.post('/appell/import', express.raw({ type: '*/*', limit: '30mb' }), (req, res) => handleImport(req, res));
+app.get('/appell/review', (req, res) => renderReviewPage(req, res));
+app.post('/appell/confirm', (req, res) => handleConfirm(req, res));
+app.post('/appell/discard', (req, res) => handleDiscard(req, res));
+app.post('/appell/list/delete', (req, res) => handleDeleteList(req, res));
+app.get('/api/appell/lists', (req, res) => apiLists(req, res));
+app.get('/api/appell/data', (req, res) => apiData(req, res));
+app.post('/api/appell/status', (req, res) => apiSetStatus(req, res));
+app.post('/api/appell/tags', (req, res) => apiSetTags(req, res));
+
 app.get('/k/:id', (req, res) => {
   const kachel = findKachel(req.params.id);
   if (!kachel) return res.status(404).send(renderError(req, 404, 'Kachel nicht gefunden'));
   if (!ensureKachelAccess(req, res, kachel)) return;
+  if (kachel.route) return res.redirect(kachel.route);
 
   if (kachel.wkScoped && !req.activeWk) {
     return res.status(409).send(renderError(req, 409, 'Bitte zuerst einen WK auswählen oder anlegen (Admin → WK erfassen).'));

@@ -49,6 +49,12 @@ kacheln:
     content: quiz
     color: "#005a9c"
 
+  - id: appell
+    title: "Appell"
+    access: Unteroffizier
+    route: /appell
+    color: "#4a90a4"
+
   - id: admin
     title: "Admin"
     access: Offizier

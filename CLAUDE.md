@@ -159,6 +159,7 @@ checks are simple rank comparisons (e.g. `userRole >= requiredRole`), with
 | `wk-infos`        | WK Infos           | Soldat     | `wk_infos`        | `wkScoped` — shows the active WK's subfolder          |
 | `wk-infos-kader`  | WK Infos Kader     | Unteroffizier | `wk_infos_kader` | `wkScoped` — Kader-only per-WK content              |
 | `quiz`            | Quiz               | Soldat     | `quiz`            | hosts `quiz-leitungsbau.json` and future quizzes     |
+| `appell`          | Appell             | Unteroffizier | — (route `/appell`) | per-WK attendance; own module, not content-folder based      |
 | `admin`           | Admin              | Offizier   | `admin`           | hosts `wk.json` (Offizier+) and user management (Admin only) |
 
 ### Example `layout.yaml`
@@ -406,9 +407,9 @@ These resolve the previously open questions and reflect the current code.
 - ToDos: targets can be roles and/or individual users. ToDos need comment
   fields for addressing specific people inside roles. Completed ToDos remain
   visible, are struck through, and are sorted after open ToDos.
-- Per-WK roster / Appell. The old YAML model with `kader`, `mannschaft`
-  and an Appell sub-tree is gone for now. If reintroduced, it should
-  layer on top of the current WK submission, not replace it.
+- (Done) Per-WK roster / Appell — implemented as the Appell module, see
+  "Appell (Anwesenheit)" below. It layers on top of the active WK and does
+  not touch the WK submission itself.
 
 ## Globale Suche
 
@@ -420,3 +421,75 @@ These resolve the previously open questions and reflect the current code.
 - Quizdefinitionen werden als normale Formular-JSON unter `content_zso_specific/quiz` erstellt. Optional hochgeladene Bilder liegen unter `content_zso_specific/quiz/.assets` und werden über `/k/quiz/.assets/...` ausgeliefert.
 - Quiz hinzufügen ist für `Unteroffizier` und höher verfügbar. Ausfüllen bleibt `Soldat`, Auswertungen bleiben `Unteroffizier`.
 - Single- und Multiple-Choice-Fragen werden erst in der Auswertung bewertet. Freitextfragen werden gespeichert, aber nicht automatisch bepunktet.
+
+## Appell (Anwesenheit)
+
+Eigenständiges Modul zur täglichen Anwesenheitskontrolle pro WK. Bewusst
+**nicht** über den generischen Formular-Mechanismus gelöst (mehrere hundert
+Personen × Tage), sondern als eigene Route `/appell` (Kachel `appell`,
+sichtbar ab `Unteroffizier`).
+
+### Import (Excel → strukturierte Daten)
+- Die Ausgangsdaten kommen als „Appellliste.xlsx" — ein Druck-Formular, in dem
+  die Anwesenheits-„Felder" als **eingebettete Bilder** stecken (sichtbares
+  graues Kästchen = an diesem Tag aufgeboten, vollständig transparentes Bild =
+  nicht aufgeboten). `server/appell-import.js` entpackt die xlsx mit `fflate`,
+  liest `sharedStrings`/`worksheet`/`drawing` und entscheidet pro Bild über die
+  **mittlere Alpha-Deckung** (transparent ≈ 0 ⇒ nicht aufgeboten). Pro Person
+  werden Name, Grad, Bereich, Funktion, JG, Beruf, Ort, Einrückort, Mobile/Email
+  und die aufgebotenen Tage extrahiert.
+- **Upload nur für `Offizier`+.** Nach dem Upload entsteht ein **Entwurf**
+  (`roster.draft.json`), der mit Diff (neu / entfallen / geänderte Tage)
+  geprüft und von Hand korrigiert werden kann, bevor er per „Übernehmen" zum
+  aktiven `roster.json` wird.
+
+### Mehrere Listen + versionierter Re-Import
+- Ein WK kann **mehrere Listen** halten (z.B. `KVK`, `ZSO Baden`, `ZSO Brugg`),
+  jede mit eigenem Tagesbereich. Beim Import wählt man „neue Liste" oder
+  „bestehende aktualisieren".
+- **Re-Import derselben Liste** ersetzt `roster.json` (neueste Version gewinnt),
+  sichert die Vorgängerversion als `roster.<ts>.json` und erhöht `meta.version`
+  — gedacht für Dienstverschiebungen (z.B. Freitag vor dem WK nochmals
+  importieren). In-App erfasste **Tags und Status bleiben erhalten** (eigene
+  Dateien, Schlüssel = Hash der Soz.-Vers.-Nr.).
+
+### Datenmodell (file-based, pro WK)
+```
+data/appell/<wk-id>/lists/<list-id>/
+  meta.json            Name, version, importedAt, days[]
+  roster.json          aktive Version
+  roster.draft.json    Entwurf bis „Übernehmen"
+  roster.<ts>.json     Backup der Vorgängerversion
+  tags.json            { pid: [tags] }   (Gruppeneinteilung, Uof+ pflegt)
+  status/<pid>.json    { pid, days: { iso: { status, bemerkung, by, at } } }
+```
+- `pid` = erste 12 Hex von sha256(Soz.-Vers.-Nr.) — stabil über Importe,
+  ohne AHV-Nummer im Dateipfad.
+- **Status pro Person eine Datei** → keine Schreibkonflikte bei mehreren
+  gleichzeitig erfassenden Uof. `data/appell/` ist Runtime-Daten (gitignored).
+
+### Bedienung
+- Logik in `server/appell.js`, Frontend in `client/appell.js` (+ CSS in
+  `client/styles.css`). API: `GET /api/appell/lists`, `GET /api/appell/data`,
+  `POST /api/appell/status`, `POST /api/appell/tags`.
+- **Listen-Auswahl** oben: Default ist **„Alle Appelllisten"** (`list=__all`),
+  eine kombinierte Ansicht über alle Listen des WK (Tage = sortierte Vereinigung,
+  jede Person behält ihre `listId`/`listName`, damit Status-/Tag-Writes an die
+  richtige Liste gehen). Einzelne Listen sind separat wählbar.
+- **Filter** nach Bereich, Funktion, Grad, Liste (in der kombinierten Ansicht),
+  Tag (Gruppe) und Name.
+- **Drucken** (Button in der Übersicht): druckt die Matrix mit der **aktuell
+  gewählten Liste und allen aktiven Filtern**. Erzwingt Querformat, blendet die
+  Bedienelemente aus und setzt einen Print-Header (Liste, Filter, Stand). Da
+  Browser Hintergrundfarben oft nicht drucken, werden die aufgebotenen Felder
+  als umrandete Kästchen und der Status zusätzlich als Glyphe (✓/✗/K) gedruckt
+  (`print-color-adjust: exact` für die Farben).
+- **Übersicht** = Matrix Personen × Tage; der heutige Tag ist hervorgehoben und
+  vergrössert. Klick auf ein Feld zyklisch **neutral → grün (anwesend) → rot
+  (abwesend) → orange (krank) → neutral**. Nur aufgebotene Tage sind klickbar.
+- **Tagesansicht** = grosse Zeilen für einen Tag (Default heute) zum schnellen
+  Abhaken, mit Bemerkungsfeld.
+- **Mobilnummer** platzsparend hinter einem 📱-Icon (Klick zeigt `tel:`-Link).
+  Voller Kontakt + Tag-Verwaltung im Personen-Detail (Klick auf den Namen).
+- **Status/Tags erfassen ab `Unteroffizier`.** Dynamische Schreibaktionen sind
+  LAN-only und werden offline blockiert.

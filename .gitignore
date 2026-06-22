@@ -11,6 +11,11 @@ yarn-error.log*
 data/.session-secret
 data/users.yaml
 data/forms/
+data/appell/
+
+# Appell source spreadsheets (contain real personal data: names, AHV, phone)
+Appellliste*.xlsx
+Appellliste*.xlsx:Zone.Identifier
 
 # Environment
 .env
