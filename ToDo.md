@@ -6,10 +6,10 @@
 - [x] Mandanten Fähigkeit (Logos)
 - [x] Print -> WK Hinzufügen
 - [x] Farbe/Design
-- [x] MD Editor
+- [ ] MD Editor --> Fotos als MD Option 
 - [x] Hinzufügen von Dateien (zB MD, PDF, ...) in eine Kachel (statt den Editor öffnen, einfach file upload)
 - [x] Quiz verbessern (Auswertung, was war richtig/falsch, Punkte)
-- [x] WK-Archivieren 
+- [x] WK-Archivieren
 - [ ] Bugfixes
 
 ## Prio 2
