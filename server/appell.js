@@ -310,13 +310,18 @@ export function buildListData(wkId, listId) {
 }
 
 // Combined view across all lists of a WK ("Alle Appelllisten"). Days are the
-// sorted union; each person keeps its own listId/listName so status/tag writes
-// route to the right list.
+// sorted union. People that appear in several lists (same Soz.-Vers.-Nr. ⇒ same
+// pid) are merged into a single row: their list names are joined ("KVK Brugg +
+// WK Brugg"), aufgebotene Tage/Status/Tags are unioned, and a `dayList` map
+// remembers which list owns each day so status/tag writes route to the right
+// list. Per-list details (e.g. differing Einrückorte) are kept in `sources` for
+// the detail view.
 export function buildCombinedData(wkId) {
   const lists = listLists(wkId);
   if (!lists.length) return null;
   const dayset = new Set();
-  const persons = [];
+  const byPid = new Map();
+  const order = [];
   const f = { bereiche: new Set(), funktionen: new Set(), grade: new Set(), tags: new Set(), listen: new Set() };
   for (const l of lists) {
     const data = buildListData(wkId, l.id);
@@ -327,8 +332,46 @@ export function buildCombinedData(wkId) {
     data.filters.grade.forEach((x) => f.grade.add(x));
     data.filters.tags.forEach((x) => f.tags.add(x));
     f.listen.add(l.name);
-    persons.push(...data.persons);
+    for (const p of data.persons) {
+      let m = byPid.get(p.pid);
+      if (!m) {
+        m = {
+          pid: p.pid,
+          name: p.name, grad: p.grad, bereich: p.bereich, funktion: p.funktion,
+          jg: p.jg, beruf: p.beruf, ort: p.ort, mobile: p.mobile, email: p.email,
+          listId: p.listId,        // primary list (first occurrence)
+          listIds: [], listNames: [],
+          sources: [],             // [{ listId, listName, einrueckort }]
+          aufgeboten: [],
+          dayList: {},             // iso -> owning listId
+          status: {},
+          tags: [],
+        };
+        byPid.set(p.pid, m);
+        order.push(m);
+      }
+      m.listIds.push(p.listId);
+      m.listNames.push(p.listName);
+      m.sources.push({ listId: p.listId, listName: p.listName, einrueckort: p.einrueckort });
+      for (const iso of p.aufgeboten || []) {
+        if (m.dayList[iso] == null) {        // first list to claim the day owns it
+          m.dayList[iso] = p.listId;
+          m.aufgeboten.push(iso);
+          if (p.status[iso]) m.status[iso] = p.status[iso];
+        }
+      }
+      for (const t of p.tags || []) if (!m.tags.includes(t)) m.tags.push(t);
+      // Fill identity fields a later list might have but the first one lacked.
+      for (const k of ['grad', 'bereich', 'funktion', 'jg', 'beruf', 'ort', 'mobile', 'email']) {
+        if (!m[k] && p[k]) m[k] = p[k];
+      }
+    }
   }
+  const persons = order.map((m) => ({
+    ...m,
+    aufgeboten: m.aufgeboten.sort(),
+    listName: m.listNames.join(' + '),
+  }));
   const days = [...dayset].sort();
   return {
     list: { id: '__all', name: 'Alle Appelllisten', days },
@@ -386,8 +429,7 @@ export function renderAppellPage(req, res) {
   const canImport = hasAccess(req.user?.role, IMPORT_ROLE);
   const body = `<article class="content appell-page" data-appell data-today="${esc(todayIso())}" data-can-import="${canImport}" data-print-logo="${esc(logoAssetUrl('print'))}" data-wk-label="${esc(req.activeWk?.label || '')}">
     <p><a href="/" class="back">← Zurück zur Übersicht</a></p>
-    <div class="content-header"><h1>Appell</h1>
-      ${canImport ? '<a class="btn" href="/appell/import">Liste importieren</a>' : ''}</div>
+    <div class="content-header"><h1>Appell</h1></div>
     <div class="appell-root" data-appell-root><p class="muted">Wird geladen …</p></div>
   </article>`;
   res.send(layout(req, { title: 'Appell', body, extraHead: `<script src="/client/appell.js" defer></script>` }));

@@ -168,6 +168,39 @@ function parseMarks(drawingXml, relsXml, files) {
   return marks;
 }
 
+// --- header column mapping ------------------------------------------------
+
+// The textual columns are not at fixed indices: depending on label lengths the
+// export merges cells differently (e.g. Brugg merges H:I, shifting Grad/Bereich/
+// JG/Funktion to the right vs. Baden). So we locate each column by its header
+// label instead of hardcoding an index. The two header rows ("Name/Vorname…"
+// and "PLZ/Ort…") feed the two data rows of each person block. Falls back to the
+// historical fixed indices when a label is missing.
+function findColumns(rows) {
+  const cols = {
+    name: 0, sv: 5, beruf: 7, grad: 8, bereich: 9, // person row 1
+    plz: 0, ort: 1, einrueckort: 7, jg: 8, funktion: 9, // person row 2
+  };
+  const byLabel = {
+    'Name/Vorname': 'name',
+    'Soz.-Vers.-Nr.': 'sv',
+    Beruf: 'beruf',
+    Grad: 'grad',
+    Bereich: 'bereich',
+    'PLZ/Ort': 'plz',
+    'Einrückort Kurs': 'einrueckort',
+    JG: 'jg',
+    Funktion: 'funktion',
+  };
+  for (const [, cells] of rows) {
+    for (const [col, value] of cells) {
+      const key = byLabel[String(value || '').trim()];
+      if (key) cols[key] = col;
+    }
+  }
+  return cols;
+}
+
 // --- contact parsing ------------------------------------------------------
 
 function parseContact(raw) {
@@ -217,12 +250,16 @@ export function parseAppellXlsx(buffer) {
   dayCols.sort((a, b) => a.col - b.col);
   const days = dayCols.map((d) => d.iso);
 
-  // People: a block starts on the row whose col 5 holds a Soz.-Vers.-Nr.
+  // Column indices vary between exports (merged cells shift them); resolve them
+  // from the header labels rather than hardcoding.
+  const col = findColumns(rows);
+
+  // People: a block starts on the row whose Soz.-Vers.-Nr. column holds an SV nr.
   const persons = [];
   const rowNums = [...rows.keys()].sort((a, b) => a - b);
   for (const rowNum of rowNums) {
     const cells = rows.get(rowNum);
-    const sv = cells.get(5);
+    const sv = cells.get(col.sv);
     if (!sv || !SV_RE.test(String(sv).trim())) continue;
     const next = rows.get(rowNum + 1) || new Map();
     const third = rows.get(rowNum + 2) || new Map();
@@ -234,15 +271,15 @@ export function parseAppellXlsx(buffer) {
       .map((d) => d.iso);
     persons.push({
       sv: String(sv).trim(),
-      name: String(cells.get(0) || '').trim(),
-      grad: String(cells.get(8) || '').trim(),
-      bereich: String(cells.get(9) || '').trim(),
-      beruf: String(cells.get(7) || '').trim(),
-      plz: String(next.get(0) || '').trim(),
-      ort: String(next.get(1) || '').trim(),
-      einrueckort: String(next.get(7) || '').trim(),
-      jg: String(next.get(8) || '').trim(),
-      funktion: String(next.get(9) || '').trim(),
+      name: String(cells.get(col.name) || '').trim(),
+      grad: String(cells.get(col.grad) || '').trim(),
+      bereich: String(cells.get(col.bereich) || '').trim(),
+      beruf: String(cells.get(col.beruf) || '').trim(),
+      plz: String(next.get(col.plz) || '').trim(),
+      ort: String(next.get(col.ort) || '').trim(),
+      einrueckort: String(next.get(col.einrueckort) || '').trim(),
+      jg: String(next.get(col.jg) || '').trim(),
+      funktion: String(next.get(col.funktion) || '').trim(),
       email: contact.email,
       mobile: contact.mobile,
       kontakt: contact.raw,

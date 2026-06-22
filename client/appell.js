@@ -75,7 +75,7 @@
         if (f.bereich && p.bereich !== f.bereich) return false;
         if (f.funktion && p.funktion !== f.funktion) return false;
         if (f.grad && p.grad !== f.grad) return false;
-        if (f.liste && p.listName !== f.liste) return false;
+        if (f.liste && !(p.listNames || [p.listName]).includes(f.liste)) return false;
         if (f.tag && !(p.tags || []).includes(f.tag)) return false;
         if (f.q) {
           const q = f.q.toLowerCase();
@@ -207,7 +207,7 @@
           if (!cs) return `<td class="cell-empty ${iso === today ? 'is-today' : ''}"></td>`;
           const note = cs.bemerkung ? ' has-note' : '';
           return `<td class="cell st-${cs.status || 'neutral'}${note} ${iso === today ? 'is-today' : ''}"
-            data-cell data-pid="${p.pid}" data-list="${esc(p.listId)}" data-day="${iso}" title="${esc(STATUS_LABEL[cs.status])}${cs.bemerkung ? ' – ' + esc(cs.bemerkung) : ''}">
+            data-cell data-pid="${p.pid}" data-list="${esc(cellList(p, iso))}" data-day="${iso}" title="${esc(STATUS_LABEL[cs.status])}${cs.bemerkung ? ' – ' + esc(cs.bemerkung) : ''}">
             ${cs.bemerkung ? '<span class="note-dot">💬</span>' : ''}</td>`;
         }).join('');
         return `<tr><th class="rowhead" data-person="${p.pid}" data-list="${esc(p.listId)}">
@@ -226,8 +226,8 @@
       const list = persons.filter((p) => p.aufgeboten.includes(iso));
       const rows = list.map((p) => {
         const cs = cellState(p, iso) || { status: '', bemerkung: '' };
-        return `<div class="day-row st-${cs.status || 'neutral'}" data-day-row data-pid="${p.pid}" data-list="${esc(p.listId)}" data-day="${iso}">
-          <button class="day-status" data-cell data-pid="${p.pid}" data-list="${esc(p.listId)}" data-day="${iso}" title="Status wechseln">${statusGlyph(cs.status)}</button>
+        return `<div class="day-row st-${cs.status || 'neutral'}" data-day-row data-pid="${p.pid}" data-list="${esc(cellList(p, iso))}" data-day="${iso}">
+          <button class="day-status" data-cell data-pid="${p.pid}" data-list="${esc(cellList(p, iso))}" data-day="${iso}" title="Status wechseln">${statusGlyph(cs.status)}</button>
           <div class="day-person" data-person="${p.pid}" data-list="${esc(p.listId)}">
             <span class="p-name">${esc(p.name)}</span>
             <span class="p-meta">${esc(p.grad)} · ${esc(p.bereich)} · ${esc(p.funktion)}${combined ? ' · ' + esc(p.listName) : ''}</span>
@@ -269,7 +269,15 @@
     }
 
     function findPerson(pid, listId) {
-      return state.data.persons.find((p) => p.pid === pid && (!listId || p.listId === listId));
+      const ps = state.data.persons;
+      return ps.find((p) => p.pid === pid && (!listId || p.listId === listId)) || ps.find((p) => p.pid === pid);
+    }
+
+    // In the combined view a person can belong to several lists; each day is
+    // owned by the list that aufgeboten it (server-provided dayList map). Falls
+    // back to the person's primary list for a single-list view.
+    function cellList(p, iso) {
+      return (p.dayList && p.dayList[iso]) || p.listId;
     }
 
     // Targeted visual update so we don't re-render the whole matrix (hundreds of
@@ -295,7 +303,7 @@
       const next = nextStatus(cur);
       paintStatus(el, next); // optimistic
       try {
-        await postJson('/api/appell/status', { list: p.listId, pid, day: iso, status: next, bemerkung: note });
+        await postJson('/api/appell/status', { list: listId, pid, day: iso, status: next, bemerkung: note });
         p.status[iso] = { status: next, bemerkung: note };
       } catch (e) { paintStatus(el, cur); toast(e.message); }
     }
@@ -309,7 +317,7 @@
       if (((p.status[iso] && p.status[iso].bemerkung) || '') === note) return;
       if (!online()) { toast('Offline – nicht möglich.'); return; }
       try {
-        await postJson('/api/appell/status', { list: p.listId, pid, day: iso, status: cur, bemerkung: note });
+        await postJson('/api/appell/status', { list: listId, pid, day: iso, status: cur, bemerkung: note });
         p.status[iso] = { status: cur, bemerkung: note };
       } catch (e) { toast(e.message); }
     }
@@ -318,16 +326,24 @@
     function openDetail(pid, listId) {
       const p = findPerson(pid, listId);
       if (!p) return;
-      const lid = p.listId;
       const days = state.data.days.filter((iso) => p.aufgeboten.includes(iso));
       const dayRows = days.map((iso) => {
         const cs = cellState(p, iso) || { status: '', bemerkung: '' };
+        const lid = cellList(p, iso);
         return `<div class="modal-day st-${cs.status || 'neutral'}">
           <span>${weekday(iso)} ${fmtDay(iso)}</span>
           <button class="day-status" data-cell data-pid="${pid}" data-list="${esc(lid)}" data-day="${iso}">${statusGlyph(cs.status)}</button>
           <input class="note-input" data-note data-pid="${pid}" data-list="${esc(lid)}" data-day="${iso}" placeholder="Bemerkung" value="${esc(cs.bemerkung)}">
         </div>`;
       }).join('');
+      // Einrückort can differ per list; show each with its list name in
+      // parentheses when the person belongs to more than one list.
+      const sources = p.sources || (p.einrueckort ? [{ listName: p.listName, einrueckort: p.einrueckort }] : []);
+      const multi = (p.listNames || []).length > 1;
+      const einrueckHtml = sources
+        .filter((s) => s.einrueckort)
+        .map((s) => `<br>📍 ${esc(s.einrueckort)}${multi ? ` <span class="muted">(${esc(s.listName)})</span>` : ''}`)
+        .join('');
       const ov = document.createElement('div');
       ov.className = 'appell-modal-overlay';
       ov.innerHTML = `<div class="appell-modal" role="dialog">
@@ -337,7 +353,7 @@
         <p class="modal-contact">
           ${p.mobile ? `📱 <a href="tel:${esc(p.mobile.replace(/\s/g, ''))}">${esc(p.mobile)}</a>` : ''}
           ${p.email ? `<br>✉ <a href="mailto:${esc(p.email)}">${esc(p.email)}</a>` : ''}
-          ${p.einrueckort ? `<br>📍 ${esc(p.einrueckort)}` : ''}
+          ${einrueckHtml}
         </p>
         <div class="modal-tags">
           <label>Tags / Gruppe ${state.canEdit ? '' : '<span class="muted">(nur Uof+)</span>'}</label>
@@ -373,9 +389,16 @@
 
     async function updateTags(p, tags, ov) {
       if (!online()) { toast('Offline – nicht möglich.'); return; }
+      // A merged person can belong to several lists; keep the tag consistent by
+      // writing it to each of them.
+      const targets = (p.listIds && p.listIds.length) ? p.listIds : [p.listId];
       try {
-        const r = await postJson('/api/appell/tags', { list: p.listId, pid: p.pid, tags });
-        p.tags = r.tags;
+        let clean = tags;
+        for (const lid of targets) {
+          const r = await postJson('/api/appell/tags', { list: lid, pid: p.pid, tags });
+          clean = r.tags;
+        }
+        p.tags = clean;
         renderTags(ov, p);
         renderGrid();
       } catch (e) { toast(e.message); }
