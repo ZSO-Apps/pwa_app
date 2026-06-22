@@ -22,3 +22,7 @@
 ## Prio 3
 
 - [ ] Fahrer/Fahrzentrale -> Auto Rolle (Google/Apple Maps) -> OSRM Project
+
+
+## Bugs
+- [ ] ZSO Logo lädt nicht in der Offline-Version

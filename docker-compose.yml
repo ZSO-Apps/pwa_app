@@ -7,24 +7,30 @@ services:
     volumes:
       - ./data:/app/data:z
     restart: unless-stopped
+    security_opt:
+      - seccomp=unconfined
     networks:
       - proxy-network
     labels:
       - "traefik.enable=true"
+      - "traefik.docker.network=proxy-network"
       
-      # HTTP Router
+      # HTTP Router & Redirect zu HTTPS
       - "traefik.http.routers.pwa-http.entrypoints=web"
       - "traefik.http.routers.pwa-http.rule=Host(`${APP_DOMAIN}`)"
-      - "traefik.http.routers.pwa-service=pwa-service"
+      - "traefik.http.routers.pwa-http.service=pwa-service"
+      - "traefik.http.routers.pwa-http.middlewares=pwa-redirect"
+      - "traefik.http.middlewares.pwa-redirect.redirectscheme.scheme=https"
       
       # HTTPS Router
       - "traefik.http.routers.pwa-secure.entrypoints=websecure"
       - "traefik.http.routers.pwa-secure.rule=Host(`${APP_DOMAIN}`)"
       - "traefik.http.routers.pwa-secure.tls=true"
+      - "traefik.http.routers.pwa-secure.tls.certresolver=myresolver"
       - "traefik.http.routers.pwa-secure.service=pwa-service"
       
       # Interner Container-Port
-      - "traefik.http.services.pwa-service.loadbalancer.server.port=8080"
+      - "traefik.http.services.pwa-service.loadbalancer.server.port=8080"    
 
 networks:
   proxy-network:

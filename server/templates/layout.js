@@ -100,7 +100,7 @@ ${renderGlobalSearch()}
 function renderSideNav(req) {
   const role = req.user?.role || 'public';
   const list = visibleKacheln(role);
-  const items = list.map((k) => `<li><a href="/k/${esc(k.id)}">${esc(k.title || k.id)}</a></li>`).join('');
+  const items = list.map((k) => `<li><a href="${esc(k.route || '/k/' + k.id)}">${esc(k.title || k.id)}</a></li>`).join('');
   return `<ul class="nav-root">${items}
     <li class="nav-theme">
       <label for="theme-select">Design</label>
