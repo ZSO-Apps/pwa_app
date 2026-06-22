@@ -500,6 +500,12 @@ data/appell/<wk-id>/lists/<list-id>/
   Voller Kontakt + Tag-Verwaltung im Personen-Detail (Klick auf den Namen).
 - **Status/Tags erfassen ab `Unteroffizier`.** Dynamische Schreibaktionen sind
   LAN-only und werden offline blockiert.
+## Content Plus Menü
+
+- Das `+`-Menü ist ab `Unteroffizier` auf allen Kacheln mit `content` verfügbar, nicht mehr auf eine fixe Kachel-Liste beschränkt.
+- Inhalte werden in `content_zso_specific` geschrieben. Bei WK-spezifischen Kacheln wird der aktive WK-Unterordner verwendet.
+- Das Menü erstellt Markdown-Dateien, generische Formular-JSONs, importiert Markdown/PDF/Bilder, verlinkt Webseiten und erstellt Ordner.
+- Bilder zu Markdown-Dateien und Quizfragen werden in sibling asset folders mit Endung `.content` gespeichert, z.B. `Meine Datei.content/`. Diese Ordner sind technische Asset-Ordner und werden in Kachel-Übersichten, Suche und Form-Scan ausgeblendet.
 
 ## Transport (Transportzentrale)
 

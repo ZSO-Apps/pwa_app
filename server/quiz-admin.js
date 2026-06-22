@@ -11,7 +11,6 @@ const QUIZ_KACHEL_ID = 'quiz';
 const QUIZ_CREATOR_ROLE = 'Unteroffizier';
 const QUIZ_ROOT = path.resolve('content_zso_specific/quiz');
 const QUIZ_GENERIC_ROOT = path.resolve('content_generic/quiz');
-const QUIZ_ASSET_DIR = path.join(QUIZ_ROOT, '.assets');
 const MAX_IMAGE_BYTES = 5 * 1024 * 1024;
 
 function canManageQuiz(req) {
@@ -41,6 +40,23 @@ function slugify(value) {
     .replace(/[^a-z0-9]+/g, '-')
     .replace(/^-+|-+$/g, '');
   return slug || 'quiz';
+}
+
+function safeFileBase(value) {
+  let base = String(value || '').trim();
+  base = base.replace(/\.(json|md|markdown|txt|pdf|png|jpe?g|gif|webp|url)$/i, '');
+  base = base
+    .normalize('NFC')
+    .replace(/[\\/:*?"<>|#%{}^~[\]]/g, '_')
+    .replace(/\s+/g, ' ')
+    .replace(/^\.+|\.+$/g, '')
+    .trim();
+  if (!base) throw new Error('Bitte einen Quiz-Titel angeben.');
+  return base;
+}
+
+function contentFolderName(title) {
+  return safeFileBase(title) + '.content';
 }
 
 function uniqueFormId(title) {
@@ -121,14 +137,16 @@ function normalizePayload(body) {
   return { title, questions };
 }
 
-function writeQuestionImage(formId, index, imageData) {
+function writeQuestionImage(payload, formId, index, imageData) {
   const decoded = decodeImage(imageData);
   if (!decoded) return '';
-  fs.mkdirSync(QUIZ_ASSET_DIR, { recursive: true });
+  const assetDirName = contentFolderName(payload.title);
+  const assetDir = safeResolve(QUIZ_ROOT, assetDirName);
+  fs.mkdirSync(assetDir, { recursive: true });
   const fileName = formId + '-frage-' + index + '.' + decoded.ext;
-  const target = safeResolve(QUIZ_ASSET_DIR, fileName);
+  const target = safeResolve(assetDir, fileName);
   fs.writeFileSync(target, decoded.buffer);
-  return '/k/quiz/.assets/' + encodeURIComponent(fileName);
+  return '/k/quiz/' + encodeURIComponent(assetDirName) + '/' + encodeURIComponent(fileName);
 }
 
 function quizDefinitionFromPayload(payload, formId) {
@@ -141,7 +159,7 @@ function quizDefinitionFromPayload(payload, formId) {
       label: question.text,
       required: true,
     };
-    const image = writeQuestionImage(formId, number, question.imageData);
+    const image = writeQuestionImage(payload, formId, number, question.imageData);
     if (image) field.image = image;
     if (question.type !== 'free_text') {
       field.options = question.answers.map((answer) => answer.text);

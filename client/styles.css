@@ -407,6 +407,7 @@ a { color: inherit; }
   justify-content: flex-start;
 }
 .quiz-image-preview img,
+.markdown-image-item img,
 .form-field-image {
   display: block;
   max-width: min(100%, 420px);
@@ -512,6 +513,20 @@ a { color: inherit; }
   background: var(--accent); color: var(--accent-contrast); border: 0; border-radius: 6px; cursor: pointer;
 }
 
+
+/* Generic form builder */
+.form-builder-fields { flex: 1 1 100%; }
+.form-builder-fields .content-header { margin-bottom: .7rem; }
+.form-builder-field {
+  padding: .85rem;
+  border: 1px solid var(--border);
+  border-radius: 10px;
+  background: var(--surface);
+  margin-bottom: .8rem;
+}
+.form-builder-field h3 { margin: 0; font-size: 1rem; }
+.form-builder-field .checkbox { margin: .55rem 0; }
+
 /* Markdown editor */
 .markdown-editor-form { max-width: none; }
 .markdown-toolbar { display: flex; flex-wrap: wrap; gap: .4rem; flex: 1 1 100%; }
@@ -519,6 +534,12 @@ a { color: inherit; }
   font: inherit; font-weight: 600; padding: .4rem .65rem; border: 1px solid var(--border);
   border-radius: 6px; background: var(--surface-hover); color: var(--primary-bg); cursor: pointer;
 }
+.markdown-image-import { flex: 1 1 100%; padding: .85rem; border: 1px solid var(--border); border-radius: 10px; background: var(--surface); }
+.markdown-image-import h2 { margin: 0 0 .35rem; font-size: 1rem; }
+.markdown-image-list { display: flex; flex-direction: column; gap: .5rem; margin-top: .6rem; }
+.markdown-image-item { display: grid; grid-template-columns: 72px minmax(0, 1fr) auto; gap: .6rem; align-items: center; }
+.markdown-image-item img { width: 72px; height: 52px; margin: 0; }
+.markdown-image-item span { overflow-wrap: anywhere; }
 .markdown-editor-grid {
   flex: 1 1 100%; display: grid; grid-template-columns: minmax(0, 1fr) minmax(0, 1fr);
   gap: .8rem; align-items: stretch;
