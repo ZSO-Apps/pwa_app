@@ -35,8 +35,15 @@
   const clockOf = (isoTs) => new Date(isoTs).toLocaleTimeString('de-CH', { hour: '2-digit', minute: '2-digit', timeZone: 'Europe/Zurich' });
   const online = () => navigator.onLine !== false;
 
+  let activeWkId = '';
+  function apiUrl(url) {
+    const next = new URL(url, location.origin);
+    if (activeWkId) next.searchParams.set('wk', activeWkId);
+    return next.pathname + next.search;
+  }
+
   async function postJson(url, body) {
-    const res = await fetch(url, { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(body) });
+    const res = await fetch(apiUrl(url), { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(body) });
     const data = await res.json().catch(() => ({}));
     if (!res.ok) throw new Error(data.error || ('HTTP ' + res.status));
     return data;
@@ -50,6 +57,7 @@
   }
 
   function init(root) {
+    activeWkId = root.dataset.wkId || new URLSearchParams(location.search).get('wk') || '';
     const canDispatch = root.dataset.canDispatch === 'true';
     const printLogo = root.dataset.printLogo || '';
     const mount = root.querySelector('[data-transport-root]');
@@ -65,7 +73,7 @@
     async function load() {
       try {
         const q = state.date ? '?date=' + encodeURIComponent(state.date) : '';
-        const res = await fetch('/api/transport/data' + q);
+        const res = await fetch(apiUrl('/api/transport/data' + q));
         const data = await res.json();
         if (res.status === 409) { mount.innerHTML = `<p class="error">${esc(data.error)}</p>`; return; }
         if (!res.ok) throw new Error(data.error || 'Fehler');

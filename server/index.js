@@ -9,9 +9,10 @@ import { contentActionContext, createContentFolder, deleteContentEntry, importCo
 import { renderHome, renderListing, renderMarkdownPage, renderLogin, renderOffline, renderError } from './templates/index.js';
 import { searchContent } from './search.js';
 import { archiveWks, renderArchivedWkSubmission, renderForm, renderResults, renderSubmission, renderWkArchive, submitForm, unarchiveWks } from './forms.js';
-import { buildServiceWorker } from './sw.js';
+import { buildServiceWorker, offlineUrlsForRequest } from './sw.js';
 import { wkMiddleware, setActiveWk, listWks } from './wk.js';
 import { createUser, deleteUser, renderDeleteUser, renderEditUser, renderNewUser, renderUsers, updateUser } from './user-admin.js';
+import { createKachel, renderNewKachel } from './kachel-admin.js';
 import { resolveLogo } from './branding.js';
 import { setupOrg, getOrg } from './org.js';
 import { createQuiz, quizActionContext, renderNewQuiz } from './quiz-admin.js';
@@ -55,19 +56,31 @@ app.get('/favicon.ico', (_req, res) => {
   if (fs.existsSync(f)) res.sendFile(f); else res.status(404).end();
 });
 
-app.get('/service-worker.js', (_req, res) => {
+app.get('/service-worker.js', (req, res) => {
   res.type('application/javascript');
   res.setHeader('Cache-Control', 'no-cache');
-  res.send(buildServiceWorker());
+  res.send(buildServiceWorker(req));
 });
 
-app.get('/api/sync-manifest', (_req, res) => {
-  res.json({ urls: [], note: 'See /service-worker.js for the precache list.' });
+app.get('/api/sync-manifest', (req, res) => {
+  res.setHeader('Cache-Control', 'no-cache');
+  res.json({ urls: offlineUrlsForRequest(req), role: req.user?.role || 'public', activeWk: req.activeWk?.id || null });
 });
 
 app.get('/api/search', (req, res) => {
   res.json(searchContent(req, req.query?.q));
 });
+
+function withWkParam(url, req, kachel) {
+  if (!kachel?.wkScoped || !req.activeWk?.id) return url;
+  const sep = url.includes('?') ? '&' : '?';
+  return url + sep + 'wk=' + encodeURIComponent(req.activeWk.id);
+}
+
+function withWkParamForEntries(entries, req, kachel) {
+  if (!kachel?.wkScoped || !req.activeWk?.id) return entries;
+  return entries.map((entry) => entry.external ? entry : { ...entry, url: withWkParam(entry.url, req, kachel) });
+}
 
 function markdownEditUrl(req, kachel, relPath) {
   const parentDir = relPath.split('/').slice(0, -1).join('/');
@@ -89,6 +102,9 @@ app.post('/login', async (req, res) => {
   res.redirect(safe);
 });
 app.all('/logout', (_req, res) => { clearSessionCookie(res); res.redirect('/'); });
+
+app.get('/kachel-admin/new', (req, res) => renderNewKachel(req, res));
+app.post('/kachel-admin', (req, res) => createKachel(req, res));
 
 app.get('/content-admin/:id/markdown/new', (req, res) => renderNewMarkdownPage(req, res, req.params.id));
 app.post('/content-admin/:id/markdown', (req, res) => saveMarkdownContent(req, res, req.params.id));
@@ -168,7 +184,7 @@ app.get('/k/:id', (req, res) => {
   if (!kachelRoots(k).length) {
     const contentActions = contentActionContext(req, kachel, '');
     if (kachel.wkScoped || contentActions) {
-      return res.send(renderListing(req, kachel, [], [{ label: kachel.title, url: `/k/${kachel.id}` }], {
+      return res.send(renderListing(req, kachel, [], [{ label: kachel.title, url: withWkParam(`/k/${kachel.id}`, req, kachel) }], {
         contentActions,
         quizActions: quizActionContext(req, kachel),
       }));
@@ -179,14 +195,14 @@ app.get('/k/:id', (req, res) => {
   // index.md anywhere in the merged roots gets rendered as the Kachel landing.
   const idx = resolveKachelPath(k, 'index.md');
   if (idx) {
-    return res.send(renderMarkdownPage(req, kachel, renderMarkdown(idx), '/', {
+    return res.send(renderMarkdownPage(req, kachel, renderMarkdown(idx), withWkParam('/', req, kachel), {
       contentActions: contentActionContext(req, kachel, ''),
       editUrl: markdownEditUrl(req, kachel, 'index.md'),
     }));
   }
 
-  const entries = listKachelDir(k, '', `/k/${kachel.id}/`, role);
-  return res.send(renderListing(req, kachel, entries, [{ label: kachel.title, url: `/k/${kachel.id}` }], {
+  const entries = withWkParamForEntries(listKachelDir(k, '', `/k/${kachel.id}/`, role), req, kachel);
+  return res.send(renderListing(req, kachel, entries, [{ label: kachel.title, url: withWkParam(`/k/${kachel.id}`, req, kachel) }], {
     contentActions: contentActionContext(req, kachel, ''),
     quizActions: quizActionContext(req, kachel),
   }));
@@ -212,24 +228,24 @@ app.get('/k/:id/*', (req, res) => {
   if (stat.isDirectory()) {
     const idx = resolveKachelPath(k, path.join(rel, 'index.md'));
     if (idx) {
-      return res.send(renderMarkdownPage(req, kachel, renderMarkdown(idx), `/k/${kachel.id}/`, {
+      return res.send(renderMarkdownPage(req, kachel, renderMarkdown(idx), withWkParam(`/k/${kachel.id}/`, req, kachel), {
         contentActions: contentActionContext(req, kachel, rel),
         editUrl: markdownEditUrl(req, kachel, path.join(rel, 'index.md')),
       }));
     }
     const urlPrefix = `/k/${kachel.id}/${rel.replace(/\/$/, '')}/`;
-    const entries = listKachelDir(k, rel, urlPrefix, role);
+    const entries = withWkParamForEntries(listKachelDir(k, rel, urlPrefix, role), req, kachel);
     const parts = rel.split('/').filter(Boolean);
     const crumbs = [{ label: kachel.title, url: `/k/${kachel.id}` }];
     let acc = `/k/${kachel.id}`;
-    for (const p of parts) { acc += '/' + encodeURIComponent(p); crumbs.push({ label: decodeURIComponent(p), url: acc }); }
+    for (const p of parts) { acc += '/' + encodeURIComponent(p); crumbs.push({ label: decodeURIComponent(p), url: withWkParam(acc, req, kachel) }); }
     return res.send(renderListing(req, kachel, entries, crumbs, {
       contentActions: contentActionContext(req, kachel, rel),
     }));
   }
   if (abs.endsWith('.md')) {
     const parentDir = rel.split('/').slice(0, -1).join('/');
-    const parentUrl = `/k/${kachel.id}/${parentDir}`.replace(/\/$/, '') + '/';
+    const parentUrl = withWkParam(`/k/${kachel.id}/${parentDir}`.replace(/\/$/, '') + '/', req, kachel);
     return res.send(renderMarkdownPage(req, { ...kachel, title: path.basename(abs, '.md') }, renderMarkdown(abs), parentUrl, {
       editUrl: markdownEditUrl(req, kachel, rel),
     }));

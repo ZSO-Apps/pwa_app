@@ -224,12 +224,10 @@ export function mimeOf(file) {
   return mime.lookup(file) || 'application/octet-stream';
 }
 
-// Walk a Kachel's public-tier roots only and emit /k/<id>/... URLs suitable
-// for service-worker precaching. Form JSONs and external .url files are
-// excluded.
-export function listKachelPublicAssets(kachel) {
+// Walk a Kachel's merged roots and emit /k/<id>/... URLs suitable for
+// service-worker precaching. Form JSONs and external .url files are excluded.
+export function listKachelAssets(kachel) {
   if (!kachel?.id || !kachel?.content) return [];
-  if ((kachel.access || 'public') !== 'public') return [];
   const urls = new Set();
   const base = `/k/${kachel.id}`;
   urls.add(base);
@@ -257,6 +255,11 @@ export function listKachelPublicAssets(kachel) {
     walk(path.join(root, kachel.content));
   }
   return [...urls];
+}
+
+export function listKachelPublicAssets(kachel) {
+  if ((kachel?.access || 'public') !== 'public') return [];
+  return listKachelAssets(kachel);
 }
 
 // Used by layout.js to discover form definitions across all content roots.

@@ -94,7 +94,8 @@ export function wkMiddleware(req, res, next) {
   if (!req.user) { req.activeWk = null; return next(); }
   const wks = listWks();
   if (!wks.length) { req.activeWk = null; req.wkList = []; return next(); }
-  const wanted = req.cookies?.[COOKIE];
+  const queryWk = typeof req.query?.wk === 'string' ? req.query.wk : '';
+  const wanted = queryWk || req.cookies?.[COOKIE];
   let active = wanted ? wks.find((w) => w.id === wanted) : null;
   if (!active) {
     active = pickNearestWk(wks);
@@ -104,6 +105,12 @@ export function wkMiddleware(req, res, next) {
         maxAge: 1000 * 60 * 60 * 24 * 365,
       });
     }
+  }
+  if (active && queryWk && req.cookies?.[COOKIE] !== active.id) {
+    res.cookie(COOKIE, active.id, {
+      httpOnly: false, sameSite: 'lax', path: '/',
+      maxAge: 1000 * 60 * 60 * 24 * 365,
+    });
   }
   req.activeWk = active || null;
   req.wkList = wks;

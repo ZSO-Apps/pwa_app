@@ -19,6 +19,17 @@ function formBackUrl(def) {
   return k ? `/k/${k.id}` : '/';
 }
 
+function withWkParam(url, wkId) {
+  if (!wkId) return url;
+  const sep = url.includes('?') ? '&' : '?';
+  return url + sep + 'wk=' + encodeURIComponent(wkId);
+}
+
+function wkParamForDef(req, def) {
+  if (def?.scope === 'global') return '';
+  return req?.activeWk?.id || '';
+}
+
 
 function renderFieldImage(f) {
   if (!f?.image) return '';
@@ -245,9 +256,9 @@ export function renderFormPage(req, def, { submitted = false, values = {}, detai
     </div>
     ${renderDupNameWarning(def)}
     ${submitted ? `<p class="ok">✓ Eingabe gespeichert. Die Werte bleiben als Vorlage erhalten. Erneutes Speichern erstellt eine neue Eingabe.</p>` : ''}
-    <form method="POST" action="/forms/${esc(def.id)}" class="genform" data-enhanced-form>
+    <form method="POST" action="/forms/${esc(def.id)}${wkParamForDef(req, def) ? '?wk=' + encodeURIComponent(wkParamForDef(req, def)) : ''}" class="genform" data-enhanced-form data-online-only-form>
       ${elements.map((f) => `<div class="form-el${widthClass(f)}">${renderFormElement(f, values)}</div>`).join('\n')}
-      <button type="submit">${esc(submitLabel)}</button>
+      <button type="submit" data-online-only="true">${esc(submitLabel)}</button>
     </form>
     <p><a href="${esc(formBackUrl(def))}" class="back">← Zurück</a></p>
     ${renderFormPrintTemplate(def)}
@@ -276,7 +287,8 @@ function submissionUrl(def, submission, { archiveMode = false } = {}) {
   const id = submission._meta?.submissionId;
   if (!id) return '#';
   if (archiveMode && def.id === 'wk') return '/forms/wk/archive/' + encodeURIComponent(id);
-  return '/forms/' + encodeURIComponent(def.id) + '/results/' + encodeURIComponent(id);
+  const url = '/forms/' + encodeURIComponent(def.id) + '/results/' + encodeURIComponent(id);
+  return def.scope === 'global' ? url : withWkParam(url, submission._meta?.wkId || '');
 }
 
 function fmtCell(field, value) {
@@ -372,9 +384,9 @@ function renderResultsTable(def, submissions, { archiveMode = false, canArchive 
     : '';
   const hasFormAction = hasArchiveAction || hasUnarchiveAction;
   const formStart = hasArchiveAction
-    ? `<form method="POST" action="/forms/wk/archive" onsubmit="return confirm('Ausgewählte WK archivieren?')">`
+    ? `<form method="POST" action="/forms/wk/archive" data-online-only-form onsubmit="return confirm('Ausgewählte WK archivieren?')">`
     : hasUnarchiveAction
-      ? '<form method="POST" action="/forms/wk/unarchive">'
+      ? '<form method="POST" action="/forms/wk/unarchive" data-online-only-form>'
       : '';
   const formEnd = hasFormAction ? '</form>' : '';
   const sortableHeaders = columns.headers.map((h, index) => '<th aria-sort="none"><button type="button" class="table-sort-button" data-sort-col="' + index + '">' + esc(h) + '<span class="sort-indicator" aria-hidden="true"></span></button></th>').join('');
@@ -403,8 +415,9 @@ export function renderResultsPage(req, def, submissions, { wkLabel, canCreate = 
     : wkLabel
       ? `<p class="muted">WK-Kontext: ${esc(wkLabel)}</p>`
       : '<p class="muted">Kein WK aktiv.</p>';
+  const wkParam = wkParamForDef(req, def);
   const createButton = !archiveMode && canCreate
-    ? `<a class="secondary-button no-print" href="/forms/${encodeURIComponent(def.id)}">+ ${esc(def.submitLabel || 'Neuer Eintrag')}</a>`
+    ? `<a class="secondary-button no-print" data-online-only="true" href="${withWkParam('/forms/' + encodeURIComponent(def.id), wkParam)}">+ ${esc(def.submitLabel || 'Neuer Eintrag')}</a>`
     : '';
   const pageTitle = archiveMode ? `Archiv — ${def.title || def.id}` : `Auswertung — ${def.title || def.id}`;
   const wkArchiveLink = def.id === 'wk'
@@ -462,7 +475,9 @@ function renderSubmissionElement(def, submission, f) {
 
 export function renderSubmissionPage(req, def, submission, { archiveMode = false } = {}) {
   const heading = isQuizDef(def) ? quizSubmissionTitle(submission) : submissionTitle(def, submission);
-  const resultsUrl = archiveMode && def.id === 'wk' ? '/forms/wk/archive' : `/forms/${esc(def.id)}/results`;
+  const resultsUrl = archiveMode && def.id === 'wk'
+    ? '/forms/wk/archive'
+    : withWkParam(`/forms/${esc(def.id)}/results`, def.scope === 'global' ? '' : submission._meta?.wkId || '');
   const resultsLabel = archiveMode && def.id === 'wk' ? 'Archiv' : 'Auswertung';
   const elements = fieldsForForm(def)
     .map((f) => `<div class="sub-el${widthClass(f)}">${renderSubmissionElement(def, submission, f)}</div>`)
