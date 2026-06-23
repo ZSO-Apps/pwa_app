@@ -102,15 +102,13 @@ function manageMeta(entry, relPath, displayName) {
   };
 }
 
-// Public listing: directories, .md, .pdf, .url, plus form definitions (.json).
-// Images live alongside content (referenced from markdown) and aren't listed.
+// Public listing: directories, .md, .pdf, .url, image files, plus form definitions (.json).
 export function listKachelDir(kachel, relPath, urlPrefix, role) {
   const entries = readMergedDir(kachel, relPath)
     .filter((e) => {
       if (e.isDir) return true;
       const ext = path.extname(e.name).toLowerCase();
-      const isZsoSpecific = e.abs.startsWith(ROOT_DIRS.zso + path.sep);
-      return ext === '.md' || ext === '.pdf' || ext === '.url' || ext === '.json' || (IMAGE_EXTENSIONS.has(ext) && isZsoSpecific);
+      return ext === '.md' || ext === '.pdf' || ext === '.url' || ext === '.json' || IMAGE_EXTENSIONS.has(ext);
     })
     .sort((a, b) => a.name.localeCompare(b.name, 'de'));
 
