@@ -47,8 +47,3 @@ Thumbs.db
 # Per-org public folder is a generated symlink to ZSO/<Org> (see server/org.js)
 content_zso_specific_public
 
-# Organisation-specific logos (local tenant branding). The ZSO/ folders are the
-# tracked source of truth; per-org branding logos stay local, the fallback logo
-# and READMEs are tracked.
-ZSO/*/logos/org_logo_*.png
-ZSO/*/logos/*.png:Zone.Identifier
