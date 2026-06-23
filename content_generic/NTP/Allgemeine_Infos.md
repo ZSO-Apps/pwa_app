@@ -3,7 +3,6 @@
 **Allgemines:**
 
 * Beim Versagen der Telefonverbindungen bei längerfristigen Stromausfällen
-* 28 Standorte in Brugg Region
 * Grundsätzlich sind die AdFW und AdZS nur für die Sicherstellung sowie das Betreiben der Kommunikation (Polycom) zuständig.
 * Für den Betrieb des NTP ist die jeweilige Gemeinde verantwortlich. Diese  stellen entsprechendes Personal schnellstmoeglich zur Verfügung.
 
@@ -17,7 +16,7 @@
 
 **Aufgaben ZSO:**
 
-* Lagern zentral die NTP Ausrüstungen (exkl. Polycom) in Schinznach Bad
+* Lagern zentral die NTP Ausrüstungen (exkl. Polycom)
 * Stellen dem RFO das benötigte Personal fuer den KP Betrieb (Lage und Kommunikation sowie die Eingangskontrolle) zur Verfuegung 
 * Erstellen einen Ablöseplan fuer die AdZS
 * Stellt die Ausbildung fuer FW und RFO auf den Polycom sicher 
