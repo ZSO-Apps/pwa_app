@@ -43,12 +43,6 @@ kacheln:
     wkScoped: true
     color: "#f28c00"
 
-  - id: quiz
-    title: "Quiz"
-    access: Soldat
-    content: quiz
-    color: "#005a9c"
-
   - id: appell
     title: "Appell"
     access: Unteroffizier
