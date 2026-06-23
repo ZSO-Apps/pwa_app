@@ -545,7 +545,7 @@ data/appell/<wk-id>/lists/<list-id>/
 - Inhalte werden in `content_zso_specific` geschrieben. Bei WK-spezifischen Kacheln wird der aktive WK-Unterordner verwendet.
 - Das Menü erstellt Markdown-Dateien, generische Formular-JSONs, importiert Markdown/PDF/Bilder, verlinkt Webseiten und erstellt Ordner.
 - Bilder zu Markdown-Dateien und Quizfragen werden in sibling asset folders mit Endung `.content` gespeichert, z.B. `Meine Datei.content/`. Diese Ordner sind technische Asset-Ordner und werden in Kachel-Übersichten, Suche und Form-Scan ausgeblendet.
-- Markdown-Dateien können ab `Unteroffizier` direkt bearbeitet werden. Listing-Einträge aus `content_zso_specific` können ab `Unteroffizier` umbenannt oder gelöscht werden; generischer Grundinhalt wird nicht destruktiv geändert.
+- Markdown-Dateien können ab `Unteroffizier` direkt bearbeitet werden. Sichtbare Listing-Einträge aus allen Content-Roots (`content_generic`, aktive Organisation via `content_zso_specific_public`, `content_zso_specific`) können ab `Unteroffizier` umbenannt oder gelöscht werden, sofern die Rolle Zugriff auf die Kachel hat.
 - Der Markdown-Editor verwendet lokal ausgeliefertes EasyMDE (`/vendor/easymde/*`) statt CDN. Spellchecker und FontAwesome-Autodownload sind deaktiviert, damit der Editor auch im lokalen/offlinefähigen Betrieb keine externen Assets nachlädt. Gespeichert wird weiterhin reines Markdown; Bilder laufen über die bestehende `Dateiname.content/`-Ablage.
 - Erstellen, Importieren, Bearbeiten, Umbenennen, Löschen und Speichern sind Online-only. Die UI markiert diese Elemente mit `data-online-only` bzw. `data-online-only-form`, damit gecachte Offline-Seiten keine Schreibaktionen auslösen.
 

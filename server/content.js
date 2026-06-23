@@ -90,12 +90,7 @@ function contentRel(relPath, name) {
   return [relPath, name].filter(Boolean).join('/');
 }
 
-function isZsoSpecificAbs(abs) {
-  return abs.startsWith(ROOT_DIRS.zso + path.sep);
-}
-
 function manageMeta(entry, relPath, displayName) {
-  if (!isZsoSpecificAbs(entry.abs)) return {};
   return {
     manageRel: contentRel(relPath, entry.name),
     manageName: displayName,

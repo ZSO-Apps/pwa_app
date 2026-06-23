@@ -33,7 +33,12 @@ const ROLES = new Set(['Soldat', 'Unteroffizier', 'Offizier', 'Admin']);
 
 function canManageContent(req, kachel) {
   const role = req.user?.role || 'public';
-  return Boolean(kachel?.id && kachel.content && hasAccess(role, CONTENT_EDITOR_ROLE));
+  return Boolean(
+    kachel?.id &&
+    kachel.content &&
+    hasAccess(role, kachel.access || 'public') &&
+    hasAccess(role, CONTENT_EDITOR_ROLE)
+  );
 }
 
 function requireManageContent(req, res, kachel) {
@@ -191,9 +196,16 @@ function normalizeMarkdownImages(body, targetDir) {
   return content;
 }
 
-function zsoPathFor(kachel, relPath, activeWk) {
+function managedPathFor(kachel, relPath, activeWk) {
   const effective = effectiveContentKachel(kachel, activeWk);
-  return safeResolve(zsoRootFor(effective), normalizeRelPath(relPath));
+  const source = resolveKachelPath(effective, normalizeRelPath(relPath));
+  if (!source) throw new Error('Eintrag nicht gefunden.');
+  return source;
+}
+
+function visibleEntryExists(kachel, relPath, activeWk) {
+  const effective = effectiveContentKachel(kachel, activeWk);
+  return Boolean(resolveKachelPath(effective, normalizeRelPath(relPath)));
 }
 
 function markdownAssetDirName(fileName) {
@@ -559,13 +571,13 @@ export function renameContentEntry(req, res, kachelId) {
   if (!requireManageContent(req, res, kachel)) return;
   try {
     const { dir, name, rel } = splitRelPath(req.body?.rel);
-    const current = zsoPathFor(kachel, rel, req.activeWk);
-    if (!fs.existsSync(current)) throw new Error('Nur ZSO-spezifische Einträge können umbenannt werden.');
+    const current = managedPathFor(kachel, rel, req.activeWk);
     const stat = fs.statSync(current);
     const base = safeFileBase(req.body?.name);
     const newName = stat.isDirectory() ? base : base + path.extname(name);
+    const targetRel = joinRelDir(dir, newName);
     const target = safeResolve(path.dirname(current), newName);
-    if (fs.existsSync(target)) throw new Error('Ein Eintrag mit diesem Namen existiert bereits.');
+    if (fs.existsSync(target) || visibleEntryExists(kachel, targetRel, req.activeWk)) throw new Error('Ein Eintrag mit diesem Namen existiert bereits.');
     const hadJson = containsJson(current);
     fs.renameSync(current, target);
     if (stat.isFile()) maybeRenameMarkdownAssets(current, target);
@@ -581,8 +593,7 @@ export function deleteContentEntry(req, res, kachelId) {
   if (!requireManageContent(req, res, kachel)) return;
   try {
     const { dir, rel } = splitRelPath(req.body?.rel);
-    const current = zsoPathFor(kachel, rel, req.activeWk);
-    if (!fs.existsSync(current)) throw new Error('Nur ZSO-spezifische Einträge können gelöscht werden.');
+    const current = managedPathFor(kachel, rel, req.activeWk);
     const hadJson = containsJson(current);
     const stat = fs.statSync(current);
     if (stat.isDirectory()) fs.rmSync(current, { recursive: true, force: true });
