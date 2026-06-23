@@ -19,15 +19,15 @@ Nach Erledigung muss der Meldezettel signiert werden und an die Triage (C Lage /
 
 ### Leitungsbau
 Siehe entsprechende Rubriken in der ZSO-APP:
-* [Leitungsbau 1 - Baupatrouille](https://zsobruggregion.synology.me/content/Telematik/Leitungsbau_1_-_Baupatrouille.md)
-* [Leitungsbau 2 - Bausortiment](https://zsobruggregion.synology.me/content/Telematik/Leitungsbau_2_-_Bausortiment.md)
-* [Leitungsbau 3 - Sicherheitsvorschriften](https://zsobruggregion.synology.me/content/Telematik/Leitungsbau_3_-_Sicherheitsvorschriften.md)
-* [Leitungsbau 4 - Kreuzen](https://zsobruggregion.synology.me/content/Telematik/Leitungsbau_4_-_Kreuzen.md)
-* [Leitungsbau 5 - Sicherungen & Stützpunkte](https://zsobruggregion.synology.me/content/Telematik/Leitungsbau_5_-_Sicherungen_&_Stützpunkte.md)
+* [Leitungsbau 1 - Baupatrouille](/k/telematik/Leitungsbau_1_-_Baupatrouille.md)
+* [Leitungsbau 2 - Bausortiment](/k/telematik/Leitungsbau_2_-_Bausortiment.md)
+* [Leitungsbau 3 - Sicherheitsvorschriften](/k/telematik/Leitungsbau_3_-_Sicherheitsvorschriften.md)
+* [Leitungsbau 4 - Kreuzen](/k/telematik/Leitungsbau_4_-_Kreuzen.md)
+* [Leitungsbau 5 - Sicherungen & Stützpunkte](/k/telematik/Leitungsbau_5_-_Sicherungen_&_Stützpunkte.md)
 
 ### Montage einer Antenne
 Siehe entsprechende Rubrik in der ZSO-App:
-* [Antennen](https://zsobruggregion.synology.me/content/Telematik/Antennen.md)
+* [Antennen](/k/telematik/Antennen.md)
 
 ### Aufbau und Betrieb: Telematik
 
@@ -83,4 +83,3 @@ Siehe entsprechende Rubrik in der ZSO-App:
 
 <a href="Funktions-_und_Aufgabenbehelf_-_Telematik.content/MZ.png"><img style="width: 100%;" src="Funktions-_und_Aufgabenbehelf_-_Telematik.content/MZ.png"/></a>
 
-<br>

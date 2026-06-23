@@ -1,12 +1,16 @@
 ## DDSSS
 
-**D**enken<br>
-**D**rücken<br>
-**S**chlucken<br>
-**S**chauen (rote LED)<br>
+**D**enken
+
+**D**rücken
+
+**S**chlucken
+
+**S**chauen (rote LED)
+
 **S**prechen
 
-<br>
+
 ## Buchstabiertabelle
 <a href="Sprechregeln.content/Buchstabiertabelle.PNG"><img style="width: 100%;" src="Sprechregeln.content/Buchstabiertabelle.PNG"/></a>
 
