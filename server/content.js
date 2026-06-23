@@ -8,17 +8,21 @@ marked.setOptions({ gfm: true, breaks: false });
 
 const ROOT = path.resolve('.');
 
-// The two content roots. Access is decided per Kachel in layout.yaml, not by
-// the folder a file lives in. The ZSO-specific root overrides the generic one
-// on name collision; ordered later so it wins in the merge.
+// The content roots. Access is decided per Kachel in layout.yaml, not by the
+// folder a file lives in. `zso_public` is the per-organization public folder
+// (a symlink to ZSO/<Org>, see server/org.js); `zso` is the protected/runtime
+// override root. Ordered so later wins in the merge.
 const ROOT_DIRS = {
-  generic: path.resolve('content_generic'),
-  zso:     path.resolve('content_zso_specific'),
+  generic:    path.resolve('content_generic'),
+  zso_public: path.resolve('content_zso_specific_public'),
+  zso:        path.resolve('content_zso_specific'),
 };
 
-// Order: later entries override earlier ones on name collision (ZSO overrides
-// generic). Same list regardless of access level.
-const ROOTS = [ROOT_DIRS.generic, ROOT_DIRS.zso];
+// Order: later entries override earlier ones on name collision. The generic
+// content is the base, the org-specific public folder (ZSO/<Org>) overrides it,
+// and content_zso_specific overrides everything. Same list for all access
+// levels.
+const ROOTS = [ROOT_DIRS.generic, ROOT_DIRS.zso_public, ROOT_DIRS.zso];
 const IMAGE_EXTENSIONS = new Set(['.png', '.jpg', '.jpeg', '.gif', '.webp']);
 
 export function safeResolve(absRoot, ...parts) {

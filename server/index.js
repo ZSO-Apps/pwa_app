@@ -13,6 +13,7 @@ import { buildServiceWorker } from './sw.js';
 import { wkMiddleware, setActiveWk, listWks } from './wk.js';
 import { createUser, deleteUser, renderDeleteUser, renderEditUser, renderNewUser, renderUsers, updateUser } from './user-admin.js';
 import { resolveLogo } from './branding.js';
+import { setupOrg, getOrg } from './org.js';
 import { createQuiz, quizActionContext, renderNewQuiz } from './quiz-admin.js';
 import {
   renderAppellPage, apiLists, apiData, apiSetStatus, apiSetTags,
@@ -24,6 +25,15 @@ import {
 } from './transport.js';
 
 const PORT = process.env.PORT ? Number(process.env.PORT) : 8080;
+
+// Point content_zso_specific_public at the selected organization (ZSO/<Org>)
+// before anything reads content/logos. Fail fast on a bad org selection.
+try {
+  setupOrg();
+} catch (err) {
+  console.error(`\nOrg setup failed: ${err.message}\n`);
+  process.exit(1);
+}
 
 loadLayout();
 
@@ -248,5 +258,5 @@ app.get('/forms/:id/results', (req, res) => renderResults(req, res, req.params.i
 app.use((req, res) => res.status(404).send(renderError(req, 404, `Nicht gefunden: ${req.path}`)));
 
 app.listen(PORT, () => {
-  console.log(`ZSO App läuft auf http://localhost:${PORT}`);
+  console.log(`ZSO App (Org: ${getOrg()}) läuft auf http://localhost:${PORT}`);
 });

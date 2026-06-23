@@ -4,6 +4,9 @@ services:
     container_name: pwa_app
     ports:
       - "8080:8080"
+    environment:
+      # Organization to serve: points content_zso_specific_public -> ZSO/<ORG>
+      - ORG=${ORG:-Generic}
     volumes:
       - ./data:/app/data:z
     restart: unless-stopped

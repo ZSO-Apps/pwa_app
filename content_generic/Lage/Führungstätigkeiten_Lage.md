@@ -1,32 +1,32 @@
 ## Führungstätigkeiten Lage
-<a href="F%C3%BChrungst%C3%A4tigkeiten_Lage.content/auftrag_lage.jpg"><img style="width: 100%;" src="F%C3%BChrungst%C3%A4tigkeiten_Lage.content/auftrag_lage.jpg"/></a>
+<a href="Führungstätigkeiten_Lage.content/auftrag_lage.jpg"><img style="width: 100%;" src="Führungstätigkeiten_Lage.content/auftrag_lage.jpg"/></a>
 
-### Auftrag / Lage ![Icon Auftrag Lage](F%C3%BChrungst%C3%A4tigkeiten_Lage.content/icon_auftrag_lage.jpg =40x*)
+### Auftrag / Lage <img src="Führungstätigkeiten_Lage.content/icon_auftrag_lage.jpg" width="30"/> 
 Die Führungstätigkeiten umfassen alle Tätigkeiten eines Füh-rungsorgans, vom Feststellen einer Lage bzw. vom Entgegen-nehmen eines Auftrages bis zur Erfüllung der Aufgabe. Sie be-ginnen mit jeder Veränderung der Lage oder des Auftrages erneut.
 
-### Problemerfassung ![Icon Problemerfassung](F%C3%BChrungst%C3%A4tigkeiten_Lage.content/icon_problemerfassung.jpg =40x*)
+### Problemerfassung <img src="Führungstätigkeiten_Lage.content/icon_problemerfassung.jpg" width="30"/>
 Die Problemerfassung ist die erste Auseinandersetzung mit einer Lage oder einem Auftrag. Das richtige Erfassen der Aufgabe und das Erkennen der Teilprobleme bilden die Voraussetzung für das Erfüllen der Aufgabe und zeigen den Weg zur Entschlussfassung auf.
 
-### Beginn Sofortmassnahmen ![Icon Beginn Sofortmassnahmen](F%C3%BChrungst%C3%A4tigkeiten_Lage.content/icon_sofortmassnahmen.jpg =40x*)
+### Beginn Sofortmassnahmen <img src="Führungstätigkeiten_Lage.content/icon_sofortmassnahmen.jpg" width="30"/>
 Mit Sofortmassnahmen können Zeitverluste vermieden und Grundlagen für die Beurteilung der Lage beschafft werden. Die Hand-lungsfreiheit muss jedoch erhalten bleiben.
 
-### Beginn Zeitplanung ![Icon Beginn Zeitplanung](F%C3%BChrungst%C3%A4tigkeiten_Lage.content/icon_zeitplanung.jpg =40x*)
+### Beginn Zeitplanung <img src="Führungstätigkeiten_Lage.content/icon_zeitplanung.jpg" width="30"/> 
 Im Zeitplan wird festgelegt, bis zu welchem Zeitpunkt die einzelnen Führungstätigkeiten abgeschlossen sein müssen (interner Zeit-plan), damit die involvierten Führungsorgane genügend Zeit für ihre Führungstätigkeiten haben und die Einsatzorganisationen zeitgerecht handeln können (externer Zeitplan).
 
-### Lagebeurteilung ![Icon Lagebeurteilung](F%C3%BChrungst%C3%A4tigkeiten_Lage.content/icon_lagebeurteilung.jpg =40x*)
+### Lagebeurteilung <img src="Führungstätigkeiten_Lage.content/icon_lagebeurteilung.jpg" width="30"/>
 Die Lagebeurteilung basiert auf den Resultaten der Problemerfassung und dem aktuellen Lagebild. Die Beurteilung der Lage geht von einer Sammlung von Aussagen (Fakten) aus, verdichtet diese zu Erkenntnissen und leitet daraus handlungsorientierte Konsequenzen ab. Die Lagebeurteilung soll zudem Entwicklungsmöglichkeiten aufzeigen.
 
 Lösungsvarianten sind unterschiedliche Synthesen der Inhalte der Konsequenzenliste. Sie beschreiben je einen Weg, der zum Ziel führt. Aufgelistete Vor- und Nachteile lassen eine Bewertung zu. Die Präsentation der Lösungsvarianten verlangt einen begründeten Antrag für eine Variante.
 
-### Entschlussfassung ![Icon Entschlussfassung](F%C3%BChrungst%C3%A4tigkeiten_Lage.content/icon_entschlussfassug.jpg =40x*)
+### Entschlussfassung <img src="Führungstätigkeiten_Lage.content/icon_entschlussfassug.jpg" width="30"/>
 Die Entschlussfassung erfolgt anhand der beantragten Lösungsmög-lichkeiten und legt im Entschluss die Absicht für das weitere Vorgehen fest.
 
 Bereits während der Lagebeurteilung - spätestens aber nach dem Ent-scheid über das weitere Vorgehen - muss nach weiteren Massnahmen je nach Lageentwicklung gefragt werden: „Was wäre, wenn …?“ Vorbehaltene Entschlüsse können hier integriert werden.
 
-### Auftragserteilung ![Icon Auftragserteilung](F%C3%BChrungst%C3%A4tigkeiten_Lage.content/icon_auftragserteilung.jpg =40x*)
+### Auftragserteilung <img src="Führungstätigkeiten_Lage.content/icon_auftragserteilung.jpg" width="30"/> 
 Die Auftragserteilung regelt die Umsetzung der Aktion konkret. Je nachdem, an wen die Aufträge gerichtet sind, müssen die Lösungs-konzepte, die aus der Lagebeurteilung hervorgegangen sind, vorgängig zu detaillierten Planungen verarbeitet werden (Einsatzplanung). In der Auftragserteilung werden sie in einer standardisierten Struktur kommuniziert (Orientierung, Aufträge, Besondere Anordnungen - OAB).
 
-### Steuerung des Einsatzes ![Icon Steuerung des Einsatzes](F%C3%BChrungst%C3%A4tigkeiten_Lage.content/icon_steuerund_des_einsatzes.jpg =40x*)
+### Steuerung des Einsatzes <img src="Führungstätigkeiten_Lage.content/icon_steuerund_des_einsatzes.jpg"  width="30"/> 
 Zielabweichungen und Lageveränderungen müssen rechtzeitig erkannt werden. Eine neue Lage erfordert eine erneute Problemerfassung. Für die frühzeitige Erkennung von allfälligem Handlungsbedarf eignen sich Lagerapporte, aber auch ein Augenschein vor Ort.
 
 ## Aufbau Führungswand im Führungsraum

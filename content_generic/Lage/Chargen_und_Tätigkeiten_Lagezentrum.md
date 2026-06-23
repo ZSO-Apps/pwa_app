@@ -1,28 +1,14 @@
 ## Funktionsträger im Lagezentrum 
 
 Der Lageverarbeitungszyklus (Beschaffung, Auswertung, Verbreitung) wird im Lagezentrum von einem Lageorgan sichergestellt. **Im Lageorgan** findet man die **Funktionsträger**…
-<div style="width: 33%;float:right;">
-<img src="Chargen_und_T%C3%A4tigkeiten_Lagezentrum.content/chef_lage.jpg"/>
-<p align="middle">C Lage</p>
-</div>
 
-<div style="width: 33%;float:right;">
-<img  style="width: 100%;" src="Chargen_und_T%C3%A4tigkeiten_Lagezentrum.content/chef_lage_stv.jpg"/>
-<p align="middle">C Lage Stv (Grfhr Lage)</p>
-</div>
+<img src="Chargen_und_Tätigkeiten_Lagezentrum.content/funktionstraeger.png"/>
 
-<div style="width: 33%;">
-<img  style="width: 100%;" src="Chargen_und_T%C3%A4tigkeiten_Lagezentrum.content/stabsassi.jpg"/>
-<p align="middle">Stabsassistent</p>
-</div>
-
-<br>
-<br>
 Grundsätzlich sind im Lagezentrum **ein Chef Lage** (idealerweise gar zwei ausgebildete Chefs Lage, einer als Stellvertreter) sowie mehrere Stabsassistenten bzw. Führungsgehilfen tätig. Einem Stabsassistenten (bzw. Führungsgehilfen) kann der Leadership für die organisatorische Führung der Stabsassistenten (bzw. Führungsgehilfen) zugewiesen werden. Allenfalls steht dafür sogar ein Gruppenführer Lage zur Verfügung.
 
 ## Aufgaben des Chefs Lage im Rahmen des Lagezentrums
 
-<center><img src='Chargen_und_T%C3%A4tigkeiten_Lagezentrum.content/chef_lage.jpg' width='80x*'></center>
+<center><img src='Chargen_und_Tätigkeiten_Lagezentrum.content/chef_lage.jpg' width='80x*'></center>
 
 * Ausrichten der Köpfe des Lageorgans auf die **Vorgaben der Führung**
 * Beeinflussen der **Tätigkeiten** im **Lageverarbeitungszyklus**
@@ -33,7 +19,7 @@ Grundsätzlich sind im Lagezentrum **ein Chef Lage** (idealerweise gar zwei ausg
 
 ## Aufgaben der Stabsassistenten/Führungsgehilfen im Rahmen des Lagezentrums
 
-<center><img src='Chargen_und_T%C3%A4tigkeiten_Lagezentrum.content/stabsassi.jpg' width='70x*'></center>
+<center><img src='Chargen_und_Tätigkeiten_Lagezentrum.content/stabsassi.jpg' width='70x*'></center>
 
 Die **Stabsassistenten** bzw. **Führungsgehilfen** nehmen im Lagezentrum verschiedenste **Chargen** wahr. Solche Chargen können sein...
 * Triagist
@@ -45,21 +31,18 @@ Die **Stabsassistenten** bzw. **Führungsgehilfen** nehmen im Lagezentrum versch
 * OSINT-Auswerter (Öffentlich zugängliche Quellen)
 * ...
 
-<br>
-<center><img src='Chargen_und_T%C3%A4tigkeiten_Lagezentrum.content/text_lage.jpg' width='60x*'></center>
+<center><img src='Chargen_und_Tätigkeiten_Lagezentrum.content/text_lage.jpg' width='60x*'></center>
 
 Im Lagezentrum **gruppiert man** idealerweise **Chargen**, welche sich **mit der textlichen Verarbeitung der Lage** auseinandersetzen - also **Triage**, **Einsatzjournalführung** und **Lageberichterarbeitung**. Gute Resultate werden hierbei erreicht, wenn diese Funk-tionsträger eng miteinander kommunizieren.
 
-<br>
-<center><img src='Chargen_und_T%C3%A4tigkeiten_Lagezentrum.content/grafik_lage.jpg' width='107x*'></center>
+<center><img src='Chargen_und_Tätigkeiten_Lagezentrum.content/grafik_lage.jpg' width='107x*'></center>
 
 Weiter existieren **Chargen**, welche sich **mit der grafischen Verarbeitung der Lage** auseinandersetzen - also **Nachrichtenkartenführung, Führungskartenerstellung** und **Bildauswertung** (Foto, Video). 
 
-<br>
 Wesentlich ist übrigens noch, dass die **Aussagen der Textprodukte** mit den **Aussagen der Grafikprodukte** zueinander **korrespondieren** - also Sicherstellung einer **Synchronisierung**. Konkret bedeutet dies, dass sich beispielsweise die Aussagen von Führungskarte und Lagebericht ergänzen können, sich aber nicht widersprechen sollten. 
 
 
 ## Chargen und Produkte im Lagezentrum (Ideallösung)
 
-<a href="Chargen_und_T%C3%A4tigkeiten_Lagezentrum.content/chargen_produkte.png"><img style="width: 100%;" src="Chargen_und_T%C3%A4tigkeiten_Lagezentrum.content/chargen_produkte.png"/></a>
+<a href="Chargen_und_Tätigkeiten_Lagezentrum.content/chargen_produkte.png"><img style="width: 100%;" src="Chargen_und_Tätigkeiten_Lagezentrum.content/chargen_produkte.png"/></a>
 
