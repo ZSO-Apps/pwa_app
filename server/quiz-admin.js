@@ -1,24 +1,28 @@
 import fs from 'node:fs';
 import path from 'node:path';
-import { findKachel, loadLayout } from './layout.js';
+import { findKachel, getForm, loadLayout } from './layout.js';
 import { hasAccess } from './auth.js';
-import { safeResolve } from './content.js';
+import { effectiveKachel, resolveKachelPath, safeResolve } from './content.js';
 import { layout } from './templates/layout.js';
 import { esc } from './templates/shared.js';
 import { renderError } from './templates/index.js';
 
-const QUIZ_KACHEL_ID = 'quiz';
+const DEFAULT_QUIZ_KACHEL_ID = 'quiz';
 const QUIZ_CREATOR_ROLE = 'Unteroffizier';
-const QUIZ_ROOT = path.resolve('content_zso_specific/quiz');
-const QUIZ_GENERIC_ROOT = path.resolve('content_generic/quiz');
+const ZSO_CONTENT_ROOT = path.resolve('content_zso_specific');
+const CONTENT_ROOTS = [path.resolve('content_generic'), ZSO_CONTENT_ROOT];
 const MAX_IMAGE_BYTES = 5 * 1024 * 1024;
 
-function canManageQuiz(req) {
-  return hasAccess(req.user?.role || 'public', QUIZ_CREATOR_ROLE);
+function canManageQuiz(req, kachel) {
+  return Boolean(kachel?.content && hasAccess(req.user?.role || 'public', QUIZ_CREATOR_ROLE));
 }
 
-function requireManageQuiz(req, res) {
-  if (canManageQuiz(req)) return true;
+function requireManageQuiz(req, res, kachel) {
+  if (!kachel?.content) {
+    res.status(404).send(renderError(req, 404, 'Quiz-Verwaltung nicht verfügbar'));
+    return false;
+  }
+  if (canManageQuiz(req, kachel)) return true;
   if (!req.user) {
     res.redirect('/login?next=' + encodeURIComponent(req.originalUrl));
     return false;
@@ -27,9 +31,53 @@ function requireManageQuiz(req, res) {
   return false;
 }
 
-export function quizActionContext(req, kachel) {
-  if (kachel?.id !== QUIZ_KACHEL_ID || !canManageQuiz(req)) return null;
-  return { enabled: true };
+export function quizActionContext(_req, _kachel) {
+  return null;
+}
+
+function normalizeRelDir(value) {
+  const raw = String(value || '').replace(/\\/g, '/').replace(/^\/+|\/+$/g, '');
+  if (!raw) return '';
+  const parts = raw.split('/').filter(Boolean);
+  if (parts.some((part) => part === '.' || part === '..')) throw new Error('Ungültiger Ordner.');
+  return parts.join('/');
+}
+
+function encodedRelPath(relDir) {
+  return normalizeRelDir(relDir).split('/').filter(Boolean).map(encodeURIComponent).join('/');
+}
+
+function folderUrl(kachelId, relDir = '') {
+  const rel = encodedRelPath(relDir);
+  return '/k/' + encodeURIComponent(kachelId) + (rel ? '/' + rel + '/' : '');
+}
+
+function effectiveContentKachel(kachel, activeWk) {
+  const effective = effectiveKachel(kachel, activeWk);
+  if (!effective?.content) throw new Error('Bitte zuerst einen WK auswählen oder anlegen.');
+  return effective;
+}
+
+function zsoRootFor(kachel) {
+  return path.join(ZSO_CONTENT_ROOT, kachel.content);
+}
+
+function targetDirFor(kachel, relDir, activeWk) {
+  const effective = effectiveContentKachel(kachel, activeWk);
+  const rel = normalizeRelDir(relDir);
+  if (rel) {
+    const existing = resolveKachelPath(effective, rel);
+    if (!existing || !fs.existsSync(existing) || !fs.statSync(existing).isDirectory()) {
+      throw new Error('Ordner nicht gefunden.');
+    }
+  }
+  return safeResolve(zsoRootFor(effective), rel);
+}
+
+function contentAssetUrl(kachelId, relDir, assetDirName, fileName) {
+  const parts = normalizeRelDir(relDir).split('/').filter(Boolean);
+  parts.push(assetDirName, fileName);
+  return '/k/' + encodeURIComponent(kachelId) + '/' + parts.map((part) => encodeURIComponent(part)).join('/');
 }
 
 function slugify(value) {
@@ -59,18 +107,33 @@ function contentFolderName(title) {
   return safeFileBase(title) + '.content';
 }
 
-function uniqueFormId(title) {
+function formFileExists(formId, targetDir) {
+  if (getForm(formId)) return true;
+  if (fs.existsSync(path.join(targetDir, formId + '.json'))) return true;
+
+  for (const root of CONTENT_ROOTS) {
+    if (!fs.existsSync(root)) continue;
+    const stack = [root];
+    while (stack.length) {
+      const dir = stack.pop();
+      for (const entry of fs.readdirSync(dir, { withFileTypes: true })) {
+        if (entry.name.startsWith('.') || entry.name.toLowerCase().endsWith('.content')) continue;
+        const child = path.join(dir, entry.name);
+        if (entry.isDirectory()) stack.push(child);
+        else if (entry.name === formId + '.json') return true;
+      }
+    }
+  }
+  return false;
+}
+
+function uniqueFormId(title, targetDir) {
   const base = 'quiz-' + slugify(title).replace(/^quiz-/, '');
   let candidate = base;
-  for (let n = 2; formFileExists(candidate); n++) {
+  for (let n = 2; formFileExists(candidate, targetDir); n++) {
     candidate = base + '-' + n;
   }
   return candidate;
-}
-
-function formFileExists(formId) {
-  return fs.existsSync(path.join(QUIZ_ROOT, formId + '.json'))
-    || fs.existsSync(path.join(QUIZ_GENERIC_ROOT, formId + '.json'));
 }
 
 function decodeImage(dataUrl) {
@@ -137,19 +200,19 @@ function normalizePayload(body) {
   return { title, questions };
 }
 
-function writeQuestionImage(payload, formId, index, imageData) {
+function writeQuestionImage(payload, formId, index, imageData, targetDir, kachelId, relDir) {
   const decoded = decodeImage(imageData);
   if (!decoded) return '';
   const assetDirName = contentFolderName(payload.title);
-  const assetDir = safeResolve(QUIZ_ROOT, assetDirName);
+  const assetDir = safeResolve(targetDir, assetDirName);
   fs.mkdirSync(assetDir, { recursive: true });
   const fileName = formId + '-frage-' + index + '.' + decoded.ext;
   const target = safeResolve(assetDir, fileName);
   fs.writeFileSync(target, decoded.buffer);
-  return '/k/quiz/' + encodeURIComponent(assetDirName) + '/' + encodeURIComponent(fileName);
+  return contentAssetUrl(kachelId, relDir, assetDirName, fileName);
 }
 
-function quizDefinitionFromPayload(payload, formId) {
+function quizDefinitionFromPayload(payload, formId, targetDir, kachelId, relDir) {
   const fields = [];
   payload.questions.forEach((question, idx) => {
     const number = idx + 1;
@@ -159,7 +222,7 @@ function quizDefinitionFromPayload(payload, formId) {
       label: question.text,
       required: true,
     };
-    const image = writeQuestionImage(payload, formId, number, question.imageData);
+    const image = writeQuestionImage(payload, formId, number, question.imageData, targetDir, kachelId, relDir);
     if (image) field.image = image;
     if (question.type !== 'free_text') {
       field.options = question.answers.map((answer) => answer.text);
@@ -181,37 +244,53 @@ function quizDefinitionFromPayload(payload, formId) {
   };
 }
 
-export function renderNewQuiz(req, res) {
-  if (!requireManageQuiz(req, res)) return;
-  const kachel = findKachel(QUIZ_KACHEL_ID);
-  if (!kachel) return res.status(404).send(renderError(req, 404, 'Quiz-Kachel nicht gefunden'));
+export function renderNewQuiz(req, res, kachelId = DEFAULT_QUIZ_KACHEL_ID) {
+  const kachel = findKachel(kachelId);
+  if (!requireManageQuiz(req, res, kachel)) return;
+
+  let relDir = '';
+  try {
+    relDir = normalizeRelDir(req.query?.dir);
+    targetDirFor(kachel, relDir, req.activeWk);
+  } catch (error) {
+    return res.status(400).send(renderError(req, 400, error.message));
+  }
+
+  const backUrl = folderUrl(kachel.id, relDir);
+  const submitUrl = '/content-admin/' + encodeURIComponent(kachel.id) + '/quiz';
+  const context = relDir ? ' im Ordner <strong>' + esc(relDir) + '</strong>' : ' in dieser Kachel';
   const body = [
     '<article class="content quiz-builder" data-quiz-builder>',
-    '<p><a href="/k/quiz" class="back">← Zurück</a></p>',
+    '<p><a href="' + esc(backUrl) + '" class="back">← Zurück</a></p>',
     '<div class="content-header"><h1>Quiz hinzufügen</h1></div>',
-    '<p class="muted">Erstellt eine neue Quiz-Definition. Danach erscheinen automatisch die Ausfüllmöglichkeit und die Auswertung in der Quiz-Kachel.</p>',
-    '<form class="quiz-builder-form" data-quiz-builder-form>',
+    '<p class="muted">Erstellt eine neue Quiz-Definition' + context + '. Danach erscheinen automatisch die Ausfüllmöglichkeit und die Auswertung in der aktuellen Übersicht.</p>',
+    '<form class="quiz-builder-form" data-quiz-builder-form data-quiz-submit-url="' + esc(submitUrl) + '" data-quiz-dir="' + esc(relDir) + '">',
     '<label class="field quiz-title-field">Quiz-Titel *<input name="title" data-quiz-title required autocomplete="off" placeholder="z.B. Kabel"></label>',
     '<div class="quiz-questions" data-quiz-questions></div>',
     '<button type="button" class="secondary-button" data-quiz-add-question>+ Frage hinzufügen</button>',
     '<p class="err" data-quiz-error hidden></p>',
-    '<div class="dialog-actions quiz-builder-submit"><a class="secondary-button" href="/k/quiz">Abbrechen</a><button type="submit">Quiz erstellen</button></div>',
+    '<div class="dialog-actions quiz-builder-submit"><a class="secondary-button" href="' + esc(backUrl) + '">Abbrechen</a><button type="submit">Quiz erstellen</button></div>',
     '</form>',
     '</article>',
   ].join('');
   res.send(layout(req, { title: 'Quiz hinzufügen', body }));
 }
 
-export function createQuiz(req, res) {
-  if (!requireManageQuiz(req, res)) return;
+export function createQuiz(req, res, kachelId = DEFAULT_QUIZ_KACHEL_ID) {
+  const kachel = findKachel(kachelId);
+  if (!requireManageQuiz(req, res, kachel)) return;
+
+  let relDir = '';
   try {
+    relDir = normalizeRelDir(req.body?.dir);
+    const targetDir = targetDirFor(kachel, relDir, req.activeWk);
     const payload = normalizePayload(req.body || {});
-    const formId = uniqueFormId(payload.title);
-    const definition = quizDefinitionFromPayload(payload, formId);
-    fs.mkdirSync(QUIZ_ROOT, { recursive: true });
-    fs.writeFileSync(path.join(QUIZ_ROOT, formId + '.json'), JSON.stringify(definition, null, 2) + '\n');
+    const formId = uniqueFormId(payload.title, targetDir);
+    const definition = quizDefinitionFromPayload(payload, formId, targetDir, kachel.id, relDir);
+    fs.mkdirSync(targetDir, { recursive: true });
+    fs.writeFileSync(path.join(targetDir, formId + '.json'), JSON.stringify(definition, null, 2) + '\n');
     loadLayout();
-    res.json({ ok: true, url: '/k/quiz', id: formId });
+    res.json({ ok: true, url: folderUrl(kachel.id, relDir), id: formId });
   } catch (error) {
     res.status(400).json({ ok: false, error: error.message || 'Quiz konnte nicht erstellt werden.' });
   }

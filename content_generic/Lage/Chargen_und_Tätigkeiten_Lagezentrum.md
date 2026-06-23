@@ -2,17 +2,17 @@
 
 Der Lageverarbeitungszyklus (Beschaffung, Auswertung, Verbreitung) wird im Lagezentrum von einem Lageorgan sichergestellt. **Im Lageorgan** findet man die **Funktionsträger**…
 <div style="width: 33%;float:right;">
-<img src="chef_lage.jpg"/>
+<img src="Chargen_und_T%C3%A4tigkeiten_Lagezentrum.content/chef_lage.jpg"/>
 <p align="middle">C Lage</p>
 </div>
 
 <div style="width: 33%;float:right;">
-<img  style="width: 100%;" src="chef_lage_stv.jpg"/>
+<img  style="width: 100%;" src="Chargen_und_T%C3%A4tigkeiten_Lagezentrum.content/chef_lage_stv.jpg"/>
 <p align="middle">C Lage Stv (Grfhr Lage)</p>
 </div>
 
 <div style="width: 33%;">
-<img  style="width: 100%;" src="stabsassi.jpg"/>
+<img  style="width: 100%;" src="Chargen_und_T%C3%A4tigkeiten_Lagezentrum.content/stabsassi.jpg"/>
 <p align="middle">Stabsassistent</p>
 </div>
 
@@ -22,7 +22,7 @@ Grundsätzlich sind im Lagezentrum **ein Chef Lage** (idealerweise gar zwei ausg
 
 ## Aufgaben des Chefs Lage im Rahmen des Lagezentrums
 
-<center><img src='chef_lage.jpg' width='80x*'></center>
+<center><img src='Chargen_und_T%C3%A4tigkeiten_Lagezentrum.content/chef_lage.jpg' width='80x*'></center>
 
 * Ausrichten der Köpfe des Lageorgans auf die **Vorgaben der Führung**
 * Beeinflussen der **Tätigkeiten** im **Lageverarbeitungszyklus**
@@ -33,7 +33,7 @@ Grundsätzlich sind im Lagezentrum **ein Chef Lage** (idealerweise gar zwei ausg
 
 ## Aufgaben der Stabsassistenten/Führungsgehilfen im Rahmen des Lagezentrums
 
-<center><img src='stabsassi.jpg' width='70x*'></center>
+<center><img src='Chargen_und_T%C3%A4tigkeiten_Lagezentrum.content/stabsassi.jpg' width='70x*'></center>
 
 Die **Stabsassistenten** bzw. **Führungsgehilfen** nehmen im Lagezentrum verschiedenste **Chargen** wahr. Solche Chargen können sein...
 * Triagist
@@ -46,12 +46,12 @@ Die **Stabsassistenten** bzw. **Führungsgehilfen** nehmen im Lagezentrum versch
 * ...
 
 <br>
-<center><img src='text_lage.jpg' width='60x*'></center>
+<center><img src='Chargen_und_T%C3%A4tigkeiten_Lagezentrum.content/text_lage.jpg' width='60x*'></center>
 
 Im Lagezentrum **gruppiert man** idealerweise **Chargen**, welche sich **mit der textlichen Verarbeitung der Lage** auseinandersetzen - also **Triage**, **Einsatzjournalführung** und **Lageberichterarbeitung**. Gute Resultate werden hierbei erreicht, wenn diese Funk-tionsträger eng miteinander kommunizieren.
 
 <br>
-<center><img src='grafik_lage.jpg' width='107x*'></center>
+<center><img src='Chargen_und_T%C3%A4tigkeiten_Lagezentrum.content/grafik_lage.jpg' width='107x*'></center>
 
 Weiter existieren **Chargen**, welche sich **mit der grafischen Verarbeitung der Lage** auseinandersetzen - also **Nachrichtenkartenführung, Führungskartenerstellung** und **Bildauswertung** (Foto, Video). 
 
@@ -61,5 +61,5 @@ Wesentlich ist übrigens noch, dass die **Aussagen der Textprodukte** mit den **
 
 ## Chargen und Produkte im Lagezentrum (Ideallösung)
 
-<a href="chargen_produkte.png?origin=Lage/Chargen_und_Tätigkeiten_Lagezentrum.md"><img style="width: 100%;" src="chargen_produkte.png"/></a>
+<a href="Chargen_und_T%C3%A4tigkeiten_Lagezentrum.content/chargen_produkte.png"><img style="width: 100%;" src="Chargen_und_T%C3%A4tigkeiten_Lagezentrum.content/chargen_produkte.png"/></a>
 

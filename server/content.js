@@ -82,6 +82,22 @@ function isHiddenContentDirName(name) {
   return String(name || '').toLowerCase().endsWith('.content');
 }
 
+function contentRel(relPath, name) {
+  return [relPath, name].filter(Boolean).join('/');
+}
+
+function isZsoSpecificAbs(abs) {
+  return abs.startsWith(ROOT_DIRS.zso + path.sep);
+}
+
+function manageMeta(entry, relPath, displayName) {
+  if (!isZsoSpecificAbs(entry.abs)) return {};
+  return {
+    manageRel: contentRel(relPath, entry.name),
+    manageName: displayName,
+  };
+}
+
 // Public listing: directories, .md, .pdf, .url, plus form definitions (.json).
 // Images live alongside content (referenced from markdown) and aren't listed.
 export function listKachelDir(kachel, relPath, urlPrefix, role) {
@@ -98,19 +114,23 @@ export function listKachelDir(kachel, relPath, urlPrefix, role) {
   for (const e of entries) {
     const ext = path.extname(e.name).toLowerCase();
     if (e.isDir) {
+      const label = e.name.replace(/_/g, ' ');
       items.push({
         kind: 'dir',
-        label: e.name.replace(/_/g, ' '),
+        label,
         url: urlPrefix.replace(/\/$/, '') + '/' + encodeURIComponent(e.name) + '/',
+        ...manageMeta(e, relPath, e.name),
       });
     } else if (ext === '.url') {
       const raw = fs.readFileSync(e.abs, 'utf8').trim();
       const iniMatch = raw.match(/^URL=(.+)$/im);
+      const label = e.name.replace(/\.url$/i, '').replace(/_/g, ' ');
       items.push({
         kind: 'url',
-        label: e.name.replace(/\.url$/i, '').replace(/_/g, ' '),
+        label,
         url: iniMatch ? iniMatch[1].trim() : raw.split(/\r?\n/)[0].trim(),
         external: true,
+        ...manageMeta(e, relPath, e.name.replace(/\.url$/i, '')),
       });
     } else if (ext === '.json') {
       const def = readFormDef(e.abs);
@@ -131,7 +151,7 @@ export function listKachelDir(kachel, relPath, urlPrefix, role) {
         if (def.resultsUrl && hasAccess(role, resultsAccess)) {
           items.push({
             kind: 'form-results',
-            label: def.resultsLabel || def.label || `Übersicht ${def.title || def.id}`,
+            label: def.resultsLabel || def.label || 'Übersicht ' + (def.title || def.id),
             url: def.resultsUrl,
             onlineOnly,
           });
@@ -159,16 +179,18 @@ export function listKachelDir(kachel, relPath, urlPrefix, role) {
       if (def.resultsAccess && hasAccess(role, def.resultsAccess)) {
         items.push({
           kind: 'form-results',
-          label: def.resultsLabel || `Auswertung ${def.title || def.id}`,
+          label: def.resultsLabel || 'Auswertung ' + (def.title || def.id),
           url: '/forms/' + encodeURIComponent(def.id) + '/results',
         });
       }
     } else {
       const kind = ext === '.pdf' ? 'pdf' : IMAGE_EXTENSIONS.has(ext) ? 'image' : 'md';
+      const label = e.name.replace(/\.[^.]+$/i, '').replace(/_/g, ' ');
       items.push({
         kind,
-        label: e.name.replace(/\.[^.]+$/i, '').replace(/_/g, ' '),
+        label,
         url: urlPrefix.replace(/\/$/, '') + '/' + encodeURIComponent(e.name),
+        ...manageMeta(e, relPath, e.name.replace(/\.[^.]+$/i, '')),
       });
     }
   }

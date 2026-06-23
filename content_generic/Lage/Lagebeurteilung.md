@@ -1,9 +1,9 @@
 Die elementare Grundlage zum Lösen von Problemstellungen ist eine situationsangepasste Lagebeurteilung, welche von einer fundierten Analyse ausgeht und in einer gerafften Synthese gipfelt.
 
-## Inhalt ![Icon Inhalt Lagebeurteilung](maennchen_inhalt.jpg =70x*)
+## Inhalt ![Icon Inhalt Lagebeurteilung](Lagebeurteilung.content/maennchen_inhalt.jpg =70x*)
 * Aussagen zu Interpretationen / Hypothesen / Entwicklungsmöglichkeiten / Folgerungen / Konsequenzen
 
-## Form ![Icon Inhalt Lagebeurteilung](maennchen_praesentiert.jpg =70x*)
+## Form ![Icon Inhalt Lagebeurteilung](Lagebeurteilung.content/maennchen_praesentiert.jpg =70x*)
 * unterschieden wird zwischen Analyse und Synthese
 * die Analyse der Faktorengruppen (siehe unten) dient als Grundlage für die Erarbeitung der Synthese
 * **Analyse** der folgenden Faktorengruppen im Bezug zum Auftrag / Problem:
@@ -25,6 +25,6 @@ Die elementare Grundlage zum Lösen von Problemstellungen ist eine situationsang
 Die **gefährlichste Entwicklungsmöglichkeit** ist jene, welche die **Auftragserfüllung** am schnellsten und nachhaltigsten **in Frage stellt**.
 
 ## AEK-Matrix verknüpft mit „AZUME“
-<a href="aek_matrix.png?origin=Lage/Lagebeurteilung.md"><img style="width: 100%;" src="aek_matrix.png"/></a>
+<a href="Lagebeurteilung.content/aek_matrix.png"><img style="width: 100%;" src="Lagebeurteilung.content/aek_matrix.png"/></a>
 
 <br>

@@ -2,7 +2,7 @@ Die untenstehende Einsatzplanung für das Lageorgan zeigt einen möglichen Dreis
 
 
 ## Personaleinsatzplanung Mannschaft
-<a href="personaleinsatzplanung_mannschaft.png?origin=Lage/Moegliche_Personaleinsatzplanung_Lagezentrum.md"><img style="width: 100%;" src="personaleinsatzplanung_mannschaft.png"/></a>
+<a href="M%C3%B6gliche_Personaleinsatzplanung_Lagezentrum.content/personaleinsatzplanung_mannschaft.png"><img style="width: 100%;" src="M%C3%B6gliche_Personaleinsatzplanung_Lagezentrum.content/personaleinsatzplanung_mannschaft.png"/></a>
 
 <br>
 *Chef Lagezentrum = ein erfahrener Stabsassist oder ein Grfhr Lage
@@ -14,6 +14,6 @@ Die untenstehende Einsatzplanung für das Lageorgan zeigt einen möglichen Dreis
 
 ## Personaleinsatzplanung Chef Lage und Stellvertreter
 
-<a href="personaleinsatzplanung_chef_lage.png?origin=Lage/Moegliche_Personaleinsatzplanung_Lagezentrum.md"><img style="width: 100%;" src="personaleinsatzplanung_chef_lage.png"/></a>
+<a href="M%C3%B6gliche_Personaleinsatzplanung_Lagezentrum.content/personaleinsatzplanung_chef_lage.png"><img style="width: 100%;" src="M%C3%B6gliche_Personaleinsatzplanung_Lagezentrum.content/personaleinsatzplanung_chef_lage.png"/></a>
 
 <br>

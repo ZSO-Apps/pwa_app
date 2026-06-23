@@ -3,7 +3,7 @@
 Das Evakuationsdispositiv ist die graphische Darstellung der Evakuationsräume, Evakuations-abschnitte, Evakuationsachsen und Sammelstellen sowie der für die Aktion benötigten Organe und Mittel, aber auch der allenfalls zu berücksichtigenden Zeitfaktoren, Gefahren sowie Schutz- und Verhaltensmassnahmen.
 
 ### Grafische Darstellung
-<a href="grafische_darstellung1.jpg?origin=Lage/Situative_Produkte.md"><img style="width: 100%;" src="grafische_darstellung1.jpg"/></a>
+<a href="Situative_Produkte.content/grafische_darstellung1.jpg"><img style="width: 100%;" src="Situative_Produkte.content/grafische_darstellung1.jpg"/></a>
 
 ## Evakuationsübersicht
 
@@ -11,7 +11,7 @@ Die Evakuationsübersicht ist der tabellarische Überblick über zu evakuierende
 
 ### Tabellarische Darstellung
 
-<a href="tabellarische_darstellung1.png?origin=Lage/Situative_Produkte.md"><img style="width: 100%;" src="tabellarische_darstellung1.png"/></a>
+<a href="Situative_Produkte.content/tabellarische_darstellung1.png"><img style="width: 100%;" src="Situative_Produkte.content/tabellarische_darstellung1.png"/></a>
 
 ## Meteoübersicht
 
@@ -19,7 +19,7 @@ Die Meteoübersicht gibt grundsätzlich die aktuelle - wenn immer möglich, die 
 
 ### Tabellarische Darstellung
 
-<a href="tabellarische_darstellung2.png?origin=Lage/Situative_Produkte.md"><img style="width: 100%;" src="tabellarische_darstellung2.png"/></a>
+<a href="Situative_Produkte.content/tabellarische_darstellung2.png"><img style="width: 100%;" src="Situative_Produkte.content/tabellarische_darstellung2.png"/></a>
 
 ## Personenbergungsübersicht
 
@@ -27,10 +27,10 @@ Die Personenbergungsübersicht vermittelt in graphischer und/oder tabellarischer
 
 ### Grafische Darstellung
 
-<a href="grafische_darstellung2.jpg?origin=Lage/Situative_Produkte.md"><img style="width: 100%;" src="grafische_darstellung2.jpg"/></a>
+<a href="Situative_Produkte.content/grafische_darstellung2.jpg"><img style="width: 100%;" src="Situative_Produkte.content/grafische_darstellung2.jpg"/></a>
 
 <br>
-<a href="tabellarische_darstellung3.png?origin=Lage/Situative_Produkte.md"><img style="width: 100%;" src="tabellarische_darstellung3.png"/></a>
+<a href="Situative_Produkte.content/tabellarische_darstellung3.png"><img style="width: 100%;" src="Situative_Produkte.content/tabellarische_darstellung3.png"/></a>
 
 ## Verkehrsdispositiv
 
@@ -38,6 +38,6 @@ Das Verkehrsdispositiv ist die graphische Darstellung der Verkehrsführung und V
 
 ### Grafische Darstellung
 
-<a href="grafische_darstellung3.jpg?origin=Lage/Situative_Produkte.md"><img style="width: 100%;" src="grafische_darstellung3.jpg"/></a>
+<a href="Situative_Produkte.content/grafische_darstellung3.jpg"><img style="width: 100%;" src="Situative_Produkte.content/grafische_darstellung3.jpg"/></a>
 
 <br>

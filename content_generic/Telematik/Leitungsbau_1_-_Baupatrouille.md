@@ -5,7 +5,7 @@ betrieben und unterhalten werden können. Solche Verbindungen funktionieren auch
 oder ausgefallen ist.
 
 <br>
-<a href="Bautrupp.PNG?origin=Telematik/Leitungsbau_1_-_Grundlagen.md"><img style="width: 100%;" src="Bautrupp.PNG"/></a>
+<a href="Leitungsbau_1_-_Baupatrouille.content/Bautrupp.PNG"><img style="width: 100%;" src="Leitungsbau_1_-_Baupatrouille.content/Bautrupp.PNG"/></a>
 
 ### Aufstellung
 1. Rollenmann
@@ -63,6 +63,6 @@ oder ausgefallen ist.
 <ins>Material</ins>: Material für Verkehrshelfer
 
 <br>
-<a href="UBS.jpg?origin=Telematik/Leitungsbau_1_-_Grundlagen.md"><img style="width: 100%;" src="UBS.jpg"/></a>
+<a href="Leitungsbau_1_-_Baupatrouille.content/UBS.jpg"><img style="width: 100%;" src="Leitungsbau_1_-_Baupatrouille.content/UBS.jpg"/></a>
 
 <br>

@@ -586,6 +586,64 @@ function initContentActions() {
 }
 
 
+function initContentEntryActions() {
+  const postEntryAction = async (button, action, body) => {
+    if (navigator.onLine === false) {
+      window.alert('Diese Funktion benötigt eine Verbindung zum Server.');
+      return;
+    }
+    const kachelId = button.getAttribute('data-content-kachel-id');
+    if (!kachelId) return;
+    const oldText = button.textContent;
+    button.disabled = true;
+    button.textContent = action === 'rename' ? 'Speichere…' : 'Lösche…';
+    try {
+      const response = await fetch('/content-admin/' + encodeURIComponent(kachelId) + '/entry/' + action, {
+        method: 'POST',
+        body: new URLSearchParams(body),
+        headers: { 'Content-Type': 'application/x-www-form-urlencoded;charset=UTF-8' },
+        credentials: 'same-origin',
+      });
+      const data = await response.json().catch(() => ({}));
+      if (!response.ok || data.ok === false) throw new Error(data.error || 'Aktion fehlgeschlagen.');
+      window.location.href = data.url || window.location.href;
+    } catch (error) {
+      window.alert(error?.message || 'Aktion fehlgeschlagen.');
+    } finally {
+      button.disabled = false;
+      button.textContent = oldText;
+    }
+  };
+
+  document.querySelectorAll('[data-content-entry-rename]').forEach((button) => {
+    button.addEventListener('click', (event) => {
+      event.preventDefault();
+      event.stopPropagation();
+      const rel = button.getAttribute('data-content-rel') || '';
+      const currentName = button.getAttribute('data-content-name') || '';
+      const nextName = window.prompt('Neuer Name', currentName);
+      if (nextName === null) return;
+      const trimmed = nextName.trim();
+      if (!trimmed) {
+        window.alert('Bitte einen Namen angeben.');
+        return;
+      }
+      postEntryAction(button, 'rename', { rel, name: trimmed });
+    });
+  });
+
+  document.querySelectorAll('[data-content-entry-delete]').forEach((button) => {
+    button.addEventListener('click', (event) => {
+      event.preventDefault();
+      event.stopPropagation();
+      const rel = button.getAttribute('data-content-rel') || '';
+      const name = button.getAttribute('data-content-name') || rel;
+      if (!window.confirm('Eintrag wirklich löschen?\n' + name)) return;
+      postEntryAction(button, 'delete', { rel });
+    });
+  });
+}
+
 function initQuizBuilder() {
   const root = document.querySelector('[data-quiz-builder]');
   if (!root) return;
@@ -594,6 +652,8 @@ function initQuizBuilder() {
   const questionsEl = root.querySelector('[data-quiz-questions]');
   const addQuestionButton = root.querySelector('[data-quiz-add-question]');
   const errorEl = root.querySelector('[data-quiz-error]');
+  const submitUrl = form?.getAttribute('data-quiz-submit-url') || '/quiz';
+  const relDir = form?.getAttribute('data-quiz-dir') || '';
   let questionSeq = 0;
 
   const setError = (message) => {
@@ -781,7 +841,7 @@ function initQuizBuilder() {
       if (type === 'multiple' && correct.length < 1) throw new Error('Frage ' + (index + 1) + ': Mindestens eine richtige Antwort markieren.');
       return { text, type, answers, imageData: question._imageData || '' };
     });
-    return { title, questions };
+    return { title, dir: relDir, questions };
   };
 
   addQuestionButton?.addEventListener('click', addQuestion);
@@ -796,7 +856,7 @@ function initQuizBuilder() {
         submit.disabled = true;
         submit.textContent = 'Speichere…';
       }
-      const response = await fetch('/quiz', {
+      const response = await fetch(submitUrl, {
         method: 'POST',
         credentials: 'same-origin',
         headers: { 'Content-Type': 'application/json' },
@@ -1206,6 +1266,7 @@ function initMarkdownEditor() {
 initThemeSelector();
 initEnhancedForms();
 initContentActions();
+initContentEntryActions();
 initQuizBuilder();
 initGlobalSearch();
 initFormBuilder();

@@ -1,20 +1,20 @@
 ## Musterbeispiel Meldezettel
 
-<a href="muster_meldezettel.png?origin=Lage/Vorlagen.md"><img style="width: 100%;" src="muster_meldezettel.png"/></a>
+<a href="Vorlagen.content/muster_meldezettel.png"><img style="width: 100%;" src="Vorlagen.content/muster_meldezettel.png"/></a>
 
 ## Vorlage Schlüsselnachrichten
-<a href="schluesselnachrichten.jpg?origin=Lage/Vorlagen.md"><img style="width: 100%;" src="schluesselnachrichten.jpg"/></a>
+<a href="Vorlagen.content/schluesselnachrichten.jpg"><img style="width: 100%;" src="Vorlagen.content/schluesselnachrichten.jpg"/></a>
 
 ## Vorlage Gefahrstoffübersicht
-<a href="gefahrstoffuebersicht.jpg?origin=Lage/Vorlagen.md"><img style="width: 100%;" src="gefahrstoffuebersicht.jpg"/></a>
+<a href="Vorlagen.content/gefahrstoffuebersicht.jpg"><img style="width: 100%;" src="Vorlagen.content/gefahrstoffuebersicht.jpg"/></a>
 
 ## Vorlage Personenbergungsübersicht
-<a href="personenbergungsuebersicht.jpg?origin=Lage/Vorlagen.md"><img style="width: 100%;" src="personenbergungsuebersicht.jpg"/></a>
+<a href="Vorlagen.content/personenbergungsuebersicht.jpg"><img style="width: 100%;" src="Vorlagen.content/personenbergungsuebersicht.jpg"/></a>
 
 ## Vorlage Mittelflash
-<a href="mittelflash.jpg?origin=Lage/Vorlagen.md"><img style="width: 100%;" src="mittelflash.jpg"/></a>
+<a href="Vorlagen.content/mittelflash.jpg"><img style="width: 100%;" src="Vorlagen.content/mittelflash.jpg"/></a>
 
 ## Vorlage Evakuationen
-<a href="evakuationen.jpg?origin=Lage/Vorlagen.md"><img style="width: 100%;" src="evakuationen.jpg"/></a>
+<a href="Vorlagen.content/evakuationen.jpg"><img style="width: 100%;" src="Vorlagen.content/evakuationen.jpg"/></a>
 
 <br>

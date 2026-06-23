@@ -10,7 +10,7 @@ Folgende **minimale Anforderungen** müssen aber stets erfüllt sein ...
 
 
 ## Aufbau Lagewand im Lagezentrum
-<center><img src="maennchen_lagewand.jpg" width="100x*"></center>
+<center><img src="Infrastruktur_f%C3%BCr_den_Sachbereich_Lage_an_F%C3%BChrungsstandorten.content/maennchen_lagewand.jpg" width="100x*"></center>
 
 Die Lagewand sollte die folgenden **Produkte** beinhalten …
 * Fakten-Flash mit den wesentlichsten Eckdaten zum Ereignis
@@ -20,4 +20,4 @@ Die Lagewand sollte die folgenden **Produkte** beinhalten …
 * Dispositive (je nach Bedürfnissen des Führungsorgans)
 
 <br>
-<a href="lagewand_region.png?origin=Lage/Infrastruktur_für_den_Sachbereich_Lage_an_Führungsstandorten.md"><img style="width: 100%;" src="lagewand_region.png"/></a>
+<a href="Infrastruktur_f%C3%BCr_den_Sachbereich_Lage_an_F%C3%BChrungsstandorten.content/lagewand_region.png"><img style="width: 100%;" src="Infrastruktur_f%C3%BCr_den_Sachbereich_Lage_an_F%C3%BChrungsstandorten.content/lagewand_region.png"/></a>
