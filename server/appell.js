@@ -427,7 +427,7 @@ export function renderAppellPage(req, res) {
     return res.status(409).send(layout(req, { title: 'Appell', body }));
   }
   const canImport = hasAccess(req.user?.role, IMPORT_ROLE);
-  const body = `<article class="content appell-page" data-appell data-today="${esc(todayIso())}" data-can-import="${canImport}" data-print-logo="${esc(logoAssetUrl('print'))}" data-wk-label="${esc(req.activeWk?.label || '')}">
+  const body = `<article class="content appell-page" data-appell data-today="${esc(todayIso())}" data-can-import="${canImport}" data-print-logo="${esc(logoAssetUrl('print'))}" data-wk-id="${esc(req.activeWk?.id || '')}" data-wk-label="${esc(req.activeWk?.label || '')}">
     <p><a href="/" class="back">← Zurück zur Übersicht</a></p>
     <div class="content-header"><h1>Appell</h1></div>
     <div class="appell-root" data-appell-root><p class="muted">Wird geladen …</p></div>

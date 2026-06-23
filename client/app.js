@@ -75,6 +75,43 @@ function updateSyncLabel() {
 }
 updateSyncLabel();
 
+function setWkCookie(wkId) {
+  if (!wkId) return;
+  document.cookie = 'wkId=' + encodeURIComponent(wkId) + '; path=/; max-age=' + (60 * 60 * 24 * 365) + '; SameSite=Lax';
+  try { localStorage.setItem('activeWk', wkId); } catch {}
+}
+
+function urlWithWk(url, wkId) {
+  const next = new URL(url, window.location.origin);
+  if (wkId) next.searchParams.set('wk', wkId);
+  return next.pathname + next.search + next.hash;
+}
+
+function initWkSelector() {
+  const select = document.querySelector('[data-wk-select]');
+  if (!select) return;
+  const urlWk = new URLSearchParams(window.location.search).get('wk');
+  if (urlWk && Array.from(select.options).some((option) => option.value === urlWk)) {
+    select.value = urlWk;
+    setWkCookie(urlWk);
+  }
+  const apply = () => {
+    const wkId = select.value;
+    if (!wkId) return;
+    setWkCookie(wkId);
+    window.location.href = urlWithWk(window.location.href, wkId);
+  };
+  select.addEventListener('change', (event) => {
+    event.preventDefault();
+    apply();
+  });
+  select.form?.addEventListener('submit', (event) => {
+    event.preventDefault();
+    apply();
+  });
+}
+initWkSelector();
+
 function updateOnlineActions() {
   const offline = navigator.onLine === false;
   document.body.classList.toggle('is-offline', offline);

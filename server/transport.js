@@ -574,7 +574,7 @@ export function renderTransportPage(req, res) {
     return res.status(409).send(layout(req, { title: 'Transportzentrale', body }));
   }
   const canDispatch = hasAccess(req.user?.role, EDIT_ROLE);
-  const body = `<article class="content transport-page" data-transport data-can-dispatch="${canDispatch}" data-print-logo="${esc(logoAssetUrl('print'))}">
+  const body = `<article class="content transport-page" data-transport data-can-dispatch="${canDispatch}" data-wk-id="${esc(req.activeWk?.id || '')}" data-print-logo="${esc(logoAssetUrl('print'))}">
     <p><a href="/" class="back">← Zurück zur Übersicht</a></p>
     <div class="content-header"><h1>Transportzentrale</h1></div>
     <div class="transport-root" data-transport-root><p class="muted">Wird geladen …</p></div>

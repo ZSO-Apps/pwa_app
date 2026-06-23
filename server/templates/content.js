@@ -90,9 +90,17 @@ function folderUrl(kachelId, dir = '') {
   return '/k/' + encodeURIComponent(kachelId) + (parts.length ? '/' + parts.join('/') + '/' : '');
 }
 
-function renderKachel(k) {
+function withWkParam(url, wkId) {
+  if (!wkId) return url;
+  const sep = url.includes('?') ? '&' : '?';
+  return url + sep + 'wk=' + encodeURIComponent(wkId);
+}
+
+function renderKachel(k, activeWk = null) {
   const color = k.color || '#444';
-  const href = k.route || `/k/${esc(k.id)}`;
+  const baseHref = k.route || `/k/${esc(k.id)}`;
+  const wkAware = k.wkScoped || baseHref === '/appell' || baseHref === '/transport';
+  const href = wkAware && activeWk?.id ? withWkParam(baseHref, activeWk.id) : baseHref;
   return `<a class="kachel" href="${esc(href)}" style="--c:${esc(color)}">
     <span class="k-title">${esc(k.title || k.id)}</span>
   </a>`;
@@ -106,7 +114,7 @@ export function renderHome(req) {
   <article class="home-page">
     ${canCreateKacheln ? '<div class="home-header no-print"><a class="content-add-button home-add-button" data-online-only="true" href="/kachel-admin/new" aria-label="Kachel hinzufügen" title="Kachel hinzufügen">' + PLUS_ICON + '</a></div>' : ''}
     <section class="kacheln">
-      ${list.map((k) => renderKachel(k)).join('\n')}
+      ${list.map((k) => renderKachel(k, req.activeWk)).join('\n')}
     </section>
   </article>`;
   return layout(req, { title: 'ZSO App', body });

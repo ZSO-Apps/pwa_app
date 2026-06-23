@@ -23,6 +23,18 @@ function renderGlobalSearch() {
   </section>`;
 }
 
+function withWkParam(url, wkId) {
+  if (!wkId) return url;
+  const sep = url.includes('?') ? '&' : '?';
+  return url + sep + 'wk=' + encodeURIComponent(wkId);
+}
+
+function kachelHref(req, kachel) {
+  const href = kachel.route || '/k/' + kachel.id;
+  const wkAware = kachel.wkScoped || href === '/appell' || href === '/transport';
+  return wkAware && req.activeWk?.id ? withWkParam(href, req.activeWk.id) : href;
+}
+
 function renderWkBanner(req) {
   if (!req.user) return '';
   const wks = req.wkList || [];
@@ -38,10 +50,10 @@ function renderWkBanner(req) {
     const sel = active && w.id === active.id ? ' selected' : '';
     return `<option value="${esc(w.id)}"${sel}>${esc(label)}</option>`;
   }).join('');
-  return `<form method="POST" action="/wk/select" class="wk-banner" data-online-only-form>
+  return `<form method="POST" action="/wk/select" class="wk-banner" data-wk-form>
     <label for="wk-select">Aktiver WK:</label>
-    <select id="wk-select" name="wkId" data-online-only="true" onchange="this.form.submit()">${options}</select>
-    <noscript><button type="submit" data-online-only="true">Wählen</button></noscript>
+    <select id="wk-select" name="wkId" data-wk-select>${options}</select>
+    <noscript><button type="submit">Wählen</button></noscript>
   </form>`;
 }
 
@@ -101,7 +113,7 @@ ${renderGlobalSearch()}
 function renderSideNav(req) {
   const role = req.user?.role || 'public';
   const list = visibleKacheln(role);
-  const items = list.map((k) => `<li><a href="${esc(k.route || '/k/' + k.id)}">${esc(k.title || k.id)}</a></li>`).join('');
+  const items = list.map((k) => `<li><a href="${esc(kachelHref(req, k))}">${esc(k.title || k.id)}</a></li>`).join('');
   return `<ul class="nav-root">${items}
     <li class="nav-theme">
       <label for="theme-select">Design</label>

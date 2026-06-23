@@ -5,6 +5,7 @@ import { hasAccess } from './auth.js';
 import { effectiveKachel, listKachelAssets, listKachelPublicAssets } from './content.js';
 import { existingLogoUrls, logoFileForUrl } from './branding.js';
 import { getForms, getLayout } from './layout.js';
+import { listWks } from './wk.js';
 
 const STATIC_CLIENT_ASSETS = [
   '/client/styles.css',
@@ -49,8 +50,18 @@ function roleFromReq(req) {
   return req?.user?.role || 'public';
 }
 
-function effectiveForOffline(req, kachel) {
-  return effectiveKachel(kachel, req?.activeWk);
+function activeWks() {
+  return listWks();
+}
+
+function addWkParam(url, wkId) {
+  if (!wkId) return url;
+  const sep = url.includes('?') ? '&' : '?';
+  return url + sep + 'wk=' + encodeURIComponent(wkId);
+}
+
+function withWkUrls(urls, wkId) {
+  return urls.map((url) => addWkParam(url, wkId));
 }
 
 function publicKachelUrls() {
@@ -64,13 +75,27 @@ function publicKachelUrls() {
 function visibleKachelUrls(req) {
   const role = roleFromReq(req);
   const urls = [];
+  const wks = activeWks();
   walkKacheln(getLayout().kacheln, (kachel) => {
     if (!hasAccess(role, kachel.access || 'public')) return;
-    if (kachel.route) urls.push(kachel.route);
-    if (kachel.content) {
-      urls.push('/k/' + encodeURIComponent(kachel.id));
-      urls.push(...listKachelAssets(effectiveForOffline(req, kachel)));
+    if (kachel.route) {
+      urls.push(kachel.route);
+      if ((kachel.route === '/appell' || kachel.route === '/transport') && wks.length) {
+        for (const wk of wks) urls.push(addWkParam(kachel.route, wk.id));
+      }
+      return;
     }
+    if (!kachel.content) return;
+    if (kachel.wkScoped) {
+      if (!wks.length) urls.push('/k/' + encodeURIComponent(kachel.id));
+      for (const wk of wks) {
+        urls.push(addWkParam('/k/' + encodeURIComponent(kachel.id), wk.id));
+        urls.push(...withWkUrls(listKachelAssets(effectiveKachel(kachel, wk)), wk.id));
+      }
+      return;
+    }
+    urls.push('/k/' + encodeURIComponent(kachel.id));
+    urls.push(...listKachelAssets(kachel));
   });
   return urls;
 }
@@ -80,9 +105,9 @@ function formSubmitAccess(def) {
   return access === 'public' ? 'Soldat' : access;
 }
 
-function scopeForForm(req, def) {
-  if (def?.scope === 'global') return '_global';
-  return req?.activeWk?.id || null;
+function scopesForForm(def) {
+  if (def?.scope === 'global') return [{ scope: '_global', wkId: '' }];
+  return activeWks().map((wk) => ({ scope: wk.id, wkId: wk.id }));
 }
 
 function safeSubmissionId(id) {
@@ -119,20 +144,22 @@ function visibleFormUrls(req) {
   const forms = getForms();
   for (const def of Object.values(forms)) {
     if (!def?.id) continue;
-    const scope = scopeForForm(req, def);
-    if (hasAccess(role, formSubmitAccess(def)) && scope) {
-      urls.push('/forms/' + encodeURIComponent(def.id));
-    }
-    if (def.resultsAccess && hasAccess(role, def.resultsAccess) && scope) {
-      urls.push('/forms/' + encodeURIComponent(def.id) + '/results');
-      for (const submission of readSubmissionSummaries(def.id, scope)) {
-        if (def.id === WK_FORM_ID && submission.archived) continue;
-        urls.push('/forms/' + encodeURIComponent(def.id) + '/results/' + encodeURIComponent(submission.id));
-      }
-      if (def.id === WK_FORM_ID) {
-        urls.push('/forms/wk/archive');
-        for (const submission of readSubmissionSummaries(WK_FORM_ID, WK_SCOPE).filter((item) => item.archived)) {
-          urls.push('/forms/wk/archive/' + encodeURIComponent(submission.id));
+    for (const { scope, wkId } of scopesForForm(def)) {
+      const formBase = '/forms/' + encodeURIComponent(def.id);
+      const submitUrl = addWkParam(formBase, wkId);
+      const resultsUrl = addWkParam(formBase + '/results', wkId);
+      if (hasAccess(role, formSubmitAccess(def)) && scope) urls.push(submitUrl);
+      if (def.resultsAccess && hasAccess(role, def.resultsAccess) && scope) {
+        urls.push(resultsUrl);
+        for (const submission of readSubmissionSummaries(def.id, scope)) {
+          if (def.id === WK_FORM_ID && submission.archived) continue;
+          urls.push(addWkParam(formBase + '/results/' + encodeURIComponent(submission.id), wkId));
+        }
+        if (def.id === WK_FORM_ID) {
+          urls.push('/forms/wk/archive');
+          for (const submission of readSubmissionSummaries(WK_FORM_ID, WK_SCOPE).filter((item) => item.archived)) {
+            urls.push('/forms/wk/archive/' + encodeURIComponent(submission.id));
+          }
         }
       }
     }
@@ -143,11 +170,9 @@ function visibleFormUrls(req) {
 function runtimeApiUrls(req) {
   const role = roleFromReq(req);
   const urls = [];
-  if (hasAccess(role, 'Unteroffizier') && req?.activeWk) {
-    urls.push('/api/appell/data');
-  }
-  if (hasAccess(role, 'Fahrer') && req?.activeWk) {
-    urls.push('/api/transport/data');
+  for (const wk of activeWks()) {
+    if (hasAccess(role, 'Unteroffizier')) urls.push(addWkParam('/api/appell/data', wk.id));
+    if (hasAccess(role, 'Fahrer')) urls.push(addWkParam('/api/transport/data', wk.id));
   }
   return urls;
 }
@@ -191,8 +216,10 @@ function clientAssetsFingerprint() {
 }
 
 export function offlineUrlsForRequest(req = null) {
+  const wkHomeUrls = req ? activeWks().map((wk) => addWkParam('/', wk.id)) : [];
   return [...new Set([
     ...STATIC_PRECACHE,
+    ...wkHomeUrls,
     ...existingLogoUrls(),
     ...(req ? visibleKachelUrls(req) : publicKachelUrls()),
     ...(req ? visibleFormUrls(req) : []),
@@ -271,11 +298,11 @@ self.addEventListener('fetch', (event) => {
         const fresh = await fetch(req);
         if (fresh.ok && cacheableNavigation) {
           cache.put(req, fresh.clone()).catch(() => {});
-          cache.put(url.pathname, fresh.clone()).catch(() => {});
+          cache.put(url.pathname + url.search, fresh.clone()).catch(() => {});
         }
         return fresh;
       } catch {
-        const exact = await cache.match(req) || await cache.match(url.pathname);
+        const exact = await cache.match(req) || await cache.match(url.pathname + url.search) || (!url.search ? await cache.match(url.pathname) : null);
         if (exact) return exact;
         if (url.pathname === '/') {
           const home = await cache.match('/');
@@ -306,13 +333,13 @@ self.addEventListener('fetch', (event) => {
   if (url.pathname.startsWith('/logos/') || url.pathname === '/favicon.ico') {
     event.respondWith((async () => {
       const cache = await caches.open(CACHE);
-      const cached = await cache.match(req, { ignoreSearch: true }) || await cache.match(url.pathname, { ignoreSearch: true });
+      const cached = await cache.match(req, { ignoreSearch: true }) || await cache.match(url.pathname + url.search, { ignoreSearch: true }) || await cache.match(url.pathname, { ignoreSearch: true });
       if (cached) return cached;
       try {
         const fresh = await fetch(new Request(req, { cache: 'reload' }));
         if (fresh.ok) {
           cache.put(req, fresh.clone()).catch(() => {});
-          cache.put(url.pathname, fresh.clone()).catch(() => {});
+          cache.put(url.pathname + url.search, fresh.clone()).catch(() => {});
         }
         return fresh;
       } catch {
@@ -332,7 +359,7 @@ self.addEventListener('fetch', (event) => {
         if (fresh.ok) cache.put(req, fresh.clone()).catch(() => {});
         return fresh;
       } catch {
-        const cached = await cache.match(req, { ignoreSearch: false }) || await cache.match(url.pathname, { ignoreSearch: true });
+        const cached = await cache.match(req, { ignoreSearch: false }) || await cache.match(url.pathname + url.search, { ignoreSearch: false }) || (!url.search ? await cache.match(url.pathname, { ignoreSearch: true }) : null);
         if (cached) return cached;
         return new Response(JSON.stringify({ error: 'Offline – kein zwischengespeicherter Stand.' }), { status: 503, headers: { 'Content-Type': 'application/json' } });
       }
@@ -343,13 +370,13 @@ self.addEventListener('fetch', (event) => {
   if (url.pathname.startsWith('/k/') || url.pathname.startsWith('/forms/') || url.pathname === '/offline') {
     event.respondWith((async () => {
       const cache = await caches.open(CACHE);
-      const cached = await cache.match(req, { ignoreSearch: true }) || await cache.match(url.pathname, { ignoreSearch: true });
+      const cached = await cache.match(req, { ignoreSearch: false }) || await cache.match(url.pathname + url.search, { ignoreSearch: false }) || (!url.search ? await cache.match(url.pathname, { ignoreSearch: true }) : null);
       if (cached) return cached;
       try {
         const fresh = await fetch(req);
         if (fresh.ok) {
           cache.put(req, fresh.clone()).catch(() => {});
-          cache.put(url.pathname, fresh.clone()).catch(() => {});
+          cache.put(url.pathname + url.search, fresh.clone()).catch(() => {});
         }
         return fresh;
       } catch {

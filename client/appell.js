@@ -34,6 +34,13 @@
   // ---- main overview page ----------------------------------------------
 
   function initOverview(root) {
+    const wkId = root.dataset.wkId || new URLSearchParams(location.search).get('wk') || '';
+    const wkUrl = (url) => {
+      const next = new URL(url, location.origin);
+      if (wkId) next.searchParams.set('wk', wkId);
+      return next.pathname + next.search;
+    };
+    const postJsonWk = (url, body) => postJson(wkUrl(url), body);
     const today = root.dataset.today;
     const canImport = root.dataset.canImport === 'true';
     const printLogo = root.dataset.printLogo || '';
@@ -53,7 +60,7 @@
     async function load() {
       mount.innerHTML = '<p class="muted">Wird geladen …</p>';
       try {
-        const url = '/api/appell/data' + (state.listId ? '?list=' + encodeURIComponent(state.listId) : '');
+        const url = wkUrl('/api/appell/data' + (state.listId ? '?list=' + encodeURIComponent(state.listId) : ''));
         const res = await fetch(url);
         const data = await res.json();
         if (res.status === 409) { mount.innerHTML = `<p class="error">${esc(data.error)}</p>`; return; }
@@ -303,7 +310,7 @@
       const next = nextStatus(cur);
       paintStatus(el, next); // optimistic
       try {
-        await postJson('/api/appell/status', { list: listId, pid, day: iso, status: next, bemerkung: note });
+        await postJsonWk('/api/appell/status', { list: listId, pid, day: iso, status: next, bemerkung: note });
         p.status[iso] = { status: next, bemerkung: note };
       } catch (e) { paintStatus(el, cur); toast(e.message); }
     }
@@ -317,7 +324,7 @@
       if (((p.status[iso] && p.status[iso].bemerkung) || '') === note) return;
       if (!online()) { toast('Offline – nicht möglich.'); return; }
       try {
-        await postJson('/api/appell/status', { list: listId, pid, day: iso, status: cur, bemerkung: note });
+        await postJsonWk('/api/appell/status', { list: listId, pid, day: iso, status: cur, bemerkung: note });
         p.status[iso] = { status: cur, bemerkung: note };
       } catch (e) { toast(e.message); }
     }
@@ -395,7 +402,7 @@
       try {
         let clean = tags;
         for (const lid of targets) {
-          const r = await postJson('/api/appell/tags', { list: lid, pid: p.pid, tags });
+          const r = await postJsonWk('/api/appell/tags', { list: lid, pid: p.pid, tags });
           clean = r.tags;
         }
         p.tags = clean;

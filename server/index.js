@@ -71,6 +71,17 @@ app.get('/api/search', (req, res) => {
   res.json(searchContent(req, req.query?.q));
 });
 
+function withWkParam(url, req, kachel) {
+  if (!kachel?.wkScoped || !req.activeWk?.id) return url;
+  const sep = url.includes('?') ? '&' : '?';
+  return url + sep + 'wk=' + encodeURIComponent(req.activeWk.id);
+}
+
+function withWkParamForEntries(entries, req, kachel) {
+  if (!kachel?.wkScoped || !req.activeWk?.id) return entries;
+  return entries.map((entry) => entry.external ? entry : { ...entry, url: withWkParam(entry.url, req, kachel) });
+}
+
 function markdownEditUrl(req, kachel, relPath) {
   const parentDir = relPath.split('/').slice(0, -1).join('/');
   if (!contentActionContext(req, kachel, parentDir)) return '';
@@ -173,7 +184,7 @@ app.get('/k/:id', (req, res) => {
   if (!kachelRoots(k).length) {
     const contentActions = contentActionContext(req, kachel, '');
     if (kachel.wkScoped || contentActions) {
-      return res.send(renderListing(req, kachel, [], [{ label: kachel.title, url: `/k/${kachel.id}` }], {
+      return res.send(renderListing(req, kachel, [], [{ label: kachel.title, url: withWkParam(`/k/${kachel.id}`, req, kachel) }], {
         contentActions,
         quizActions: quizActionContext(req, kachel),
       }));
@@ -184,14 +195,14 @@ app.get('/k/:id', (req, res) => {
   // index.md anywhere in the merged roots gets rendered as the Kachel landing.
   const idx = resolveKachelPath(k, 'index.md');
   if (idx) {
-    return res.send(renderMarkdownPage(req, kachel, renderMarkdown(idx), '/', {
+    return res.send(renderMarkdownPage(req, kachel, renderMarkdown(idx), withWkParam('/', req, kachel), {
       contentActions: contentActionContext(req, kachel, ''),
       editUrl: markdownEditUrl(req, kachel, 'index.md'),
     }));
   }
 
-  const entries = listKachelDir(k, '', `/k/${kachel.id}/`, role);
-  return res.send(renderListing(req, kachel, entries, [{ label: kachel.title, url: `/k/${kachel.id}` }], {
+  const entries = withWkParamForEntries(listKachelDir(k, '', `/k/${kachel.id}/`, role), req, kachel);
+  return res.send(renderListing(req, kachel, entries, [{ label: kachel.title, url: withWkParam(`/k/${kachel.id}`, req, kachel) }], {
     contentActions: contentActionContext(req, kachel, ''),
     quizActions: quizActionContext(req, kachel),
   }));
@@ -217,24 +228,24 @@ app.get('/k/:id/*', (req, res) => {
   if (stat.isDirectory()) {
     const idx = resolveKachelPath(k, path.join(rel, 'index.md'));
     if (idx) {
-      return res.send(renderMarkdownPage(req, kachel, renderMarkdown(idx), `/k/${kachel.id}/`, {
+      return res.send(renderMarkdownPage(req, kachel, renderMarkdown(idx), withWkParam(`/k/${kachel.id}/`, req, kachel), {
         contentActions: contentActionContext(req, kachel, rel),
         editUrl: markdownEditUrl(req, kachel, path.join(rel, 'index.md')),
       }));
     }
     const urlPrefix = `/k/${kachel.id}/${rel.replace(/\/$/, '')}/`;
-    const entries = listKachelDir(k, rel, urlPrefix, role);
+    const entries = withWkParamForEntries(listKachelDir(k, rel, urlPrefix, role), req, kachel);
     const parts = rel.split('/').filter(Boolean);
     const crumbs = [{ label: kachel.title, url: `/k/${kachel.id}` }];
     let acc = `/k/${kachel.id}`;
-    for (const p of parts) { acc += '/' + encodeURIComponent(p); crumbs.push({ label: decodeURIComponent(p), url: acc }); }
+    for (const p of parts) { acc += '/' + encodeURIComponent(p); crumbs.push({ label: decodeURIComponent(p), url: withWkParam(acc, req, kachel) }); }
     return res.send(renderListing(req, kachel, entries, crumbs, {
       contentActions: contentActionContext(req, kachel, rel),
     }));
   }
   if (abs.endsWith('.md')) {
     const parentDir = rel.split('/').slice(0, -1).join('/');
-    const parentUrl = `/k/${kachel.id}/${parentDir}`.replace(/\/$/, '') + '/';
+    const parentUrl = withWkParam(`/k/${kachel.id}/${parentDir}`.replace(/\/$/, '') + '/', req, kachel);
     return res.send(renderMarkdownPage(req, { ...kachel, title: path.basename(abs, '.md') }, renderMarkdown(abs), parentUrl, {
       editUrl: markdownEditUrl(req, kachel, rel),
     }));
