@@ -1,11 +1,11 @@
 ### TPH900 Anleitungen
 
-<a href="Folie1.JPG?origin=NTP/TPH900_Anleitungen.md"><img style="width: 100%;" src="Folie1.JPG"/></a>
+<a href="Anleitung_TPH900.content/Folie1.JPG"><img style="width: 100%;" src="Anleitung_TPH900.content/Folie1.JPG"/></a>
 
-<a href="Folie2.JPG?origin=NTP/TPH900_Anleitungen.md"><img style="width: 100%;" src="Folie2.JPG"/></a>
+<a href="Anleitung_TPH900.content/Folie2.JPG"><img style="width: 100%;" src="Anleitung_TPH900.content/Folie2.JPG"/></a>
 
-<a href="Folie3.JPG?origin=NTP/TPH900_Anleitungen.md"><img style="width: 100%;" src="Folie3.JPG"/></a>
+<a href="Anleitung_TPH900.content/Folie3.JPG"><img style="width: 100%;" src="Anleitung_TPH900.content/Folie3.JPG"/></a>
 
-<a href="Folie4.JPG?origin=NTP/TPH900_Anleitungen.md"><img style="width: 100%;" src="Folie4.JPG"/></a>
+<a href="Anleitung_TPH900.content/Folie4.JPG"><img style="width: 100%;" src="Anleitung_TPH900.content/Folie4.JPG"/></a>
 
-<a href="Folie5.JPG?origin=NTP/TPH900_Anleitungen.md"><img style="width: 100%;" src="Folie5.JPG"/></a>
+<a href="Anleitung_TPH900.content/Folie5.JPG"><img style="width: 100%;" src="Anleitung_TPH900.content/Folie5.JPG"/></a>

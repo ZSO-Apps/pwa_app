@@ -10,15 +10,15 @@
 ## Beschriftungsnormen für Karten bzw. Pläne
 
 <br>
-<a href="beschriftungsnormen_karten1.png?origin=Lage/Hinweise_zur_Kartenführung_und_Beschriftungsnormen.md"><img src='beschriftungsnormen_karten1.png' width='100%'></a>
+<a href="Hinweise_zur_Kartenf%C3%BChrung_und_Beschriftungsnormen.content/beschriftungsnormen_karten1.png"><img src='Hinweise_zur_Kartenf%C3%BChrung_und_Beschriftungsnormen.content/beschriftungsnormen_karten1.png' width='100%'></a>
 
 <br>
-<a href="beschriftungsnormen_karten2.png?origin=Lage/Hinweise_zur_Kartenführung_und_Beschriftungsnormen.md"><img src='beschriftungsnormen_karten2.png' width='100%'></a>
+<a href="Hinweise_zur_Kartenf%C3%BChrung_und_Beschriftungsnormen.content/beschriftungsnormen_karten2.png"><img src='Hinweise_zur_Kartenf%C3%BChrung_und_Beschriftungsnormen.content/beschriftungsnormen_karten2.png' width='100%'></a>
 
 
 ## Beschriftungsnormen für Darstellungen
 
 <br>
-<a href="beschriftungsnormen_darstellungen.png?origin=Lage/Hinweise_zur_Kartenführung_und_Beschriftungsnormen.md"><img src='beschriftungsnormen_darstellungen.png' width='100%'></a>
+<a href="Hinweise_zur_Kartenf%C3%BChrung_und_Beschriftungsnormen.content/beschriftungsnormen_darstellungen.png"><img src='Hinweise_zur_Kartenf%C3%BChrung_und_Beschriftungsnormen.content/beschriftungsnormen_darstellungen.png' width='100%'></a>
 
 <br>

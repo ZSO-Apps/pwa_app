@@ -1,6 +1,6 @@
 ## Strassenkreuzung
 
-<a href="SKR.PNG?origin=Telematik/Leitungsbau_-_4_Kreuzen.md"><img style="width: 100%;" src="SKR.PNG"/></a>
+<a href="Leitungsbau_4_-_Kreuzen.content/SKR.PNG"><img style="width: 100%;" src="Leitungsbau_4_-_Kreuzen.content/SKR.PNG"/></a>
 
 ### Ablauf vom Kreuzen einer Strasse im Hochbau
 
@@ -25,7 +25,7 @@ Rückmeldung von Verkehrshelfer: "**Strasse frei!**"
 
 ### Hochbau
 
-<a href="KRZ_Hoch.PNG?origin=Telematik/Leitungsbau_-_4_Kreuzen.md"><img style="width: 100%;" src="KRZ_Hoch.PNG"/></a>
+<a href="Leitungsbau_4_-_Kreuzen.content/KRZ_Hoch.PNG"><img style="width: 100%;" src="Leitungsbau_4_-_Kreuzen.content/KRZ_Hoch.PNG"/></a>
 
 ### Bodenbau
 
@@ -39,19 +39,19 @@ Beim Kreuzen von Fusswegen und beim Bau über freies Gelände ist das Kabel so z
 
 ### Hochbau
 
-<a href="KRZ_Bahn.PNG?origin=Telematik/Leitungsbau_-_4_Kreuzen.md"><img style="width: 100%;" src="KRZ_Bahn.PNG"/></a>
+<a href="Leitungsbau_4_-_Kreuzen.content/KRZ_Bahn.PNG"><img style="width: 100%;" src="Leitungsbau_4_-_Kreuzen.content/KRZ_Bahn.PNG"/></a>
 
 **Auf leitenden Konstruktionen muss das Kabel isoliert werden!**
 
 ### Bodenbau
 
-<a href="KRZ_Bahn2.PNG?origin=Telematik/Leitungsbau_-_4_Kreuzen.md"><img style="width: 100%;" src="KRZ_Bahn2.PNG"/></a>
+<a href="Leitungsbau_4_-_Kreuzen.content/KRZ_Bahn2.PNG"><img style="width: 100%;" src="Leitungsbau_4_-_Kreuzen.content/KRZ_Bahn2.PNG"/></a>
 
 Der Bahnbetreiber **muss** vorgängig informiert werden. Die Kreuzungsstelle muss **beidseitig** markiert werden.
 
 ## Kreuzen von Autobahnen
 
-<a href="KRZ_Autobahn.PNG?origin=Telematik/Leitungsbau_-_4_Kreuzen.md"><img style="width: 100%;" src="KRZ_Autobahn.PNG"/></a>
+<a href="Leitungsbau_4_-_Kreuzen.content/KRZ_Autobahn.PNG"><img style="width: 100%;" src="Leitungsbau_4_-_Kreuzen.content/KRZ_Autobahn.PNG"/></a>
 
 Autobahnen **müssen** bei Unter- oder Überführungen gekreuzt werden.
 <br>

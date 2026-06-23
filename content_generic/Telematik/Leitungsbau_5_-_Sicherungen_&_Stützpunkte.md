@@ -2,30 +2,30 @@
 Bei Sicherungen sind Richtungswechsel **erlaubt**!
 
 ### Mastwurf einfach
-<a href="MW1.PNG?origin=Telematik/Leitungsbau_5_-_Sicherungen_&_Stützpunkte.md"><img style="width: 80%;" src="MW1.PNG"/></a>
+<a href="Leitungsbau_5_-_Sicherungen_%26_St%C3%BCtzpunkte.content/MW1.PNG"><img style="width: 80%;" src="Leitungsbau_5_-_Sicherungen_%26_St%C3%BCtzpunkte.content/MW1.PNG"/></a>
 
 ### Mastwurf doppelt
-<a href="MW2.PNG?origin=Telematik/Sicherungen.md"><img style="width: 80%;" src="MW2.PNG"/></a>
+<a href="Leitungsbau_5_-_Sicherungen_%26_St%C3%BCtzpunkte.content/MW2.PNG"><img style="width: 80%;" src="Leitungsbau_5_-_Sicherungen_%26_St%C3%BCtzpunkte.content/MW2.PNG"/></a>
 
 ### Kabelträger aus Metall
-<a href="KTM1.PNG?origin=Telematik/Leitungsbau_5_-_Sicherungen_&_Stützpunkte.md"><img style="width: 80%;" src="KTM1.PNG"/></a>
+<a href="Leitungsbau_5_-_Sicherungen_%26_St%C3%BCtzpunkte.content/KTM1.PNG"><img style="width: 80%;" src="Leitungsbau_5_-_Sicherungen_%26_St%C3%BCtzpunkte.content/KTM1.PNG"/></a>
 
-<a href="KTM2.PNG?origin=Telematik/Leitungsbau_5_-_Sicherungen_&_Stützpunkte.md"><img style="width: 80%;" src="KTM2.PNG"/></a>
+<a href="Leitungsbau_5_-_Sicherungen_%26_St%C3%BCtzpunkte.content/KTM2.PNG"><img style="width: 80%;" src="Leitungsbau_5_-_Sicherungen_%26_St%C3%BCtzpunkte.content/KTM2.PNG"/></a>
 
-<a href="KTM3.PNG?origin=Telematik/Leitungsbau_5_-_Sicherungen_&_Stützpunkte.md"><img style="width: 80%;" src="KTM3.PNG"/></a>
+<a href="Leitungsbau_5_-_Sicherungen_%26_St%C3%BCtzpunkte.content/KTM3.PNG"><img style="width: 80%;" src="Leitungsbau_5_-_Sicherungen_%26_St%C3%BCtzpunkte.content/KTM3.PNG"/></a>
 
-<a href="KTM4.PNG?origin=Telematik/Leitungsbau_5_-_Sicherungen_&_Stützpunkte.md"><img style="width: 80%;" src="KTM4.PNG"/></a>
+<a href="Leitungsbau_5_-_Sicherungen_%26_St%C3%BCtzpunkte.content/KTM4.PNG"><img style="width: 80%;" src="Leitungsbau_5_-_Sicherungen_%26_St%C3%BCtzpunkte.content/KTM4.PNG"/></a>
 
 **Hinweis**: Das Anbringen von Kabelträgern aus Metall an Bäumen ist untersagt!
 
 ### Sicherung mit Manschette
-<a href="MS1.PNG?origin=Telematik/Leitungsbau_5_-_Sicherungen_&_Stützpunkte.md"><img style="width: 80%;" src="MS1.PNG"/></a>
+<a href="Leitungsbau_5_-_Sicherungen_%26_St%C3%BCtzpunkte.content/MS1.PNG"><img style="width: 80%;" src="Leitungsbau_5_-_Sicherungen_%26_St%C3%BCtzpunkte.content/MS1.PNG"/></a>
 
-<a href="MS2.PNG?origin=Telematik/Leitungsbau_5_-_Sicherungen_&_Stützpunkte.md"><img style="width: 80%;" src="MS2.PNG"/></a>
+<a href="Leitungsbau_5_-_Sicherungen_%26_St%C3%BCtzpunkte.content/MS2.PNG"><img style="width: 80%;" src="Leitungsbau_5_-_Sicherungen_%26_St%C3%BCtzpunkte.content/MS2.PNG"/></a>
 
 ### V-Sicherung am Baum
 
-<a href="VSICH.PNG?origin=Telematik/Leitungsbau_5_-_Sicherungen_&_Stützpunkte.md"><img style="width: 80%;" src="VSICH.PNG"/></a>
+<a href="Leitungsbau_5_-_Sicherungen_%26_St%C3%BCtzpunkte.content/VSICH.PNG"><img style="width: 80%;" src="Leitungsbau_5_-_Sicherungen_%26_St%C3%BCtzpunkte.content/VSICH.PNG"/></a>
 
 **Ausführung:**
 1. Kabel mit Gabelstange auf den Baum legen
@@ -34,7 +34,7 @@ Bei Sicherungen sind Richtungswechsel **erlaubt**!
 
 ### Arretierbaumschleife am Baum
 
-<a href="schleife.PNG?origin=Telematik/Leitungsbau_5_-_Sicherungen_&_Stützpunkte.md"><img style="width: 80%;" src="schleife.PNG"/></a>
+<a href="Leitungsbau_5_-_Sicherungen_%26_St%C3%BCtzpunkte.content/schleife.PNG"><img style="width: 80%;" src="Leitungsbau_5_-_Sicherungen_%26_St%C3%BCtzpunkte.content/schleife.PNG"/></a>
 
 **Ausführung:**
 1. Kabel über einen Ast legen und nach unten ziehen
@@ -44,11 +44,11 @@ Bei Sicherungen sind Richtungswechsel **erlaubt**!
 
 ### Telefonstange mit Übergang Hoch-/Bodenbau
 
-<a href="HB1.PNG?origin=Telematik/Leitungsbau_5_-_Sicherungen_&_Stützpunkte.md"><img style="width: 80%;" src="HB1.PNG"/></a>
+<a href="Leitungsbau_5_-_Sicherungen_%26_St%C3%BCtzpunkte.content/HB1.PNG"><img style="width: 80%;" src="Leitungsbau_5_-_Sicherungen_%26_St%C3%BCtzpunkte.content/HB1.PNG"/></a>
 
 ### Baum mit Übergang Hoch-/Bodenbau
 
-<a href="HB2.PNG?origin=Telematik/Leitungsbau_5_-_Sicherungen_&_Stützpunkte.md"><img style="width: 80%;" src="HB2.PNG"/></a>
+<a href="Leitungsbau_5_-_Sicherungen_%26_St%C3%BCtzpunkte.content/HB2.PNG"><img style="width: 80%;" src="Leitungsbau_5_-_Sicherungen_%26_St%C3%BCtzpunkte.content/HB2.PNG"/></a>
 
 ## Stützpunkte
 
@@ -56,25 +56,25 @@ Bei Stützpunkten sind Richtungswechsel **nicht erlaubt**!
 
 ### Kabelträger aus Metall
 
-<a href="KTM.PNG?origin=Telematik/Leitungsbau_5_-_Sicherungen_&_Stützpunkte.md"><img style="width: 80%;" src="KTM.PNG"/></a>
+<a href="Leitungsbau_5_-_Sicherungen_%26_St%C3%BCtzpunkte.content/KTM.PNG"><img style="width: 80%;" src="Leitungsbau_5_-_Sicherungen_%26_St%C3%BCtzpunkte.content/KTM.PNG"/></a>
 
 **Anwendung:** Stützpunkt an Holzmasten
 
 ### Kabelträger aus Kunststoff
 
-<a href="KTK.PNG?origin=Telematik/Leitungsbau_5_-_Sicherungen_&_Stützpunkte.md"><img style="width: 80%;" src="KTK.PNG"/></a>
+<a href="Leitungsbau_5_-_Sicherungen_%26_St%C3%BCtzpunkte.content/KTK.PNG"><img style="width: 80%;" src="Leitungsbau_5_-_Sicherungen_%26_St%C3%BCtzpunkte.content/KTK.PNG"/></a>
 
 **Anwendung:** Isolierender Stützpunkt an Metallstangen (Befestigung der Kabelbinder mit Spannzange)
 
 ### Kabelaufhängehaken
 
-<a href="KAH.PNG?origin=Telematik/Leitungsbau_5_-_Sicherungen_&_Stützpunkte.md"><img style="width: 80%;" src="KAH.PNG"/></a>
+<a href="Leitungsbau_5_-_Sicherungen_%26_St%C3%BCtzpunkte.content/KAH.PNG"><img style="width: 80%;" src="Leitungsbau_5_-_Sicherungen_%26_St%C3%BCtzpunkte.content/KAH.PNG"/></a>
 
 **Anwendung:** Stützpunkt an Gebäuden oder Bäumen (Vorsicht bei instabilen Dachrinnen oder morschen Ästen)
 
 ### V-Schlaufe
 
-<a href="VSCHL.PNG?origin=Telematik/Leitungsbau_5_-_Sicherungen_&_Stützpunkte.md"><img style="width: 80%;" src="VSCHL.PNG"/></a>
+<a href="Leitungsbau_5_-_Sicherungen_%26_St%C3%BCtzpunkte.content/VSCHL.PNG"><img style="width: 80%;" src="Leitungsbau_5_-_Sicherungen_%26_St%C3%BCtzpunkte.content/VSCHL.PNG"/></a>
 
 **Anwendung:** Stützpunkt an Bäumen (Vorsicht bei morschen Ästen)
 

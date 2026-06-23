@@ -230,6 +230,17 @@ a { color: inherit; }
 .listing a { display: block; padding: .55rem .7rem; border-radius: 6px; text-decoration: none; color: var(--fg); background: var(--surface); }
 .listing a:hover { background: var(--surface-hover); }
 .listing .ic { display: inline-block; width: 1.4em; }
+.listing-row { display: flex; align-items: stretch; gap: .45rem; }
+.listing-row > a { flex: 1 1 auto; min-width: 0; }
+.listing-actions { display: flex; align-items: center; gap: .35rem; }
+.secondary-button.compact,
+.danger-button.compact { padding: .38rem .55rem; min-height: auto; font-size: .84rem; }
+.danger-button { font: inherit; font-weight: 600; border: 1px solid var(--danger-border); border-radius: 6px; background: var(--danger-bg); color: var(--danger-fg); cursor: pointer; }
+.danger-button:hover { background: var(--danger-hover); }
+@media (max-width: 640px) {
+  .listing-row { flex-direction: column; }
+  .listing-actions { justify-content: flex-end; }
+}
 
 
 

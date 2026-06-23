@@ -8,7 +8,7 @@
 
 <br>
 ## Buchstabiertabelle
-<a href="Buchstabiertabelle.PNG?origin=Telematik/Buchstabiertabelle.md"><img style="width: 100%;" src="Buchstabiertabelle.PNG"/></a>
+<a href="Sprechregeln.content/Buchstabiertabelle.PNG"><img style="width: 100%;" src="Sprechregeln.content/Buchstabiertabelle.PNG"/></a>
 
 
 ## Schlüsselwörter
@@ -43,7 +43,7 @@ Gliederung der Übermittlung nach Inhaltsbezeichnung:
 * Antwort
 * Verbindungskontrollen
 
-<a href="SPR1.PNG?origin=Telematik/Sprechregeln.md"><img style="width: 100%;" src="SPR1.PNG"/></a>
+<a href="Sprechregeln.content/SPR1.PNG"><img style="width: 100%;" src="Sprechregeln.content/SPR1.PNG"/></a>
 
 
 ## Verbindungskontrolle
@@ -68,13 +68,13 @@ Eine Verbindungsqualität wird wie folgt angegeben:
 ## Beispiele
 
 ### Durchführung einer Verbindungskontrolle
-<a href="SPR2.PNG?origin=Telematik/Sprechregeln.md"><img style="width: 100%;" src="SPR2.PNG"/></a>
+<a href="Sprechregeln.content/SPR2.PNG"><img style="width: 100%;" src="Sprechregeln.content/SPR2.PNG"/></a>
 
 ### Funkverkehr mit zwei Teilnehmern
-<a href="SPR3.PNG?origin=Telematik/Sprechregeln.md"><img style="width: 100%;" src="SPR3.PNG"/></a>
+<a href="Sprechregeln.content/SPR3.PNG"><img style="width: 100%;" src="Sprechregeln.content/SPR3.PNG"/></a>
 
 
 ### Kanalwechsel
-<a href="SPR.PNG?origin=Telematik/Sprechregeln.md"><img style="width: 100%;" src="SPR.PNG"/></a>
+<a href="Sprechregeln.content/SPR.PNG"><img style="width: 100%;" src="Sprechregeln.content/SPR.PNG"/></a>
 
 <br>

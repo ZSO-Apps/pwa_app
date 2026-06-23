@@ -14,9 +14,34 @@ function formBuilderUrl(actions) {
   return '/content-admin/' + encodeURIComponent(actions.kachelId) + '/form/new?' + qs.toString();
 }
 
-function renderQuizActions(actions) {
-  if (!actions?.enabled) return '';
-  return '<a class="secondary-button no-print" data-online-only="true" href="/quiz/new">+ Quiz hinzufügen</a>';
+function quizBuilderUrl(actions) {
+  const qs = new URLSearchParams({ dir: actions.dir || '' });
+  return '/content-admin/' + encodeURIComponent(actions.kachelId) + '/quiz/new?' + qs.toString();
+}
+
+function markdownEditUrl(kachelId, rel) {
+  const qs = new URLSearchParams({ rel: rel || '' });
+  return '/content-admin/' + encodeURIComponent(kachelId) + '/markdown/edit?' + qs.toString();
+}
+
+function renderMarkdownEditAction(editUrl) {
+  if (!editUrl) return '';
+  return '<a class="secondary-button no-print" data-online-only="true" href="' + esc(editUrl) + '">Edit</a>';
+}
+
+function renderEntryActions(actions, entry) {
+  if (!actions?.enabled || !entry.manageRel) return '';
+  const kachelId = esc(actions.kachelId);
+  const rel = esc(entry.manageRel);
+  const name = esc(entry.manageName || entry.label || '');
+  return '<div class="listing-actions no-print">' +
+    '<button type="button" class="secondary-button compact" data-online-only="true" data-content-entry-rename data-content-kachel-id="' + kachelId + '" data-content-rel="' + rel + '" data-content-name="' + name + '">Umbenennen</button>' +
+    '<button type="button" class="danger-button compact" data-online-only="true" data-content-entry-delete data-content-kachel-id="' + kachelId + '" data-content-rel="' + rel + '" data-content-name="' + name + '">Löschen</button>' +
+    '</div>';
+}
+
+function renderQuizActions(_actions) {
+  return '';
 }
 
 function renderContentActions(actions) {
@@ -29,6 +54,7 @@ function renderContentActions(actions) {
     '<div class="content-actions-menu" data-content-menu hidden>',
     '<a href="' + esc(editorUrl(actions)) + '">Markdown erstellen</a>',
     '<a href="' + esc(formBuilderUrl(actions)) + '">Formular erstellen</a>',
+    '<a href="' + esc(quizBuilderUrl(actions)) + '">Quiz hinzufügen</a>',
     '<button type="button" data-content-import="markdown" data-import-title="Markdown importieren" data-import-accept=".md,.markdown,.txt,text/markdown,text/plain">Markdown importieren</button>',
     '<button type="button" data-content-import="pdf" data-import-title="PDF importieren" data-import-accept=".pdf,application/pdf">PDF importieren</button>',
     '<button type="button" data-content-import="picture" data-import-title="Bild importieren" data-import-accept="image/png,image/jpeg,image/webp,image/gif,.png,.jpg,.jpeg,.webp,.gif">Bild importieren</button>',
@@ -82,28 +108,33 @@ export function renderHome(req) {
 }
 
 export function renderListing(req, kachel, entries, breadcrumbs, { contentActions = null, quizActions = null } = {}) {
+  const pageTitle = (breadcrumbs?.length ? breadcrumbs : [{ label: kachel.title }])
+    .map((crumb) => crumb.label)
+    .filter(Boolean)
+    .join(' / ') || kachel.title;
   const actions = renderQuizActions(quizActions) + renderContentActions(contentActions);
   const items = entries.map((e) => {
     const icon = LISTING_ICON[e.kind] || (e.kind === 'image' ? '🖼️' : '📄');
     const attrs = e.external ? ' target="_blank" rel="noopener noreferrer"' : '';
     const online = e.onlineOnly ? ' data-online-only="true"' : '';
-    return `<li><a href="${esc(e.url)}"${attrs}${online}><span class="ic">${icon}</span> ${esc(e.label)}</a></li>`;
+    const entryActions = renderEntryActions(contentActions, e);
+    return '<li class="' + (entryActions ? 'listing-row' : '') + '"><a href="' + esc(e.url) + '"' + attrs + online + '><span class="ic">' + icon + '</span> ' + esc(e.label) + '</a>' + entryActions + '</li>';
   }).join('');
   const body = `
   <article class="content">
     <p><a href="/" class="back">← Zurück zur Übersicht</a></p>
     <div class="content-header">
-      <h1>${esc(kachel.title)}</h1>
+      <h1>${esc(pageTitle)}</h1>
       ${actions}
     </div>
     <ul class="listing">${items || '<li><em>Keine Einträge</em></li>'}</ul>
     <p><a href="/" class="back">← Zurück zur Übersicht</a></p>
   </article>`;
-  return layout(req, { title: kachel.title, body });
+  return layout(req, { title: pageTitle, body });
 }
 
-export function renderMarkdownPage(req, kachel, contentHtml, parentUrl, { contentActions = null } = {}) {
-  const actions = renderContentActions(contentActions);
+export function renderMarkdownPage(req, kachel, contentHtml, parentUrl, { contentActions = null, editUrl = '' } = {}) {
+  const actions = renderMarkdownEditAction(editUrl) + renderContentActions(contentActions);
   const body = `
   <article class="content prose">
     <div class="content-page-top no-print">
@@ -134,17 +165,21 @@ export function renderLogin(req, error) {
 }
 
 
-export function renderMarkdownEditorPage(req, kachel, { dir = '', backUrl = '', values = {}, error = '' } = {}) {
-  const action = '/content-admin/' + encodeURIComponent(kachel.id) + '/markdown';
+export function renderMarkdownEditorPage(req, kachel, { mode = 'new', rel = '', dir = '', backUrl = '', values = {}, error = '' } = {}) {
+  const editing = mode === 'edit';
+  const action = '/content-admin/' + encodeURIComponent(kachel.id) + (editing ? '/markdown/edit' : '/markdown');
+  const heading = editing ? 'Markdown bearbeiten' : 'Markdown erstellen';
+  const fileInputAttrs = editing ? ' readonly' : '';
   const body = [
     '<article class="content markdown-editor-page" data-markdown-editor-page>',
     '<p><a href="' + esc(backUrl || folderUrl(kachel.id, dir)) + '" class="back">← Zurück</a></p>',
-    '<h1>Markdown erstellen</h1>',
+    '<h1>' + heading + '</h1>',
     error ? '<p class="err">' + esc(error) + '</p>' : '',
     '<form method="POST" action="' + esc(action) + '" class="genform wide markdown-editor-form" data-markdown-editor-form>',
     '<input type="hidden" name="dir" value="' + esc(dir) + '">',
+    editing ? '<input type="hidden" name="rel" value="' + esc(rel) + '">' : '',
     '<input type="hidden" name="imagesJson" data-markdown-images-json value="' + esc(values.imagesJson || '') + '">',
-    '<div class="field"><label for="md-filename">Dateiname *</label><input id="md-filename" name="filename" required autocomplete="off" value="' + esc(values.filename || '') + '"></div>',
+    '<div class="field"><label for="md-filename">Dateiname *</label><input id="md-filename" name="filename" required autocomplete="off" value="' + esc(values.filename || '') + '"' + fileInputAttrs + '></div>',
     '<div class="markdown-toolbar no-print" aria-label="Markdown Werkzeuge">',
     '<button type="button" data-md-action="heading">Überschrift</button>',
     '<button type="button" data-md-action="bold">Fett</button>',
@@ -169,7 +204,7 @@ export function renderMarkdownEditorPage(req, kachel, { dir = '', backUrl = '', 
     '<textarea id="md-content" name="content" rows="18" data-markdown-editor required>' + esc(values.content || '') + '</textarea>',
     '<section class="markdown-preview prose" data-markdown-preview aria-label="Vorschau"></section>',
     '</div>',
-    '<button type="submit">Markdown speichern</button>',
+    '<button type="submit">' + (editing ? 'Änderungen speichern' : 'Markdown speichern') + '</button>',
     '</form>',
     '</article>',
   ].join('');

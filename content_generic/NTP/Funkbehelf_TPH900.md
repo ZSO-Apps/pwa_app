@@ -2,7 +2,7 @@
 
 **Legende**
 
-<a href="behelf1.png?origin=NTP/Funkbehelf_TPH900.md"><img style="width: 100%;" src="behelf1.png"/></a>
+<a href="Funkbehelf_TPH900.content/behelf1.png"><img style="width: 100%;" src="Funkbehelf_TPH900.content/behelf1.png"/></a>
 
 **Sprechtastenbedienung**
 
@@ -14,5 +14,5 @@
 
 **Display**
 
-<a href="display.png?origin=NTP/Funkbehelf_TPH900.md"><img style="width: 100%;" src="display.png"/></a>
+<a href="Funkbehelf_TPH900.content/display.png"><img style="width: 100%;" src="Funkbehelf_TPH900.content/display.png"/></a>
 

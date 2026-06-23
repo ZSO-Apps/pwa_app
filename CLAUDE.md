@@ -91,6 +91,13 @@ results (uses `resultsLabel` + `resultsAccess`). Position in the UI is derived
 from where the JSON sits in the content tree — there is no `submitKachel`
 field anymore.
 
+Quiz definitions are the same kind of content JSON. `Quiz hinzufügen` lives in
+the normal `+` menu of any editable Kachel/folder (`Unteroffizier` and above)
+and stores the `.json` plus optional question images in the current
+`content_zso_specific/<kachel-content>/<folder>/` location. Question images live
+next to the quiz in `<Quiz-Titel>.content/`, which is hidden from listings but
+served directly for forms and print views.
+
 ### Kacheln (tiles) and layout
 
 - The frontend is organized as **Kacheln** (tiles). A Kachel means the
@@ -516,6 +523,7 @@ data/appell/<wk-id>/lists/<list-id>/
 - Inhalte werden in `content_zso_specific` geschrieben. Bei WK-spezifischen Kacheln wird der aktive WK-Unterordner verwendet.
 - Das Menü erstellt Markdown-Dateien, generische Formular-JSONs, importiert Markdown/PDF/Bilder, verlinkt Webseiten und erstellt Ordner.
 - Bilder zu Markdown-Dateien und Quizfragen werden in sibling asset folders mit Endung `.content` gespeichert, z.B. `Meine Datei.content/`. Diese Ordner sind technische Asset-Ordner und werden in Kachel-Übersichten, Suche und Form-Scan ausgeblendet.
+- Markdown-Dateien können ab `Unteroffizier` direkt bearbeitet werden. Listing-Einträge aus `content_zso_specific` können ab `Unteroffizier` umbenannt oder gelöscht werden; generischer Grundinhalt wird nicht destruktiv geändert.
 
 ## Transport (Transportzentrale)
 

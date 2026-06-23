@@ -58,6 +58,15 @@ function normalizeRelDir(value) {
   return parts.join('/');
 }
 
+function normalizeRelPath(value) {
+  const rel = normalizeRelDir(value);
+  if (!rel) throw new Error('Bitte einen Eintrag angeben.');
+  if (rel.split('/').some((part) => part.toLowerCase().endsWith('.content'))) {
+    throw new Error('Technische Asset-Ordner können nicht direkt geändert werden.');
+  }
+  return rel;
+}
+
 function encodedRelPath(relDir) {
   return normalizeRelDir(relDir).split('/').filter(Boolean).map(encodeURIComponent).join('/');
 }
@@ -68,6 +77,18 @@ function encodedAssetPath(...parts) {
 
 function joinRelDir(...parts) {
   return parts.map((part) => normalizeRelDir(part)).filter(Boolean).join('/');
+}
+
+function contentFileUrl(kachelId, relPath) {
+  const rel = normalizeRelPath(relPath).split('/').map(encodeURIComponent).join('/');
+  return '/k/' + encodeURIComponent(kachelId) + '/' + rel;
+}
+
+function splitRelPath(relPath) {
+  const normalized = normalizeRelPath(relPath);
+  const parts = normalized.split('/');
+  const name = parts.pop();
+  return { dir: parts.join('/'), name, rel: normalized };
 }
 
 function folderUrl(kachelId, relDir) {
@@ -168,6 +189,54 @@ function normalizeMarkdownImages(body, targetDir) {
   });
 
   return content;
+}
+
+function zsoPathFor(kachel, relPath, activeWk) {
+  const effective = effectiveContentKachel(kachel, activeWk);
+  return safeResolve(zsoRootFor(effective), normalizeRelPath(relPath));
+}
+
+function markdownAssetDirName(fileName) {
+  return path.basename(fileName, path.extname(fileName)) + '.content';
+}
+
+function maybeRenameMarkdownAssets(oldFilePath, newFilePath) {
+  if (path.extname(oldFilePath).toLowerCase() !== '.md') return;
+  const oldDirName = markdownAssetDirName(path.basename(oldFilePath));
+  const newDirName = markdownAssetDirName(path.basename(newFilePath));
+  if (oldDirName === newDirName) return;
+  const oldAssetDir = path.join(path.dirname(oldFilePath), oldDirName);
+  const newAssetDir = path.join(path.dirname(newFilePath), newDirName);
+  if (fs.existsSync(oldAssetDir)) fs.renameSync(oldAssetDir, newAssetDir);
+  if (fs.existsSync(newFilePath)) {
+    let content = fs.readFileSync(newFilePath, 'utf8');
+    content = content
+      .split(encodeURIComponent(oldDirName) + '/').join(encodeURIComponent(newDirName) + '/')
+      .split(oldDirName + '/').join(newDirName + '/');
+    fs.writeFileSync(newFilePath, content);
+  }
+}
+
+function maybeDeleteMarkdownAssets(filePath) {
+  if (path.extname(filePath).toLowerCase() !== '.md') return;
+  fs.rmSync(path.join(path.dirname(filePath), markdownAssetDirName(path.basename(filePath))), { recursive: true, force: true });
+}
+
+function containsJson(absPath) {
+  if (!fs.existsSync(absPath)) return false;
+  const stat = fs.statSync(absPath);
+  if (stat.isFile()) return path.extname(absPath).toLowerCase() === '.json';
+  const stack = [absPath];
+  while (stack.length) {
+    const dir = stack.pop();
+    for (const entry of fs.readdirSync(dir, { withFileTypes: true })) {
+      if (entry.name.startsWith('.') || entry.name.toLowerCase().endsWith('.content')) continue;
+      const child = path.join(dir, entry.name);
+      if (entry.isDirectory()) stack.push(child);
+      else if (path.extname(entry.name).toLowerCase() === '.json') return true;
+    }
+  }
+  return false;
 }
 
 function uniqueTargetFile(targetDir, fileBase, ext) {
@@ -348,6 +417,54 @@ export function saveMarkdownContent(req, res, kachelId) {
   }
 }
 
+export function renderEditMarkdownPage(req, res, kachelId) {
+  const kachel = findKachel(kachelId);
+  if (!requireManageContent(req, res, kachel)) return;
+  try {
+    const rel = normalizeRelPath(req.query?.rel);
+    if (path.extname(rel).toLowerCase() !== '.md') throw new Error('Nur Markdown-Dateien können bearbeitet werden.');
+    const effective = effectiveContentKachel(kachel, req.activeWk);
+    const source = resolveKachelPath(effective, rel);
+    if (!source || !fs.statSync(source).isFile()) throw new Error('Markdown-Datei nicht gefunden.');
+    const { dir, name } = splitRelPath(rel);
+    res.send(renderMarkdownEditorPage(req, kachel, {
+      mode: 'edit',
+      rel,
+      dir,
+      backUrl: contentFileUrl(kachel.id, rel),
+      values: {
+        filename: path.basename(name, '.md'),
+        content: fs.readFileSync(source, 'utf8'),
+      },
+    }));
+  } catch (error) {
+    res.status(400).send(renderError(req, 400, error.message));
+  }
+}
+
+export function saveMarkdownEdit(req, res, kachelId) {
+  const kachel = findKachel(kachelId);
+  if (!requireManageContent(req, res, kachel)) return;
+  let rel = '';
+  try {
+    rel = normalizeRelPath(req.body?.rel);
+    if (path.extname(rel).toLowerCase() !== '.md') throw new Error('Nur Markdown-Dateien können bearbeitet werden.');
+    const effective = effectiveContentKachel(kachel, req.activeWk);
+    const source = resolveKachelPath(effective, rel);
+    if (!source || !fs.statSync(source).isFile()) throw new Error('Markdown-Datei nicht gefunden.');
+    const { dir, name } = splitRelPath(rel);
+    const targetDir = targetDirFor(kachel, dir, req.activeWk);
+    fs.mkdirSync(targetDir, { recursive: true });
+    const targetFile = safeResolve(targetDir, name);
+    const content = normalizeMarkdownImages({ ...(req.body || {}), filename: path.basename(name, '.md') }, targetDir);
+    fs.writeFileSync(targetFile, content);
+    res.redirect(contentFileUrl(kachel.id, rel));
+  } catch (error) {
+    const dir = rel ? splitRelPath(rel).dir : normalizeRelDir(req.body?.dir);
+    renderEditorWithError(req, res, kachel, dir, error.message, req.body || {});
+  }
+}
+
 export function renderNewFormPage(req, res, kachelId) {
   const kachel = findKachel(kachelId);
   if (!requireManageContent(req, res, kachel)) return;
@@ -432,6 +549,49 @@ export function saveContentLink(req, res, kachelId) {
     fs.mkdirSync(targetDir, { recursive: true });
     fs.writeFileSync(filePath, '[InternetShortcut]\nURL=' + url + '\n');
     res.json({ ok: true, url: folderUrl(kachel.id, relDir) });
+  } catch (error) {
+    res.status(400).json({ ok: false, error: error.message });
+  }
+}
+
+export function renameContentEntry(req, res, kachelId) {
+  const kachel = findKachel(kachelId);
+  if (!requireManageContent(req, res, kachel)) return;
+  try {
+    const { dir, name, rel } = splitRelPath(req.body?.rel);
+    const current = zsoPathFor(kachel, rel, req.activeWk);
+    if (!fs.existsSync(current)) throw new Error('Nur ZSO-spezifische Einträge können umbenannt werden.');
+    const stat = fs.statSync(current);
+    const base = safeFileBase(req.body?.name);
+    const newName = stat.isDirectory() ? base : base + path.extname(name);
+    const target = safeResolve(path.dirname(current), newName);
+    if (fs.existsSync(target)) throw new Error('Ein Eintrag mit diesem Namen existiert bereits.');
+    const hadJson = containsJson(current);
+    fs.renameSync(current, target);
+    if (stat.isFile()) maybeRenameMarkdownAssets(current, target);
+    if (hadJson || containsJson(target)) loadLayout();
+    res.json({ ok: true, url: stat.isDirectory() ? folderUrl(kachel.id, joinRelDir(dir, newName)) : folderUrl(kachel.id, dir) });
+  } catch (error) {
+    res.status(400).json({ ok: false, error: error.message });
+  }
+}
+
+export function deleteContentEntry(req, res, kachelId) {
+  const kachel = findKachel(kachelId);
+  if (!requireManageContent(req, res, kachel)) return;
+  try {
+    const { dir, rel } = splitRelPath(req.body?.rel);
+    const current = zsoPathFor(kachel, rel, req.activeWk);
+    if (!fs.existsSync(current)) throw new Error('Nur ZSO-spezifische Einträge können gelöscht werden.');
+    const hadJson = containsJson(current);
+    const stat = fs.statSync(current);
+    if (stat.isDirectory()) fs.rmSync(current, { recursive: true, force: true });
+    else {
+      maybeDeleteMarkdownAssets(current);
+      fs.unlinkSync(current);
+    }
+    if (hadJson) loadLayout();
+    res.json({ ok: true, url: folderUrl(kachel.id, dir) });
   } catch (error) {
     res.status(400).json({ ok: false, error: error.message });
   }

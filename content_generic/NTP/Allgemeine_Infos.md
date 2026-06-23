@@ -40,4 +40,4 @@
   * Nur bei Angriff auf Euch selber
   * Loest groessere Sofortmassnahmen aus
 
-<a href="ntp_logo.jpeg?origin=NTP/Allgemeine_Infos.md"><img style="width: 100%;" src="ntp_logo.jpeg"/></a>
+<a href="Allgemeine_Infos.content/ntp_logo.jpeg"><img style="width: 100%;" src="Allgemeine_Infos.content/ntp_logo.jpeg"/></a>

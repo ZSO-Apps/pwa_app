@@ -123,18 +123,18 @@ Gliederung wie folgt:
 
 ### Lage-Verarbeitungszyklus
 
-<a href="LVZ.PNG?origin=Telematik/Funktions-_und_Aufgabenbehelf_-_Lage.md"><img style="width: 100%;" src="LVZ.PNG"/></a>
+<a href="Funktions-_und_Aufgabenbehelf_-_Lage.content/LVZ.PNG"><img style="width: 100%;" src="Funktions-_und_Aufgabenbehelf_-_Lage.content/LVZ.PNG"/></a>
 
 ### Muster-Eingangskontrolle
 
-<a href="MEK.PNG?origin=Telematik/Funktions-_und_Aufgabenbehelf_-_Lage.md"><img style="width: 100%;" src="MEK.PNG"/></a>
+<a href="Funktions-_und_Aufgabenbehelf_-_Lage.content/MEK.PNG"><img style="width: 100%;" src="Funktions-_und_Aufgabenbehelf_-_Lage.content/MEK.PNG"/></a>
 
 ### Muster-Journal
 
-<a href="MJ.PNG?origin=Telematik/Funktions-_und_Aufgabenbehelf_-_Lage.md"><img style="width: 100%;" src="MJ.PNG"/></a>
+<a href="Funktions-_und_Aufgabenbehelf_-_Lage.content/MJ.PNG"><img style="width: 100%;" src="Funktions-_und_Aufgabenbehelf_-_Lage.content/MJ.PNG"/></a>
 
 ### Meldezettel
 
-<a href="MZ.PNG?origin=Telematik/Funktions-_und_Aufgabenbehelf_-_Lage.md"><img style="width: 100%;" src="MZ.png"/></a>
+<a href="Funktions-_und_Aufgabenbehelf_-_Lage.content/MZ.png"><img style="width: 100%;" src="Funktions-_und_Aufgabenbehelf_-_Lage.content/MZ.png"/></a>
 
 <br>

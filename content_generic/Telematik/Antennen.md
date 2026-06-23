@@ -1,8 +1,8 @@
 ## Sicherheitsvorschriften Antennen
 
-<a href="ANT1.PNG?origin=Telematik/Antennen.md"><img style="width: 60%;" src="ANT1.PNG"/></a>
-<a href="ANT2.PNG?origin=Telematik/Antennen.md"><img style="width: 60%;" src="ANT2.PNG"/></a>
-<a href="SIVOR.PNG?origin=Telematik/Antennen.md"><img style="width: 60%;" src="SIVOR.PNG"/></a>
+<a href="Antennen.content/ANT1.PNG"><img style="width: 60%;" src="Antennen.content/ANT1.PNG"/></a>
+<a href="Antennen.content/ANT2.PNG"><img style="width: 60%;" src="Antennen.content/ANT2.PNG"/></a>
+<a href="Antennen.content/SIVOR.PNG"><img style="width: 60%;" src="Antennen.content/SIVOR.PNG"/></a>
 
 **Hinweise**: Antennendrähte dürfen weder Stark- noch Schwachtrom-Freileitungen kreuzen (<ins>Ausnahme:</ins> Feldleitungen zugunsten des Bevölkerungsschutzer). Dies gilt insbesondere für Langdrahtantennen und Wurfantennen.
 
@@ -12,7 +12,7 @@ Das Verhalten von Personen bei Arbeiten mit mobilen Sende-Empfansanlagen im Bere
 ## Montageanleitungunen
 ### Aufbau 4-teilige Antenne
 
-<a href="ANT3.PNG?origin=Telematik/Antennen.md"><img style="width: 60%;" src="ANT3.PNG"/></a>
+<a href="Antennen.content/ANT3.PNG"><img style="width: 60%;" src="Antennen.content/ANT3.PNG"/></a>
 
 Für die Montage werden **mindestens 2 Personen** benötigt!
 
@@ -33,13 +33,13 @@ Die Montage funktioniert gleich wie bei der 4-teiligen Antenne, jedoch wird auf 
 ### Montage Antennenkopf (POLYCOM)
 Der Polycom-Adapter wird seitlich an der Mastspitze befestigt, wobei die Kabelführung ausserhalb des Mastrohrs verläuft.
 <br>
-<a href="ANT4.PNG?origin=Telematik/Antennen.md"><img style="width: 30%;" src="ANT4.PNG"/></a>
+<a href="Antennen.content/ANT4.PNG"><img style="width: 30%;" src="Antennen.content/ANT4.PNG"/></a>
 
 Die Steckerkappe schützt die Buchse vor Verschmutzung und Beschädigung. Das Entfernen der Steckerkappe ist **NUR** erlaubt, wenn ein Kabel angeschlossen werden soll!
 <br>
-<a href="ANT5.PNG?origin=Telematik/Antennen.md"><img style="width: 60%;" src="ANT5.PNG"/></a>
+<a href="Antennen.content/ANT5.PNG"><img style="width: 60%;" src="Antennen.content/ANT5.PNG"/></a>
 
 Die Steckerkappe entfernen und das Kabel mit dem Stecker anschliessen. Der Stecker-Gewindering vorsichtig auf das Gewinde drehen und mit der Hand fest anziehen. **Keine Zangen** oder andere Werkzeuge verwenden!
 <br>
-<a href="ANT6.PNG?origin=Telematik/Antennen.md"><img style="width: 30%;" src="ANT6.PNG"/></a>
+<a href="Antennen.content/ANT6.PNG"><img style="width: 30%;" src="Antennen.content/ANT6.PNG"/></a>
 <br>
