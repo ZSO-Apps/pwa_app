@@ -1,3 +1,4 @@
+import { hasAccess } from '../auth.js';
 import { visibleKacheln } from '../layout.js';
 import { layout } from './layout.js';
 import { esc, LISTING_ICON } from './shared.js';
@@ -100,10 +101,14 @@ function renderKachel(k) {
 export function renderHome(req) {
   const role = req.user?.role || 'public';
   const list = visibleKacheln(role);
+  const canCreateKacheln = hasAccess(role, 'Offizier');
   const body = `
-  <section class="kacheln">
-    ${list.map((k) => renderKachel(k)).join('\n')}
-  </section>`;
+  <article class="home-page">
+    ${canCreateKacheln ? '<div class="home-header no-print"><a class="content-add-button home-add-button" data-online-only="true" href="/kachel-admin/new" aria-label="Kachel hinzufügen" title="Kachel hinzufügen">' + PLUS_ICON + '</a></div>' : ''}
+    <section class="kacheln">
+      ${list.map((k) => renderKachel(k)).join('\n')}
+    </section>
+  </article>`;
   return layout(req, { title: 'ZSO App', body });
 }
 

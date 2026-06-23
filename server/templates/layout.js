@@ -38,10 +38,10 @@ function renderWkBanner(req) {
     const sel = active && w.id === active.id ? ' selected' : '';
     return `<option value="${esc(w.id)}"${sel}>${esc(label)}</option>`;
   }).join('');
-  return `<form method="POST" action="/wk/select" class="wk-banner">
+  return `<form method="POST" action="/wk/select" class="wk-banner" data-online-only-form>
     <label for="wk-select">Aktiver WK:</label>
-    <select id="wk-select" name="wkId" onchange="this.form.submit()">${options}</select>
-    <noscript><button type="submit">Wählen</button></noscript>
+    <select id="wk-select" name="wkId" data-online-only="true" onchange="this.form.submit()">${options}</select>
+    <noscript><button type="submit" data-online-only="true">Wählen</button></noscript>
   </form>`;
 }
 

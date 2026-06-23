@@ -7,11 +7,11 @@ export function renderUsersPage(req, users) {
     const role = esc(user.role);
     const actions = user.protected
       ? `<div class="row-actions">
-          <a class="secondary-button compact" href="/admin/users/${encodeURIComponent(user.username)}/edit">Passwort ändern</a>
+          <a class="secondary-button compact" data-online-only="true" href="/admin/users/${encodeURIComponent(user.username)}/edit">Passwort ändern</a>
         </div>`
       : `<div class="row-actions">
-          <a class="secondary-button compact" href="/admin/users/${encodeURIComponent(user.username)}/edit">Bearbeiten</a>
-          <a class="danger-button compact" href="/admin/users/${encodeURIComponent(user.username)}/delete">Löschen</a>
+          <a class="secondary-button compact" data-online-only="true" href="/admin/users/${encodeURIComponent(user.username)}/edit">Bearbeiten</a>
+          <a class="danger-button compact" data-online-only="true" href="/admin/users/${encodeURIComponent(user.username)}/delete">Löschen</a>
         </div>`;
     return `<tr>
       <td>${name}</td>
@@ -24,7 +24,7 @@ export function renderUsersPage(req, users) {
   <article class="content">
     <div class="content-header">
       <h1>User Übersicht</h1>
-      <a class="secondary-button" href="/admin/users/new">User erfassen</a>
+      <a class="secondary-button" data-online-only="true" href="/admin/users/new">User erfassen</a>
     </div>
     <div class="tablewrap"><table class="results">
       <thead><tr><th>Name</th><th>Rolle</th><th>Typ</th><th>Aktionen</th></tr></thead>
@@ -53,7 +53,7 @@ export function renderUserFormPage(req, { mode, roles, values = {}, originalUser
     <h1>${title}</h1>
     ${baseUser ? '<p class="muted">Basisaccount: Name und Rolle sind fix. Es kann nur das Passwort geändert werden.</p>' : ''}
     ${error ? `<p class="err">${esc(error)}</p>` : ''}
-    <form method="POST" action="${esc(action)}" class="genform">
+    <form method="POST" action="${esc(action)}" class="genform" data-online-only-form>
       <div class="field">
         <label for="username">Name *</label>
         <input id="username" name="username" autocomplete="username" required value="${esc(values.username || '')}"${usernameAttrs}>
@@ -66,7 +66,7 @@ export function renderUserFormPage(req, { mode, roles, values = {}, originalUser
         <label for="role">Rolle *</label>
         ${roleField}
       </div>
-      <button type="submit">${baseUser ? 'Passwort speichern' : (isEdit ? 'User speichern' : 'User erstellen')}</button>
+      <button type="submit" data-online-only="true">${baseUser ? 'Passwort speichern' : (isEdit ? 'User speichern' : 'User erstellen')}</button>
     </form>
     <p><a href="/admin/users" class="back">← Zurück zur User Übersicht</a></p>
   </article>`;
@@ -80,12 +80,12 @@ export function renderUserDeletePage(req, { username, role, error = '' }) {
     ${error ? `<p class="err">${esc(error)}</p>` : ''}
     <p>Der User <strong>${esc(username)}</strong>${role ? ` mit Rolle <strong>${esc(role)}</strong>` : ''} wird gelöscht.</p>
     <p>Zur Bestätigung den Namen exakt eingeben.</p>
-    <form method="POST" action="/admin/users/${encodeURIComponent(username)}/delete" class="genform">
+    <form method="POST" action="/admin/users/${encodeURIComponent(username)}/delete" class="genform" data-online-only-form>
       <div class="field">
         <label for="confirmation">Bestätigung *</label>
         <input id="confirmation" name="confirmation" required autocomplete="off">
       </div>
-      <button type="submit" class="danger-submit">Endgültig löschen</button>
+      <button type="submit" class="danger-submit" data-online-only="true">Endgültig löschen</button>
     </form>
     <p><a href="/admin/users" class="back">← Abbrechen</a></p>
   </article>`;

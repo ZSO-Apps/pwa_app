@@ -101,14 +101,16 @@ document.addEventListener('click', (event) => {
   const action = event.target.closest?.('[data-online-only]');
   if (!action || navigator.onLine !== false) return;
   event.preventDefault();
+  event.stopImmediatePropagation();
   window.alert('Diese Funktion benötigt eine Verbindung zum Server.');
-});
+}, true);
 document.addEventListener('submit', (event) => {
   const form = event.target.closest?.('[data-online-only-form]');
   if (!form || navigator.onLine !== false) return;
   event.preventDefault();
+  event.stopImmediatePropagation();
   window.alert('Diese Funktion benötigt eine Verbindung zum Server.');
-});
+}, true);
 
 // Remember Name / Mobile across form fills (accounts are generic per role, so
 // we cache these per-device in localStorage). Matches fields whose name is
@@ -131,8 +133,25 @@ document.addEventListener('submit', (event) => {
 })();
 
 // Service worker
+async function refreshOfflineManifest() {
+  if (!('serviceWorker' in navigator) || navigator.onLine === false) return;
+  try {
+    const response = await fetch('/api/sync-manifest', { credentials: 'same-origin', cache: 'no-store' });
+    if (!response.ok) return;
+    const manifest = await response.json();
+    const registration = await navigator.serviceWorker.ready;
+    const worker = registration.active || navigator.serviceWorker.controller;
+    worker?.postMessage({ type: 'PRECACHE_URLS', urls: manifest.urls || [] });
+  } catch (error) {
+    console.warn('Offline manifest refresh failed', error);
+  }
+}
+
 if ('serviceWorker' in navigator) {
-  navigator.serviceWorker.register('/service-worker.js').catch((e) => console.warn('SW register failed', e));
+  navigator.serviceWorker.register('/service-worker.js')
+    .then((registration) => registration.update().catch(() => {}))
+    .then(() => refreshOfflineManifest())
+    .catch((e) => console.warn('SW register failed', e));
   navigator.serviceWorker.addEventListener('message', (event) => {
     const data = event.data || {};
     if (data.type === 'SYNC_DONE') {
@@ -140,6 +159,7 @@ if ('serviceWorker' in navigator) {
       updateSyncLabel();
     }
   });
+  window.addEventListener('online', refreshOfflineManifest);
 }
 
 

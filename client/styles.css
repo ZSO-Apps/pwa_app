@@ -166,6 +166,9 @@ a { color: inherit; }
 .main { padding: .6rem; max-width: 1100px; margin: 0 auto; }
 
 /* Kachel grid: 3 per row mobile, 4 tablet, 6 desktop */
+.home-page { width: 100%; }
+.home-header { display: flex; justify-content: flex-end; margin-bottom: .75rem; }
+.home-add-button { text-decoration: none; }
 .kacheln {
   display: grid;
   grid-template-columns: repeat(3, 1fr);

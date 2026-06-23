@@ -245,9 +245,9 @@ export function renderFormPage(req, def, { submitted = false, values = {}, detai
     </div>
     ${renderDupNameWarning(def)}
     ${submitted ? `<p class="ok">✓ Eingabe gespeichert. Die Werte bleiben als Vorlage erhalten. Erneutes Speichern erstellt eine neue Eingabe.</p>` : ''}
-    <form method="POST" action="/forms/${esc(def.id)}" class="genform" data-enhanced-form>
+    <form method="POST" action="/forms/${esc(def.id)}" class="genform" data-enhanced-form data-online-only-form>
       ${elements.map((f) => `<div class="form-el${widthClass(f)}">${renderFormElement(f, values)}</div>`).join('\n')}
-      <button type="submit">${esc(submitLabel)}</button>
+      <button type="submit" data-online-only="true">${esc(submitLabel)}</button>
     </form>
     <p><a href="${esc(formBackUrl(def))}" class="back">← Zurück</a></p>
     ${renderFormPrintTemplate(def)}
@@ -372,9 +372,9 @@ function renderResultsTable(def, submissions, { archiveMode = false, canArchive 
     : '';
   const hasFormAction = hasArchiveAction || hasUnarchiveAction;
   const formStart = hasArchiveAction
-    ? `<form method="POST" action="/forms/wk/archive" onsubmit="return confirm('Ausgewählte WK archivieren?')">`
+    ? `<form method="POST" action="/forms/wk/archive" data-online-only-form onsubmit="return confirm('Ausgewählte WK archivieren?')">`
     : hasUnarchiveAction
-      ? '<form method="POST" action="/forms/wk/unarchive">'
+      ? '<form method="POST" action="/forms/wk/unarchive" data-online-only-form>'
       : '';
   const formEnd = hasFormAction ? '</form>' : '';
   const sortableHeaders = columns.headers.map((h, index) => '<th aria-sort="none"><button type="button" class="table-sort-button" data-sort-col="' + index + '">' + esc(h) + '<span class="sort-indicator" aria-hidden="true"></span></button></th>').join('');
@@ -404,7 +404,7 @@ export function renderResultsPage(req, def, submissions, { wkLabel, canCreate = 
       ? `<p class="muted">WK-Kontext: ${esc(wkLabel)}</p>`
       : '<p class="muted">Kein WK aktiv.</p>';
   const createButton = !archiveMode && canCreate
-    ? `<a class="secondary-button no-print" href="/forms/${encodeURIComponent(def.id)}">+ ${esc(def.submitLabel || 'Neuer Eintrag')}</a>`
+    ? `<a class="secondary-button no-print" data-online-only="true" href="/forms/${encodeURIComponent(def.id)}">+ ${esc(def.submitLabel || 'Neuer Eintrag')}</a>`
     : '';
   const pageTitle = archiveMode ? `Archiv — ${def.title || def.id}` : `Auswertung — ${def.title || def.id}`;
   const wkArchiveLink = def.id === 'wk'

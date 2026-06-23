@@ -9,9 +9,10 @@ import { contentActionContext, createContentFolder, deleteContentEntry, importCo
 import { renderHome, renderListing, renderMarkdownPage, renderLogin, renderOffline, renderError } from './templates/index.js';
 import { searchContent } from './search.js';
 import { archiveWks, renderArchivedWkSubmission, renderForm, renderResults, renderSubmission, renderWkArchive, submitForm, unarchiveWks } from './forms.js';
-import { buildServiceWorker } from './sw.js';
+import { buildServiceWorker, offlineUrlsForRequest } from './sw.js';
 import { wkMiddleware, setActiveWk, listWks } from './wk.js';
 import { createUser, deleteUser, renderDeleteUser, renderEditUser, renderNewUser, renderUsers, updateUser } from './user-admin.js';
+import { createKachel, renderNewKachel } from './kachel-admin.js';
 import { resolveLogo } from './branding.js';
 import { setupOrg, getOrg } from './org.js';
 import { createQuiz, quizActionContext, renderNewQuiz } from './quiz-admin.js';
@@ -55,14 +56,15 @@ app.get('/favicon.ico', (_req, res) => {
   if (fs.existsSync(f)) res.sendFile(f); else res.status(404).end();
 });
 
-app.get('/service-worker.js', (_req, res) => {
+app.get('/service-worker.js', (req, res) => {
   res.type('application/javascript');
   res.setHeader('Cache-Control', 'no-cache');
-  res.send(buildServiceWorker());
+  res.send(buildServiceWorker(req));
 });
 
-app.get('/api/sync-manifest', (_req, res) => {
-  res.json({ urls: [], note: 'See /service-worker.js for the precache list.' });
+app.get('/api/sync-manifest', (req, res) => {
+  res.setHeader('Cache-Control', 'no-cache');
+  res.json({ urls: offlineUrlsForRequest(req), role: req.user?.role || 'public', activeWk: req.activeWk?.id || null });
 });
 
 app.get('/api/search', (req, res) => {
@@ -89,6 +91,9 @@ app.post('/login', async (req, res) => {
   res.redirect(safe);
 });
 app.all('/logout', (_req, res) => { clearSessionCookie(res); res.redirect('/'); });
+
+app.get('/kachel-admin/new', (req, res) => renderNewKachel(req, res));
+app.post('/kachel-admin', (req, res) => createKachel(req, res));
 
 app.get('/content-admin/:id/markdown/new', (req, res) => renderNewMarkdownPage(req, res, req.params.id));
 app.post('/content-admin/:id/markdown', (req, res) => saveMarkdownContent(req, res, req.params.id));

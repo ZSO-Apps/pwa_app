@@ -507,7 +507,7 @@ export function renderImportPage(req, res, { error = '' } = {}) {
     <h1>Appell-Liste importieren</h1>
     ${error ? `<p class="error">${esc(error)}</p>` : ''}
     <p class="muted">Excel-Appellliste (.xlsx) hochladen. Eine neue Liste anlegen (z.B. „KVK", „ZSO Baden") oder eine bestehende Liste mit den aktuellsten Dienstverschiebungen aktualisieren. Vor dem Übernehmen wird ein Entwurf mit Änderungsübersicht angezeigt.</p>
-    <form data-import-form>
+    <form data-import-form data-online-only-form>
       <fieldset>
         <legend>Ziel</legend>
         <label><input type="radio" name="target" value="__new" checked> Neue Liste</label>
@@ -516,7 +516,7 @@ export function renderImportPage(req, res, { error = '' } = {}) {
         <label>Liste: <select name="list">${options}</select></label>` : ''}
       </fieldset>
       <label class="file-pick">Excel-Datei: <input type="file" name="file" accept=".xlsx" required></label>
-      <button type="submit" class="btn">Hochladen &amp; prüfen</button>
+      <button type="submit" class="btn" data-online-only="true">Hochladen &amp; prüfen</button>
       <span class="import-status muted" data-import-status></span>
     </form>
   </article>`;
@@ -574,8 +574,8 @@ export function renderReviewPage(req, res) {
     <h2>Personen</h2>
     <table class="appell-table"><thead><tr><th>Name</th><th>Grad</th><th>Bereich</th><th>Funktion</th><th>Tage</th></tr></thead><tbody>${rows}</tbody></table>
     <div class="review-actions">
-      <form method="POST" action="/appell/confirm?list=${encodeURIComponent(listId)}"><button type="submit" class="btn btn-primary">Übernehmen</button></form>
-      <form method="POST" action="/appell/discard?list=${encodeURIComponent(listId)}"><button type="submit" class="btn">Entwurf verwerfen</button></form>
+      <form method="POST" action="/appell/confirm?list=${encodeURIComponent(listId)}" data-online-only-form><button type="submit" class="btn btn-primary" data-online-only="true">Übernehmen</button></form>
+      <form method="POST" action="/appell/discard?list=${encodeURIComponent(listId)}" data-online-only-form><button type="submit" class="btn" data-online-only="true">Entwurf verwerfen</button></form>
     </div>
   </article>`;
   res.send(layout(req, { title: 'Entwurf prüfen', body }));
