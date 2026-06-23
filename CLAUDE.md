@@ -14,6 +14,16 @@ organizations can deploy too. Goals, in priority order:
 2. **Works 100% offline on the local network**, including when the local
    WLAN itself has no internet uplink. Public content must work as a PWA
    even with zero connectivity at all (previously cached).
+   - In the normal deployment the app *is* also reachable from the internet
+     (hosted in the HQ LAN, exposed via a public domain like
+     `app.zso-bruggregion.ch`), so devices outside the LAN can use it too.
+     The offline-LAN guarantee above still holds: at the HQ everything must
+     keep working even with the uplink down.
+   - A few features inherently require that external reachability (a field
+     device on cellular is not on the HQ LAN). **Live vehicle location
+     tracking** (see Transport) is such a feature: it needs the server to be
+     internet-reachable and degrades to "unavailable" on a pure offline-LAN
+     deployment.
 3. **Hierarchical permission levels**, each level includes all levels below
    it: `Admin` > `Offizier` > `Unteroffizier` > `Fahrer` > `Soldat` > `public`.
    - `public` = no auth needed, content must be offline-cachable via the PWA
