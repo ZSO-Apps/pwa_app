@@ -27,3 +27,4 @@
 
 - [ ] ZSO Logo lädt nicht in der Offline-Version
 - [ ] Auto Refresh
+- [ ] Add width half / third as checkbox to form/quiz (see json of existing forms)
