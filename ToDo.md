@@ -21,7 +21,7 @@
 
 ## Prio 3
 
-- [ ] Fahrer/Fahrzentrale -> Auto Rolle (Google/Apple Maps) -> OSRM Project
+- [X] Fahrer/Fahrzentrale
 
 ## Bugs
 
@@ -45,4 +45,9 @@
 - [ ] Markdown-Editor alles testen
 - [ ] Wenn man in einem Subfolder ist, zeigt der zurück button zum Home und nicht in die Kachel.
 - [X] Überlappende WKs in Fahreugzentrale anzeigen, wenn Transporte an diesem Tag sind.
-- [ ] 
+
+
+## Prio 4
+- [ ] Auto Rolle (Google/Apple Maps) -> OSRM Project
+- [ ] Feedback Loop von Transport Bestellung zu Dispo und zurück
+- [ ] Essensbestellung und Matbestellung an Fahrzeugauftäge anheften (braucht konsistente Architektur über Formular-Verlinkungen) 
