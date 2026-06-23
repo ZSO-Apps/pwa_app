@@ -16,8 +16,8 @@
 
 - [x] Filter Auswertungn (Tabellen sortierbar und filterbar machen)
 - [x] Suchfunktion (PDF Textsuche offen)
-- [ ] Transport Formular
-- [ ] Appell
+- [x] Transport Formular
+- [x] Appell
 
 ## Prio 3
 
@@ -25,5 +25,5 @@
 
 ## Bugs
 
-- [ ] ZSO Logo lädt nicht in der Offline-Version
+- [x] ZSO Logo lädt nicht in der Offline-Version
 - [ ] Auto Refresh

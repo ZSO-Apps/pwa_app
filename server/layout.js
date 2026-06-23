@@ -5,6 +5,9 @@ import { hasAccess } from './auth.js';
 import { scanForms } from './content.js';
 
 const LAYOUT_FILE = path.resolve('layout.yaml');
+const TILE_COLORS = ['#f28c00', '#005a9c'];
+const UTILITY_TILE_COLOR = '#d9dde3';
+const UTILITY_TILE_IDS = new Set(['appell', 'transportzentrale', 'admin']);
 
 let _layout = null;
 let _forms = null;
@@ -47,10 +50,24 @@ export function findKachelBySlug(slug) {
   return walk(getLayout().kacheln);
 }
 
+function sortAndColorKacheln(list) {
+  const sorted = [...list].sort((a, b) => {
+    const aUtility = UTILITY_TILE_IDS.has(a.id) ? 1 : 0;
+    const bUtility = UTILITY_TILE_IDS.has(b.id) ? 1 : 0;
+    return aUtility - bUtility;
+  });
+  let contentIndex = 0;
+  return sorted.map((kachel) => {
+    const utility = UTILITY_TILE_IDS.has(kachel.id);
+    const color = utility ? UTILITY_TILE_COLOR : TILE_COLORS[contentIndex++ % TILE_COLORS.length];
+    return { ...kachel, color, utilityTile: utility };
+  });
+}
+
 export function visibleKacheln(role) {
   const filter = (list) =>
     list
       .filter((k) => hasAccess(role, k.access || 'public'))
-      .map((k) => ({ ...k, children: k.children ? filter(k.children) : undefined }));
-  return filter(getLayout().kacheln);
+      .map((k) => ({ ...k, children: k.children ? sortAndColorKacheln(filter(k.children)) : undefined }));
+  return sortAndColorKacheln(filter(getLayout().kacheln));
 }

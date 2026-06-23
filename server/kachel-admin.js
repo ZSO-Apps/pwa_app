@@ -13,12 +13,6 @@ const CONTENT_ROOTS = [
   path.resolve('content_zso_specific_public'),
   CONTENT_ROOT,
 ];
-const DEFAULT_COLOR = '#005a9c';
-const COLOR_OPTIONS = [
-  { value: '#005a9c', label: 'Blau' },
-  { value: '#f28c00', label: 'Orange' },
-];
-
 function requireKachelAdmin(req, res) {
   const role = req.user?.role || 'public';
   if (hasAccess(role, 'Offizier')) return true;
@@ -30,25 +24,31 @@ function requireKachelAdmin(req, res) {
   return false;
 }
 
+function transliterate(value) {
+  return String(value || '')
+    .replace(/[Ää]/g, 'ae')
+    .replace(/[Öö]/g, 'oe')
+    .replace(/[Üü]/g, 'ue')
+    .replace(/ß/g, 'ss');
+}
+
 function slugify(value) {
-  const slug = String(value || '')
+  const slug = transliterate(value)
     .normalize('NFKD')
     .replace(/[\u0300-\u036f]/g, '')
     .toLowerCase()
     .replace(/[^a-z0-9]+/g, '-')
     .replace(/^-+|-+$/g, '')
     .replace(/-{2,}/g, '-');
-  return slug || 'kachel';
+  return (slug || 'kachel').slice(0, 50).replace(/-+$/g, '') || 'kachel';
 }
 
 function normalizeInput(body = {}) {
   const title = String(body.title || '').trim();
-  const technicalName = String(body.id || '').trim();
   return {
     title,
-    id: slugify(technicalName || title),
+    id: uniqueSlug(title),
     access: normalizeRole(String(body.access || 'Soldat').trim()),
-    color: String(body.color || DEFAULT_COLOR).trim(),
   };
 }
 
@@ -71,24 +71,36 @@ function contentFolderExists(slug) {
   return CONTENT_ROOTS.some((root) => fs.existsSync(path.join(root, slug)));
 }
 
+function slugAvailable(slug) {
+  return !findKachel(slug) && !contentSlugExists(slug) && !contentFolderExists(slug);
+}
+
+function uniqueSlug(base) {
+  const cleanBase = slugify(base);
+  if (slugAvailable(cleanBase)) return cleanBase;
+  const prefix = cleanBase.slice(0, 47).replace(/-+$/g, '') || 'kachel';
+  for (let index = 2; index < 1000; index++) {
+    const candidate = prefix + '-' + index;
+    if (slugAvailable(candidate)) return candidate;
+  }
+  throw new Error('Es konnte kein freier Ordnername erzeugt werden.');
+}
+
 function validateInput(input) {
   if (input.title.length < 2 || input.title.length > 80) {
     throw new Error('Titel muss 2-80 Zeichen lang sein.');
   }
   if (!/^[a-z0-9][a-z0-9-]{1,49}$/.test(input.id)) {
-    throw new Error('Technischer Name muss 2-50 Zeichen lang sein und darf nur Kleinbuchstaben, Zahlen und Bindestriche enthalten.');
+    throw new Error('Der automatisch erzeugte Ordnername ist ungültig. Bitte den Titel anpassen.');
   }
   if (!ROLES.includes(input.access)) {
     throw new Error('Ungültige Sichtbarkeitsrolle.');
   }
-  if (!COLOR_OPTIONS.some((option) => option.value === input.color)) {
-    throw new Error('Ungültige Farbe.');
-  }
   if (findKachel(input.id)) {
-    throw new Error('Eine Kachel mit diesem technischen Namen existiert bereits.');
+    throw new Error('Eine Kachel mit diesem Ordnernamen existiert bereits.');
   }
   if (contentSlugExists(input.id) || contentFolderExists(input.id)) {
-    throw new Error('Ein Content-Ordner mit diesem technischen Namen existiert bereits.');
+    throw new Error('Ein Content-Ordner mit diesem Ordnernamen existiert bereits.');
   }
 }
 
@@ -103,7 +115,6 @@ function appendKachelToLayout(input) {
     '    title: ' + yamlScalar(input.title),
     '    access: ' + yamlScalar(input.access),
     '    content: ' + yamlScalar(input.id),
-    '    color: ' + yamlScalar(input.color),
     '',
   ].join('\n');
   fs.appendFileSync(LAYOUT_FILE, block);
@@ -114,13 +125,8 @@ function renderRoleOptions(current) {
   return ROLES.map((role) => '<option value="' + esc(role) + '"' + (role === current ? ' selected' : '') + '>' + esc(role === 'public' ? 'Öffentlich' : role) + '</option>').join('');
 }
 
-function renderColorOptions(current) {
-  return COLOR_OPTIONS.map((option) => '<option value="' + esc(option.value) + '"' + (option.value === current ? ' selected' : '') + '>' + esc(option.label) + '</option>').join('');
-}
-
 function renderKachelFormPage(req, { values = {}, error = '' } = {}) {
   const access = normalizeRole(values.access || 'Soldat');
-  const color = values.color || DEFAULT_COLOR;
   const body = [
     '<article class="content narrow">',
     '<p><a href="/" class="back">← Zurück zur Übersicht</a></p>',
@@ -128,9 +134,7 @@ function renderKachelFormPage(req, { values = {}, error = '' } = {}) {
     error ? '<p class="err">' + esc(error) + '</p>' : '',
     '<form method="POST" action="/kachel-admin" class="genform" data-online-only-form>',
     '<label>Titel *<input name="title" required maxlength="80" autocomplete="off" value="' + esc(values.title || '') + '"></label>',
-    '<label>Technischer Name / Ordner<input name="id" maxlength="50" autocomplete="off" placeholder="wird aus dem Titel erstellt" value="' + esc(values.id || '') + '"></label>',
     '<label>Sichtbar ab Rolle<select name="access">' + renderRoleOptions(access) + '</select></label>',
-    '<label>Farbe<select name="color">' + renderColorOptions(color) + '</select></label>',
     '<button type="submit" data-online-only="true">Kachel erstellen</button>',
     '</form>',
     '</article>',
@@ -140,7 +144,7 @@ function renderKachelFormPage(req, { values = {}, error = '' } = {}) {
 
 export function renderNewKachel(req, res) {
   if (!requireKachelAdmin(req, res)) return;
-  res.send(renderKachelFormPage(req, { values: { access: 'Soldat', color: DEFAULT_COLOR } }));
+  res.send(renderKachelFormPage(req, { values: { access: 'Soldat' } }));
 }
 
 export function createKachel(req, res) {
