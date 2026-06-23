@@ -23,6 +23,7 @@ import { hasAccess } from './auth.js';
 import { layout } from './templates/layout.js';
 import { esc, logoAssetUrl } from './templates/shared.js';
 import { readSubmissions } from './forms.js';
+import { listWks } from './wk.js';
 
 const ROOT = path.resolve('data/transport');
 const BESTELLUNG_FORM = 'transport-bestellung';
@@ -486,31 +487,21 @@ function parkingForDay(orders, trailerId, day) {
   return seg;
 }
 
-export function buildData(wkId, date, wk = null) {
-  const fleet = readFleet(wkId);
-  const orders = listOrders(wkId);
-  const zn = zurich(new Date());
-  const todayIso = zn.iso;
-  const day = isDateIso(date) ? date : todayIso;
+// Build one WK's view of a single day: decorated resources + the day's orders
+// (each with its fail-safe bar) + the local time window. Shared by the active
+// WK and the read-only cross-WK sections below it. With `onlyInvolved` the
+// resource lists are reduced to those actually used that day (no idle fleet),
+// which is what the cross-WK sections want.
+function collectWkDay(wid, day, todayIso, nowMin, { onlyInvolved = false } = {}) {
+  const fleet = readFleet(wid);
+  const orders = listOrders(wid);
 
   const dayOrders = orders
     .filter((o) => o.datum === day)
-    .map((o) => ({ ...o, bar: computeBar(o, day, todayIso, zn.minutes) }));
+    .map((o) => ({ ...o, bar: computeBar(o, day, todayIso, nowMin) }));
 
   const trailerParking = {};
   for (const r of fleet.trailers) trailerParking[r.id] = parkingForDay(orders, r.id, day);
-
-  // Dynamic day window from the day's orders + parking (fallback 07:00–20:00).
-  let minS = 7 * 60, maxE = 20 * 60;
-  for (const o of dayOrders) {
-    minS = Math.min(minS, o.bar.start, o.bar.planStart);
-    maxE = Math.max(maxE, o.bar.end, o.bar.planEnd);
-  }
-  for (const p of Object.values(trailerParking)) {
-    if (p) { minS = Math.min(minS, p.start); maxE = Math.max(maxE, p.end); }
-  }
-  const dayStartMin = Math.max(0, Math.floor((minS - 30) / 60) * 60);
-  const dayEndMin = Math.min(1440, Math.ceil((maxE + 30) / 60) * 60);
 
   const decorate = (r) => {
     const parking = r.kind === 'trailer' ? (trailerParking[r.id] || null) : null;
@@ -526,7 +517,64 @@ export function buildData(wkId, date, wk = null) {
     };
   };
 
-  const allDays = [...new Set(orders.map((o) => o.datum).filter(isDateIso))].sort();
+  let vehicles = fleet.vehicles.map(decorate);
+  let trailers = fleet.trailers.map(decorate);
+
+  if (onlyInvolved) {
+    const usedV = new Set(dayOrders.map((o) => o.vehicleId).filter(Boolean));
+    const usedT = new Set();
+    for (const o of dayOrders) for (const t of (o.trailers || [])) usedT.add(t.id);
+    for (const r of trailers) if (r.parking) usedT.add(r.id); // keep parked trailers visible
+    vehicles = vehicles.filter((r) => usedV.has(r.id));
+    trailers = trailers.filter((r) => usedT.has(r.id));
+  }
+
+  // Local time window contributions (folded into the shared window by buildData).
+  let minS = Infinity, maxE = -Infinity;
+  for (const o of dayOrders) {
+    minS = Math.min(minS, o.bar.start, o.bar.planStart);
+    maxE = Math.max(maxE, o.bar.end, o.bar.planEnd);
+  }
+  for (const r of trailers) {
+    if (r.parking) { minS = Math.min(minS, r.parking.start); maxE = Math.max(maxE, r.parking.end); }
+  }
+
+  return { vehicles, trailers, orders: dayOrders, allDays: orders, minS, maxE };
+}
+
+export function buildData(wkId, date, wk = null) {
+  const zn = zurich(new Date());
+  const todayIso = zn.iso;
+  const day = isDateIso(date) ? date : todayIso;
+
+  const active = collectWkDay(wkId, day, todayIso, zn.minutes);
+
+  // Other non-archived WKs that also have transports on this day, shown read-only
+  // below the active WK so cross-WK resource conflicts (e.g. a year-round
+  // "DailyBusiness" WK) are visible. Empty when nothing else runs that day.
+  const otherWks = [];
+  for (const w of listWks()) {
+    if (w.id === wkId) continue;
+    const sec = collectWkDay(w.id, day, todayIso, zn.minutes, { onlyInvolved: true });
+    if (!sec.orders.length) continue;
+    otherWks.push({
+      id: w.id, label: w.label || w.id, range: w.range || '',
+      vehicles: sec.vehicles, trailers: sec.trailers, orders: sec.orders,
+      minS: sec.minS, maxE: sec.maxE,
+    });
+  }
+
+  // Shared day window across all sections (fallback 07:00–20:00) so the active
+  // and cross-WK timelines line up on the same time axis.
+  let minS = 7 * 60, maxE = 20 * 60;
+  for (const sec of [active, ...otherWks]) {
+    if (Number.isFinite(sec.minS)) minS = Math.min(minS, sec.minS);
+    if (Number.isFinite(sec.maxE)) maxE = Math.max(maxE, sec.maxE);
+  }
+  const dayStartMin = Math.max(0, Math.floor((minS - 30) / 60) * 60);
+  const dayEndMin = Math.min(1440, Math.ceil((maxE + 30) / 60) * 60);
+
+  const allDays = [...new Set(active.allDays.map((o) => o.datum).filter(isDateIso))].sort();
 
   return {
     date: day,
@@ -535,10 +583,12 @@ export function buildData(wkId, date, wk = null) {
     dayStartMin, dayEndMin,
     days: allDays,
     wk: wk ? { id: wk.id, label: wk.label || wk.id, range: wk.range || '' } : null,
-    vehicles: fleet.vehicles.map(decorate),
-    trailers: fleet.trailers.map(decorate),
-    orders: dayOrders,
+    vehicles: active.vehicles,
+    trailers: active.trailers,
+    orders: active.orders,
     openBestellungen: openBestellungen(wkId),
+    otherWks: otherWks.map(({ id, label, range, vehicles, trailers, orders }) =>
+      ({ id, label, range, vehicles, trailers, orders })),
   };
 }
 

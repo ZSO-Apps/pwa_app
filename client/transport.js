@@ -129,7 +129,8 @@
         <div class="tz-print-head" data-print-head></div>
         ${trailerAwayHtml()}
         ${state.canDispatch ? bestellungenHtml() : ''}
-        <div data-grid></div>`;
+        <div data-grid></div>
+        ${crossWkHtml()}`;
       wireControls();
       renderGrid();
     }
@@ -171,26 +172,27 @@
     }
 
     // --- timeline --------------------------------------------------------
-    function timelineHtml() {
+    // Render one timeline (ruler + resource rows) on the shared day window.
+    // `ordersOf(id)` returns the orders for a resource within this section;
+    // `readonly` drops the click target / now-line for the cross-WK sections.
+    function timelineTrack(rows, ordersOf, { readonly = false, showNow = true } = {}) {
       const d = state.data;
       const startMin = d.dayStartMin, endMin = d.dayEndMin;
       const width = (endMin - startMin) * PX;
-      const rows = visibleResources();
-      if (!rows.length) return '<p class="muted">Noch keine Fahrzeuge/Anhänger. Erstelle einen Auftrag und tippe z.B. „PTF1".</p>';
 
       // hour ruler
       const ticks = [];
       for (let m = Math.ceil(startMin / 60) * 60; m <= endMin; m += 60) {
         ticks.push(`<div class="tz-tick" style="left:${(m - startMin) * PX}px">${hhmm(m)}</div>`);
       }
-      const nowLine = (d.date === d.today && d.nowMin >= startMin && d.nowMin <= endMin)
+      const nowLine = (showNow && d.date === d.today && d.nowMin >= startMin && d.nowMin <= endMin)
         ? `<div class="tz-now" style="left:${(d.nowMin - startMin) * PX}px"></div>` : '';
 
       const LANE_H = 36; // px per stacked lane (plan bar + ist line + gap)
       const rowHtml = rows.map((r) => {
-        const orders = ordersForRes(r.id);
+        const orders = ordersOf(r.id);
         const lanes = assignLanes(orders);
-        const bars = lanes.items.map((it) => barHtml(it.o, startMin, it.lane, LANE_H)).join('');
+        const bars = lanes.items.map((it) => barHtml(it.o, startMin, it.lane, LANE_H, readonly)).join('');
         const grey = r.parking
           ? `<div class="tz-grey" title="steht: ${esc(r.parking.standort || '')}" style="left:${(r.parking.start - startMin) * PX}px;width:${Math.max(SLOT * PX, (r.parking.end - r.parking.start) * PX)}px"><span>${esc(r.parking.standort || 'steht hier')}</span></div>`
           : '';
@@ -209,8 +211,34 @@
       return `<div class="tz-timeline">
         <div class="tz-ruler-row"><div class="tz-row-label"></div><div class="tz-ruler" style="width:${width}px">${ticks.join('')}${nowLine}</div></div>
         ${rowHtml}
-      </div>
-      <div class="tz-legend no-print"><span class="tz-chip ph-geplant">Plan (geplant)</span><span class="tz-ist-chip ph-laufend"></span> läuft<span class="tz-ist-chip ph-abgeschlossen"></span> erledigt<span class="tz-ist-chip ph-overdue"></span> überfällig<span class="tz-grey-chip"></span> Anhänger steht</div>`;
+      </div>`;
+    }
+
+    function timelineHtml() {
+      const rows = visibleResources();
+      if (!rows.length) return '<p class="muted">Noch keine Fahrzeuge/Anhänger. Erstelle einen Auftrag und tippe z.B. „PTF1".</p>';
+      return timelineTrack(rows, ordersForRes, { readonly: false, showNow: true })
+        + `<div class="tz-legend no-print"><span class="tz-chip ph-geplant">Plan (geplant)</span><span class="tz-ist-chip ph-laufend"></span> läuft<span class="tz-ist-chip ph-abgeschlossen"></span> erledigt<span class="tz-ist-chip ph-overdue"></span> überfällig<span class="tz-grey-chip"></span> Anhänger steht</div>`;
+    }
+
+    // Read-only timelines for other non-archived WKs that also have transports
+    // on this day (cross-WK coordination). Shown below the active WK on the same
+    // time axis; not wired for clicks. Empty when no other WK runs that day.
+    function crossWkHtml() {
+      const others = state.data.otherWks || [];
+      if (!others.length) return '';
+      const sections = others.map((w) => {
+        const ordersOf = (id) => w.orders.filter((o) => o.vehicleId === id || (o.trailers || []).some((t) => t.id === id));
+        const rows = [...w.vehicles, ...w.trailers];
+        return `<section class="tz-cross-sec">
+          <div class="tz-cross-head">🔗 ${esc(w.label)}${w.range ? ' · ' + esc(w.range) : ''}</div>
+          ${timelineTrack(rows, ordersOf, { readonly: true, showNow: false })}
+        </section>`;
+      }).join('');
+      return `<div class="tz-cross">
+        <div class="tz-cross-divider"><span>Andere WKs an diesem Tag</span></div>
+        ${sections}
+      </div>`;
     }
 
     // Greedily stack overlapping orders into lanes (waterfall) so bars never
@@ -233,20 +261,22 @@
 
     // Plan bar (blue) is always shown; the actual ("ist") situation is a thin
     // line underneath, so a running/overdue trip never erases the plan.
-    function barHtml(o, startMin, lane, laneH) {
+    function barHtml(o, startMin, lane, laneH, readonly = false) {
       const b = o.bar;
       const top = 4 + lane * laneH;
       const planLeft = (b.planStart - startMin) * PX;
       const planW = Math.max(SLOT * PX, (b.planEnd - b.planStart) * PX);
       const label = esc(o.zielort || o.abfahrtsort || 'Auftrag');
+      const oid = readonly ? '' : ` data-order="${esc(o.id)}"`;
+      const ro = readonly ? ' tz-bar--ro' : '';
       let ist = '';
       if (b.departedMin != null) {
         const il = (b.departedMin - startMin) * PX;
         const iw = Math.max(4, (b.end - b.departedMin) * PX);
         const cls = b.overdue ? 'ph-overdue' : (b.arrivedMin != null ? 'ph-abgeschlossen' : 'ph-laufend');
-        ist = `<div class="tz-ist ${cls}" data-order="${esc(o.id)}" style="left:${il}px;width:${iw}px;top:${top + 23}px" title="Ist ${hhmm(b.departedMin)}–${hhmm(b.end)}"></div>`;
+        ist = `<div class="tz-ist ${cls}"${oid} style="left:${il}px;width:${iw}px;top:${top + 23}px" title="Ist ${hhmm(b.departedMin)}–${hhmm(b.end)}"></div>`;
       }
-      return `<div class="tz-bar ph-geplant ${b.overdue ? 'is-overdue' : ''}" data-order="${esc(o.id)}" style="left:${planLeft}px;width:${planW}px;top:${top}px" title="Plan ${hhmm(b.planStart)}–${hhmm(b.planEnd)}: ${label}">
+      return `<div class="tz-bar ph-geplant${ro} ${b.overdue ? 'is-overdue' : ''}"${oid} style="left:${planLeft}px;width:${planW}px;top:${top}px" title="Plan ${hhmm(b.planStart)}–${hhmm(b.planEnd)}: ${label}">
           <span class="tz-bar-label">${label}</span>
         </div>${ist}`;
     }
