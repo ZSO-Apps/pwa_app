@@ -1,8 +1,8 @@
 {
   "id": "quiz-leitungsbau",
-  "title": "Quiz Leitungsbau",
-  "submitLabel": "Quiz Leitungsbau",
-  "resultsLabel": "Quiz-Auswertung Leitungsbau",
+  "title": "Quiz Leitungsbau BEISPIEL",
+  "submitLabel": "Quiz Leitungsbau BEISPIEL",
+  "resultsLabel": "Quiz-Auswertung Leitungsbau BEISPIEL",
   "submitAccess": "Soldat",
   "resultsAccess": "Unteroffizier",
   "fields": [
