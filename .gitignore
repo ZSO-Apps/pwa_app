@@ -44,7 +44,11 @@ Thumbs.db
 .npm/
 .parcel-cache/
 
-# Organisation-specific logos (local tenant branding)
-content_zso_specific_public/logos/org_logo_*.png
-!content_zso_specific_public/logos/README.md
-!content_zso_specific_public/logos/.gitkeep
+# Per-org public folder is a generated symlink to ZSO/<Org> (see server/org.js)
+content_zso_specific_public
+
+# Organisation-specific logos (local tenant branding). The ZSO/ folders are the
+# tracked source of truth; per-org branding logos stay local, the fallback logo
+# and READMEs are tracked.
+ZSO/*/logos/org_logo_*.png
+ZSO/*/logos/*.png:Zone.Identifier

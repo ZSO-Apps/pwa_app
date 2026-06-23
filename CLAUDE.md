@@ -14,6 +14,16 @@ organizations can deploy too. Goals, in priority order:
 2. **Works 100% offline on the local network**, including when the local
    WLAN itself has no internet uplink. Public content must work as a PWA
    even with zero connectivity at all (previously cached).
+   - In the normal deployment the app *is* also reachable from the internet
+     (hosted in the HQ LAN, exposed via a public domain like
+     `app.zso-bruggregion.ch`), so devices outside the LAN can use it too.
+     The offline-LAN guarantee above still holds: at the HQ everything must
+     keep working even with the uplink down.
+   - A few features inherently require that external reachability (a field
+     device on cellular is not on the HQ LAN). **Live vehicle location
+     tracking** (see Transport) is such a feature: it needs the server to be
+     internet-reachable and degrades to "unavailable" on a pure offline-LAN
+     deployment.
 3. **Hierarchical permission levels**, each level includes all levels below
    it: `Admin` > `Offizier` > `Unteroffizier` > `Fahrer` > `Soldat` > `public`.
    - `public` = no auth needed, content must be offline-cachable via the PWA
@@ -25,9 +35,10 @@ organizations can deploy too. Goals, in priority order:
 4. **Easy for other orgs to fork/contribute** — single language (JavaScript /
    Node ESM everywhere), readable code, file-based content and data (no
    database server to install). ZSO-specific overrides live in
-   `content_zso_specific/`; public tenant branding assets live in
-   `content_zso_specific_public/`, so a fork can replace local material
-   without touching `content_generic/`.
+   `content_zso_specific/`; per-organization public branding and content live
+   in `ZSO/<Org>/`, surfaced at the fixed path `content_zso_specific_public`
+   via a startup symlink (see "Organizations" below), so a fork can replace
+   local material without touching `content_generic/`.
 
 ## Tech Stack Decisions
 
@@ -49,15 +60,17 @@ organizations can deploy too. Goals, in priority order:
 ```
 /layout.yaml                       Kacheln: slug + access level per Kachel
 /content_generic/                  generic content shipped with the project
-/content_zso_specific/             org-specific overrides/additions
-/content_zso_specific_public/
+/ZSO/<Org>/                        per-org public branding (logos/) + public content
   logos/                            public tenant logos + fallback logo
+/content_zso_specific_public       symlink → ZSO/<active Org> (generated at startup)
+/content_zso_specific/             org-specific overrides/additions (highest priority)
 /data/
   users.yaml                       user accounts (bcrypt + role), local runtime file
   forms/<form-id>/<wk-id>/         one JSON per submission, scoped to active WK
   forms/wk/_global/                WK records themselves (the wk form is scope=global)
 /server/                           Node/Express app
-  - merges the 2 content roots when serving a Kachel slug
+  - setupOrg() symlinks content_zso_specific_public → ZSO/<Org> at startup
+  - merges the 3 content roots when serving a Kachel slug
   - renders markdown -> HTML server-side
   - serves /service-worker.js with a precache manifest of public assets
     including the logo files that currently exist
@@ -68,12 +81,13 @@ organizations can deploy too. Goals, in priority order:
 /client/                           frontend assets, manifest.json, hand-written SW
 ```
 
-A Kachel references a **slug** under `content:`. The server merges both content
-roots that contain a folder with that slug: `content_generic/` first, then
-`content_zso_specific/` (later wins on name collision, so a ZSO-specific file
-overrides the generic one of the same name). Access is decided **only** by the
+A Kachel references a **slug** under `content:`. The server merges the content
+roots that contain a folder with that slug, in priority order (later wins on
+name collision): `content_generic/` first, then `content_zso_specific_public/`
+(the active org's public folder, symlink → `ZSO/<Org>`), then
+`content_zso_specific/` (highest priority). Access is decided **only** by the
 Kachel's `access:` in `layout.yaml`, never by which root a file lives in — the
-same two roots serve public and protected Kacheln alike.
+same roots serve public and protected Kacheln alike.
 
 Forms are `.json` files dropped anywhere in a content folder. Each shows up as
 two listing entries: 📝 submit (uses `submitLabel` + `submitAccess`) and 📊
@@ -275,15 +289,30 @@ results view automatically filters to the active WK.
   content so they are offline-capable like the other public content Kacheln.
 - The app name remains "ZSO App".
 
+### Organizations
+
+- The app is multi-tenant. Each organization is a folder `ZSO/<Org>/` holding
+  its public branding (`logos/`) and public content/Handkarten/documents.
+- Pick the org at startup: `npm start -- <Org>`, `ORG=<Org> npm start`, or
+  `node server/index.js <Org>`. Default is `Generic`.
+- `setupOrg()` in `server/org.js` validates the name and points the fixed path
+  `content_zso_specific_public` at `ZSO/<Org>` via a relative symlink (idempotent,
+  re-pointed on each start). The symlink is generated and git-ignored; `ZSO/` is
+  the tracked source of truth. A real directory at that path aborts startup with
+  a migration hint. `ZSO/<Org>` is also wired in as the `zso_public` content root.
+- Each org folder must contain its own default `logos/zivilschutz_logo.jpg`
+  fallback (there is no cross-org fallback).
+
 ### Branding and logos
 
-- Tenant-specific public branding lives under
-  `content_zso_specific_public/logos/`.
-- The tracked fallback logo is `zivilschutz_logo.jpg`. It may be committed and
-  is used wherever no tenant-specific logo exists.
-- The local organization logos are intentionally ignored by Git:
-  `org_logo_wide.png`, `org_logo_wide_transparent.png`,
-  `org_logo_square.png`, `org_logo_square_transparent.png`.
+- Tenant-specific public branding lives under `ZSO/<Org>/logos/`, surfaced as
+  `content_zso_specific_public/logos/` via the active-org symlink.
+- The fallback logo is `zivilschutz_logo.jpg`, tracked per org folder and used
+  wherever no tenant-specific logo exists.
+- The local organization branding logos are intentionally ignored by Git
+  (`ZSO/*/logos/org_logo_*.png`): `org_logo_wide.png`,
+  `org_logo_wide_transparent.png`, `org_logo_square.png`,
+  `org_logo_square_transparent.png`.
 - Logo resolution is centralized in `server/branding.js`.
   - Header order: wide transparent → wide → square transparent → square →
     fallback.
@@ -327,13 +356,16 @@ results view automatically filters to the active WK.
 ## Deployment Story
 
 - Single Node process, runnable with `npm start`; default port is `8080`
-  and can be overridden with `PORT=`.
+  and can be overridden with `PORT=`. Select the organization with
+  `ORG=<Org>` (or `npm start -- <Org>`); default `Generic`.
 - `Dockerfile` and `docker-compose.yml` exist. The current compose file
-  builds the app, exposes `8080`, mounts `./data:/app/data`, and contains
-  Traefik labels using `APP_DOMAIN` from `.env` / `.env.example`.
-- Tenant content/logos are currently copied into the image at build time. If a
-  deployment should update them without rebuilding, add volumes for
-  `content_zso_specific/` and/or `content_zso_specific_public/logos/`.
+  builds the app, exposes `8080`, mounts `./data:/app/data`, passes `ORG`
+  (default `Generic`, from `.env` / `.env.example`), and contains Traefik
+  labels using `APP_DOMAIN`. The container entrypoint runs the org symlink
+  bootstrap at start, so `ORG` alone selects the tenant.
+- Tenant content/logos (the whole `ZSO/` tree) are copied into the image at
+  build time. If a deployment should update them without rebuilding, add a
+  volume for `ZSO/` (and/or `content_zso_specific/`).
 - Discoverable on LAN via mDNS (`*.local`) or a printed QR code with the
   LAN IP, so devices can connect to the local server without internet.
 

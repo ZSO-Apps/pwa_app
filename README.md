@@ -13,8 +13,10 @@ A self-hostable PWA for civil-protection / ZSO organizations: public offline con
 
 ```bash
 npm install
-npm run seed-users   # writes local data/users.yaml — only needed the first time
-npm start            # serves on http://localhost:8080
+npm run seed-users        # writes local data/users.yaml — only needed the first time
+npm start                 # serves the Generic org on http://localhost:8080
+npm start -- BruggRegion  # serve a specific organization (folder under ZSO/)
+ORG=Weli npm start        # same, via environment variable
 ```
 
 Default users from `data/users.example.yaml` (all password `ZSO1234` — change before deploying!):
@@ -28,6 +30,23 @@ Default users from `data/users.example.yaml` (all password `ZSO1234` — change 
 
 Override the port with `PORT=80 npm start`. Set `SESSION_SECRET=<32+ random chars>` for production (otherwise auto-generated and persisted to `data/.session-secret`).
 
+## Organizations — `ZSO/<Org>/`
+
+The app is multi-tenant: each organization has a folder `ZSO/<Org>/` holding its
+public branding (`logos/`) and public content/Handkarten/documents that other
+orgs don't need. Pick the org at startup with `npm start -- <Org>` or
+`ORG=<Org> npm start` (default: `Generic`).
+
+At startup the server points the fixed path `content_zso_specific_public` at
+`ZSO/<Org>` via a symlink — so logos, `/logos`, and the org's public content all
+resolve to the chosen org without further configuration. The symlink itself is
+generated and git-ignored; `ZSO/` is the tracked source of truth. Each org
+folder must contain its own default `logos/zivilschutz_logo.jpg` fallback.
+
+To add an organization: create `ZSO/<NewOrg>/`, drop in `logos/` (at least the
+fallback logo, optionally `org_logo_*.png` branding) and any public content
+folders (e.g. `Lage/`, `NTP/`, Handkarten), then start with `ORG=<NewOrg>`.
+
 ## Deploy on a Raspberry Pi / NAS / old PC
 
 1. Install Node ≥ 18 (`apt install nodejs npm` or the official Node ARM build).
@@ -37,16 +56,18 @@ Override the port with `PORT=80 npm start`. Set `SESSION_SECRET=<32+ random char
 5. Run: `npm start`. Open from another LAN device at `http://<pi-ip>:8080`.
 6. (Optional) Make it a systemd service (see commit history for an example unit file).
 
-## Content layout — the two roots
+## Content layout — the three roots
 
-Content lives in **two parallel roots** that are merged at runtime per Kachel:
+Content lives in **three parallel roots** that are merged at runtime per Kachel
+(later wins on collision):
 
 | Root | Purpose |
 |------|---------|
-| `content_generic/`      | generic content shipped with the project |
-| `content_zso_specific/` | org-specific overrides/additions |
+| `content_generic/`             | generic content shipped with the project |
+| `content_zso_specific_public/` | the active org's public content (symlink → `ZSO/<Org>`) |
+| `content_zso_specific/`        | org-specific overrides/additions (highest priority) |
 
-A Kachel only names a slug; the server unions both roots:
+A Kachel only names a slug; the server unions all three roots:
 
 ```yaml
 - id: handkarten
@@ -56,9 +77,10 @@ A Kachel only names a slug; the server unions both roots:
   color: "#2f80ed"
 ```
 
-If both roots contain a file at the same path, the ZSO-specific one wins. Access
-is governed **only** by the Kachel's `access:` in `layout.yaml` — the same two
-roots serve public and protected Kacheln alike.
+If several roots contain a file at the same path, the later one wins:
+`content_zso_specific/` overrides the org public folder, which overrides
+`content_generic/`. Access is governed **only** by the Kachel's `access:` in
+`layout.yaml` — the same roots serve public and protected Kacheln alike.
 
 ### Per-WK Kacheln (`wkScoped`)
 
@@ -120,6 +142,8 @@ A timestamp at the top of every page (`Offline-Inhalte aktualisiert: …`) shows
 /server                              Express app (auth, layout, content, forms, WK, SW generator)
 /client                              CSS, client JS, manifest, icons
 /content_generic                     generic content (incl. admin/, quiz/, wk_organisation/)
+/ZSO/<Org>/                          per-org public branding (logos/) + public content
+/content_zso_specific_public         symlink → ZSO/<active Org> (generated, git-ignored)
 /content_zso_specific                org-specific overrides/additions (incl. per-WK wk_infos/)
 /data                                local runtime data, not committed
 /data/users.example.yaml             committed template for local users.yaml
