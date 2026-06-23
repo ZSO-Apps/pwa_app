@@ -569,6 +569,97 @@ a { color: inherit; }
   .markdown-preview { grid-column: 1; grid-row: auto; min-height: 220px; }
 }
 
+.markdown-editor-shell {
+  flex: 1 1 100%;
+  width: 100%;
+  min-width: 0;
+}
+.markdown-editor-shell .EasyMDEContainer {
+  width: 100%;
+}
+.markdown-editor-shell .editor-toolbar {
+  display: flex;
+  flex-wrap: wrap;
+  gap: .35rem;
+  border-color: var(--border);
+  border-radius: 10px 10px 0 0;
+  background: var(--surface-hover);
+  opacity: 1;
+}
+.markdown-editor-shell .editor-toolbar::before,
+.markdown-editor-shell .editor-toolbar::after {
+  display: none;
+}
+.markdown-editor-shell .editor-toolbar button,
+.markdown-editor-shell .editor-toolbar .easymde-dropdown {
+  min-width: auto;
+  height: auto;
+  padding: .35rem .55rem;
+  border: 1px solid transparent;
+  border-radius: 6px;
+  color: var(--text);
+  background: transparent;
+  font: inherit;
+  font-size: .9rem;
+  line-height: 1.2;
+}
+.markdown-editor-shell .editor-toolbar button:hover,
+.markdown-editor-shell .editor-toolbar button.active,
+.markdown-editor-shell .editor-toolbar button:focus-visible {
+  border-color: var(--border);
+  background: var(--surface);
+  color: var(--primary-bg);
+}
+.markdown-editor-shell .editor-toolbar i.separator {
+  border-left-color: var(--border);
+  border-right: 0;
+  height: 1.75rem;
+  margin: 0 .15rem;
+}
+.markdown-editor-shell .CodeMirror {
+  min-height: 460px;
+  border-color: var(--border);
+  border-radius: 0 0 10px 10px;
+  background: var(--surface);
+  color: var(--text);
+  font-family: ui-monospace, SFMono-Regular, Menlo, Consolas, monospace;
+}
+.markdown-editor-shell .CodeMirror-cursor {
+  border-left-color: var(--text);
+}
+.markdown-editor-shell .CodeMirror-gutters {
+  border-right-color: var(--border);
+  background: var(--surface-hover);
+}
+.markdown-editor-shell .CodeMirror-linenumber,
+.markdown-editor-shell .CodeMirror-placeholder {
+  color: var(--muted);
+}
+.markdown-editor-shell .editor-preview,
+.markdown-editor-shell .editor-preview-side {
+  background: var(--surface);
+  color: var(--text);
+}
+.markdown-editor-shell .editor-preview-side {
+  border-color: var(--border);
+}
+.markdown-editor-shell .editor-statusbar {
+  color: var(--muted);
+}
+.markdown-editor-shell .CodeMirror-selected,
+.markdown-editor-shell .CodeMirror-focused .CodeMirror-selected {
+  background: var(--surface-hover);
+}
+.markdown-editor-fallback textarea[data-markdown-editor] {
+  width: 100%;
+  min-height: 420px;
+  font-family: ui-monospace, SFMono-Regular, Menlo, Consolas, monospace;
+}
+@media (max-width: 780px) {
+  .markdown-editor-shell .CodeMirror { min-height: 360px; }
+  .markdown-editor-shell .editor-toolbar button { padding: .3rem .45rem; font-size: .84rem; }
+}
+
 /* Prose (rendered markdown) */
 .prose { line-height: 1.55; }
 .prose img { max-width: 100%; height: auto; border-radius: 6px; }

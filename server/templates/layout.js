@@ -45,7 +45,7 @@ function renderWkBanner(req) {
   </form>`;
 }
 
-export function layout(req, { title, body, extraHead = '' }) {
+export function layout(req, { title, body, extraHead = '', extraHeadBeforeStyles = '' }) {
   const user = req.user;
   return `<!doctype html>
 <html lang="de">
@@ -53,6 +53,7 @@ export function layout(req, { title, body, extraHead = '' }) {
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
 <title>${esc(title || 'ZSO App')}</title>
+${extraHeadBeforeStyles}
 <link rel="stylesheet" href="${assetUrl('/client/styles.css')}">
 <link rel="manifest" href="/client/manifest.json">
 <link rel="apple-touch-icon" href="/client/icons/apple-icon-152x152.png">

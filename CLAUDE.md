@@ -514,6 +514,8 @@ data/appell/<wk-id>/lists/<list-id>/
 - Das Menü erstellt Markdown-Dateien, generische Formular-JSONs, importiert Markdown/PDF/Bilder, verlinkt Webseiten und erstellt Ordner.
 - Bilder zu Markdown-Dateien und Quizfragen werden in sibling asset folders mit Endung `.content` gespeichert, z.B. `Meine Datei.content/`. Diese Ordner sind technische Asset-Ordner und werden in Kachel-Übersichten, Suche und Form-Scan ausgeblendet.
 - Markdown-Dateien können ab `Unteroffizier` direkt bearbeitet werden. Listing-Einträge aus `content_zso_specific` können ab `Unteroffizier` umbenannt oder gelöscht werden; generischer Grundinhalt wird nicht destruktiv geändert.
+- Der Markdown-Editor verwendet lokal ausgeliefertes EasyMDE (`/vendor/easymde/*`) statt CDN. Spellchecker und FontAwesome-Autodownload sind deaktiviert, damit der Editor auch im lokalen/offlinefähigen Betrieb keine externen Assets nachlädt. Gespeichert wird weiterhin reines Markdown; Bilder laufen über die bestehende `Dateiname.content/`-Ablage.
+- Erstellen, Importieren, Bearbeiten, Umbenennen, Löschen und Speichern sind Online-only. Die UI markiert diese Elemente mit `data-online-only` bzw. `data-online-only-form`, damit gecachte Offline-Seiten keine Schreibaktionen auslösen.
 
 ## Transport (Transportzentrale)
 

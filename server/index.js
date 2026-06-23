@@ -36,6 +36,7 @@ app.use(sessionMiddleware);
 app.use(wkMiddleware);
 
 app.use('/client', express.static(path.resolve('client'), { maxAge: '1h' }));
+app.use('/vendor/easymde', express.static(path.resolve('node_modules/easymde/dist'), { maxAge: '1h' }));
 app.use('/logos', express.static(path.resolve('content_zso_specific_public/logos'), { maxAge: '1h' }));
 app.get('/favicon.ico', (_req, res) => {
   const logo = resolveLogo('favicon');

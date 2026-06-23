@@ -81,6 +81,17 @@ function updateOnlineActions() {
   document.querySelectorAll('[data-online-only]').forEach((el) => {
     el.setAttribute('aria-disabled', String(offline));
     el.classList.toggle('is-disabled', offline);
+    if ('disabled' in el) {
+      if (offline) {
+        if (el.dataset.onlineOriginalDisabled === undefined) {
+          el.dataset.onlineOriginalDisabled = String(Boolean(el.disabled));
+        }
+        el.disabled = true;
+      } else if (el.dataset.onlineOriginalDisabled !== undefined) {
+        el.disabled = el.dataset.onlineOriginalDisabled === 'true';
+        delete el.dataset.onlineOriginalDisabled;
+      }
+    }
   });
 }
 updateOnlineActions();
@@ -89,6 +100,12 @@ window.addEventListener('offline', updateOnlineActions);
 document.addEventListener('click', (event) => {
   const action = event.target.closest?.('[data-online-only]');
   if (!action || navigator.onLine !== false) return;
+  event.preventDefault();
+  window.alert('Diese Funktion benötigt eine Verbindung zum Server.');
+});
+document.addEventListener('submit', (event) => {
+  const form = event.target.closest?.('[data-online-only-form]');
+  if (!form || navigator.onLine !== false) return;
   event.preventDefault();
   window.alert('Diese Funktion benötigt eine Verbindung zum Server.');
 });
@@ -1100,16 +1117,17 @@ function initMarkdownEditor() {
   const root = document.querySelector('[data-markdown-editor-page]');
   if (!root) return;
   const textarea = root.querySelector('[data-markdown-editor]');
-  const preview = root.querySelector('[data-markdown-preview]');
   const form = root.querySelector('[data-markdown-editor-form]');
   const hiddenImages = root.querySelector('[data-markdown-images-json]');
   const imageInput = root.querySelector('[data-markdown-image-file]');
   const imageDropzone = root.querySelector('[data-markdown-image-dropzone]');
   const imageStatus = root.querySelector('[data-markdown-image-status]');
   const imageList = root.querySelector('[data-markdown-image-list]');
-  if (!textarea || !preview) return;
+  if (!textarea) return;
+
   const pendingImages = [];
   let imageSeq = 0;
+  let easyMDE = null;
 
   const htmlEscape = (value) => String(value || '').replace(/[&<>"']/g, (char) => ({
     '&': '&amp;',
@@ -1118,48 +1136,38 @@ function initMarkdownEditor() {
     '"': '&quot;',
     "'": '&#39;',
   }[char]));
-  const inline = (value) => htmlEscape(value)
-    .replace(/!\[([^\]]*)\]\(([^)]+)\)/g, '<img src="$2" alt="$1">')
-    .replace(/\[([^\]]+)\]\(([^)]+)\)/g, '<a href="$2">$1</a>')
-    .replace(/\*\*([^*]+)\*\*/g, '<strong>$1</strong>')
-    .replace(/\*([^*]+)\*/g, '<em>$1</em>');
-  const renderPreview = () => {
-    const lines = textarea.value.split(/\r?\n/);
-    let html = '';
-    let inList = false;
-    const closeList = () => {
-      if (inList) {
-        html += '</ul>';
-        inList = false;
-      }
-    };
-    for (const line of lines) {
-      if (!line.trim()) {
-        closeList();
-        continue;
-      }
-      const list = line.match(/^\s*[-*]\s+(.+)$/);
-      if (list) {
-        if (!inList) {
-          html += '<ul>';
-          inList = true;
-        }
-        html += '<li>' + inline(list[1]) + '</li>';
-        continue;
-      }
-      closeList();
-      const heading = line.match(/^(#{1,3})\s+(.+)$/);
-      if (heading) {
-        const level = heading[1].length;
-        html += '<h' + level + '>' + inline(heading[2]) + '</h' + level + '>';
-      } else {
-        html += '<p>' + inline(line) + '</p>';
-      }
-    }
-    closeList();
-    preview.innerHTML = html || '<p class="muted">Vorschau</p>';
+  const setMarkdownImageStatus = (message) => {
+    if (imageStatus) imageStatus.textContent = message || 'Kein Bild ausgewählt.';
   };
-  const selectedText = () => textarea.value.slice(textarea.selectionStart, textarea.selectionEnd);
+  const imageForToken = (token) => pendingImages.find((image) => image.token === token);
+  const replaceImageTokens = (markdown) => {
+    let value = String(markdown || '');
+    pendingImages.forEach((image) => {
+      value = value.split(image.token).join(image.data);
+    });
+    return value;
+  };
+  const getEditorValue = () => easyMDE ? easyMDE.value() : textarea.value;
+  const setEditorValue = (value) => {
+    if (easyMDE) {
+      easyMDE.value(value);
+      easyMDE.codemirror?.save();
+    } else {
+      textarea.value = value;
+    }
+  };
+  const insertIntoEditor = (value) => {
+    if (easyMDE?.codemirror) {
+      easyMDE.codemirror.replaceSelection(value);
+      easyMDE.codemirror.focus();
+      easyMDE.codemirror.save();
+      return;
+    }
+    const start = textarea.selectionStart || 0;
+    const end = textarea.selectionEnd || start;
+    textarea.setRangeText(value, start, end, 'end');
+    textarea.focus();
+  };
   const renderImageList = () => {
     if (!imageList) return;
     imageList.innerHTML = pendingImages.map((image, index) =>
@@ -1172,12 +1180,10 @@ function initMarkdownEditor() {
     imageList.querySelectorAll('[data-md-remove-image]').forEach((button) => {
       button.addEventListener('click', () => {
         const image = pendingImages[Number(button.getAttribute('data-md-remove-image'))];
-        if (image) {
-          textarea.value = textarea.value.split(image.token).join('');
-          pendingImages.splice(pendingImages.indexOf(image), 1);
-          renderImageList();
-          renderPreview();
-        }
+        if (!image) return;
+        setEditorValue(getEditorValue().split(image.token).join(''));
+        pendingImages.splice(pendingImages.indexOf(image), 1);
+        renderImageList();
       });
     });
   };
@@ -1198,40 +1204,61 @@ function initMarkdownEditor() {
       const token = '__MARKDOWN_IMAGE_' + Date.now() + '_' + imageSeq + '__';
       const alt = file.name.replace(/\.[^.]+$/, '') || 'Bild';
       pendingImages.push({ token, name: file.name, data: String(reader.result || '') });
-      replaceSelection('![' + alt + '](' + token + ')');
-      if (imageStatus) imageStatus.textContent = file.name + ' eingefügt.';
+      insertIntoEditor('![' + alt + '](' + token + ')');
+      setMarkdownImageStatus(file.name + ' eingefügt.');
       renderImageList();
     };
     reader.readAsDataURL(file);
   };
-  const setMarkdownImageStatus = (message) => {
-    if (imageStatus) imageStatus.textContent = message || 'Kein Bild ausgewählt.';
-  };
-  const replaceSelection = (value) => {
-    const start = textarea.selectionStart;
-    const end = textarea.selectionEnd;
-    textarea.setRangeText(value, start, end, 'select');
-    textarea.focus();
-    renderPreview();
-  };
-  const wrapSelection = (before, after = before, fallback = 'Text') => {
-    const text = selectedText() || fallback;
-    replaceSelection(before + text + after);
-  };
-  root.querySelectorAll('[data-md-action]').forEach((button) => {
-    button.addEventListener('click', () => {
-      const action = button.getAttribute('data-md-action');
-      if (action === 'heading') wrapSelection('## ', '', 'Überschrift');
-      else if (action === 'bold') wrapSelection('**', '**');
-      else if (action === 'italic') wrapSelection('*', '*');
-      else if (action === 'link') wrapSelection('[', '](https://)', 'Linktext');
-      else if (action === 'list') {
-        const lines = (selectedText() || 'Listenpunkt').split(/\r?\n/);
-        replaceSelection(lines.map((line) => '- ' + line.replace(/^[-*]\s+/, '')).join('\n'));
-      }
+
+  if (window.EasyMDE) {
+    const EasyMDE = window.EasyMDE;
+    easyMDE = new EasyMDE({
+      element: textarea,
+      autoDownloadFontAwesome: false,
+      spellChecker: false,
+      forceSync: true,
+      lineWrapping: true,
+      minHeight: '460px',
+      sideBySideFullscreen: false,
+      previewImagesInEditor: true,
+      imagesPreviewHandler: (src) => imageForToken(src)?.data || src,
+      previewClass: ['editor-preview', 'prose'],
+      renderingConfig: {
+        singleLineBreaks: false,
+      },
+      previewRender: (plainText) => {
+        const markdown = replaceImageTokens(plainText);
+        if (easyMDE && typeof easyMDE.markdown === 'function') return easyMDE.markdown(markdown);
+        return '<pre>' + htmlEscape(markdown) + '</pre>';
+      },
+      status: ['lines', 'words', 'cursor'],
+      toolbar: [
+        { name: 'bold', action: EasyMDE.toggleBold, text: 'Fett', title: 'Fett' },
+        { name: 'italic', action: EasyMDE.toggleItalic, text: 'Kursiv', title: 'Kursiv' },
+        { name: 'heading', action: EasyMDE.toggleHeadingSmaller, text: 'Titel', title: 'Überschrift' },
+        '|',
+        { name: 'unordered-list', action: EasyMDE.toggleUnorderedList, text: 'Liste', title: 'Liste' },
+        { name: 'ordered-list', action: EasyMDE.toggleOrderedList, text: '1. Liste', title: 'Nummerierte Liste' },
+        { name: 'quote', action: EasyMDE.toggleBlockquote, text: 'Zitat', title: 'Zitat' },
+        { name: 'table', action: EasyMDE.drawTable, text: 'Tabelle', title: 'Tabelle' },
+        '|',
+        { name: 'link', action: EasyMDE.drawLink, text: 'Link', title: 'Link' },
+        { name: 'zso-image', action: () => imageInput?.click(), text: 'Bild', title: 'Bild einfügen' },
+        '|',
+        { name: 'preview', action: EasyMDE.togglePreview, text: 'Vorschau', title: 'Vorschau' },
+        { name: 'side-by-side', action: EasyMDE.toggleSideBySide, text: 'Geteilt', title: 'Editor und Vorschau' },
+        { name: 'fullscreen', action: EasyMDE.toggleFullScreen, text: 'Vollbild', title: 'Vollbild' },
+        '|',
+        { name: 'undo', action: EasyMDE.undo, text: 'Zurück', title: 'Rückgängig' },
+        { name: 'redo', action: EasyMDE.redo, text: 'Wiederholen', title: 'Wiederholen' },
+      ],
     });
-  });
-  root.querySelector('[data-md-image-trigger]')?.addEventListener('click', () => imageInput?.click());
+  } else {
+    root.classList.add('markdown-editor-fallback');
+    setMarkdownImageStatus('Editor konnte nicht geladen werden. Markdown kann als Text bearbeitet werden.');
+  }
+
   imageInput?.addEventListener('change', () => {
     insertImageFile(imageInput.files?.[0]);
     imageInput.value = '';
@@ -1257,11 +1284,11 @@ function initMarkdownEditor() {
     insertImageFile(event.dataTransfer?.files?.[0]);
   });
   form?.addEventListener('submit', () => {
+    if (easyMDE) textarea.value = easyMDE.value();
     if (hiddenImages) hiddenImages.value = JSON.stringify(pendingImages);
   });
-  textarea.addEventListener('input', renderPreview);
-  renderPreview();
 }
+
 
 initThemeSelector();
 initEnhancedForms();
