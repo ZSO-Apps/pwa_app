@@ -1,9 +1,8 @@
 import { hasAccess } from '../auth.js';
 import { visibleKacheln } from '../layout.js';
 import { layout } from './layout.js';
-import { esc, LISTING_ICON } from './shared.js';
+import { EDIT_ICON, esc, LISTING_ICON, PLUS_ICON } from './shared.js';
 
-const PLUS_ICON = '<svg viewBox="0 0 24 24" width="22" height="22" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><line x1="12" y1="5" x2="12" y2="19"/><line x1="5" y1="12" x2="19" y2="12"/></svg>';
 
 function editorUrl(actions) {
   const qs = new URLSearchParams({ dir: actions.dir || '' });
@@ -27,7 +26,7 @@ function markdownEditUrl(kachelId, rel) {
 
 function renderMarkdownEditAction(editUrl) {
   if (!editUrl) return '';
-  return '<a class="secondary-button no-print" data-online-only="true" href="' + esc(editUrl) + '">Edit</a>';
+  return '<a class="secondary-button icon-button no-print" data-online-only="true" href="' + esc(editUrl) + '" title="Bearbeiten" aria-label="Bearbeiten">' + EDIT_ICON + '</a>';
 }
 
 function renderEntryActions(actions, entry) {
@@ -199,8 +198,9 @@ export function renderMarkdownEditorPage(req, kachel, { mode = 'new', rel = '', 
   const fileInputAttrs = editing ? ' readonly' : '';
   const extraHeadBeforeStyles = '<link rel="stylesheet" href="/vendor/easymde/easymde.min.css">';
   const extraHead = '<script src="/vendor/easymde/easymde.min.js" defer></script>';
+  const assetBase = withWkParam(folderUrl(kachel.id, dir), kachel.wkScoped ? req.activeWk?.id : '');
   const body = [
-    '<article class="content markdown-editor-page" data-markdown-editor-page>',
+    '<article class="content markdown-editor-page" data-markdown-editor-page data-markdown-asset-base="' + esc(assetBase) + '">',
     '<p><a href="' + esc(backUrl || folderUrl(kachel.id, dir)) + '" class="back">← Zurück</a></p>',
     '<h1>' + heading + '</h1>',
     error ? '<p class="err">' + esc(error) + '</p>' : '',
@@ -212,6 +212,11 @@ export function renderMarkdownEditorPage(req, kachel, { mode = 'new', rel = '', 
     '<section class="markdown-image-import no-print" data-markdown-image-import>',
     '<h2>Bilder</h2>',
     '<p class="muted">Bilder werden beim Speichern im Ordner <code>Dateiname.content</code> neben der Markdown-Datei abgelegt.</p>',
+    '<div class="markdown-image-options">',
+    '<label>Alt-Text<input type="text" data-markdown-image-alt autocomplete="off" placeholder="Beschreibung optional"></label>',
+    '<label>Breite<select data-markdown-image-width><option value="100">100%</option><option value="75">75%</option><option value="50">50%</option><option value="33">33%</option><option value="25">25%</option></select></label>',
+    '<label>Ausrichtung<select data-markdown-image-align><option value="">Normal</option><option value="center">Zentriert</option><option value="left">Links umflossen</option><option value="right">Rechts umflossen</option></select></label>',
+    '</div>',
     '<div class="content-dropzone markdown-image-dropzone" data-markdown-image-dropzone tabindex="0">',
     '<input type="file" accept="image/png,image/jpeg,image/webp,image/gif" data-markdown-image-file hidden>',
     '<strong>Bild hier ablegen oder klicken</strong>',

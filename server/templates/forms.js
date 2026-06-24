@@ -2,7 +2,7 @@ import { marked } from 'marked';
 import { findKachelBySlug } from '../layout.js';
 import { isDisplay, isStored } from '../form-elements.js';
 import { layout } from './layout.js';
-import { esc, formatDateTime, PRINT_ICON, renderPrintLogo } from './shared.js';
+import { esc, formatDateTime, PLUS_ICON, PRINT_ICON, renderPrintLogo } from './shared.js';
 
 function submissionWkLabel(req, def, submission) {
   if (def.scope === 'global') return '-';
@@ -375,7 +375,7 @@ function resultColumnsFor(def, { archiveMode = false } = {}) {
   };
 }
 
-function renderResultsTable(def, submissions, { archiveMode = false, canArchive = false, canUnarchive = false } = {}) {
+function renderResultsTable(def, submissions, { archiveMode = false, canArchive = false, canUnarchive = false, metaText = '' } = {}) {
   const columns = resultColumnsFor(def, { archiveMode });
   const hasArchiveAction = def.id === 'wk' && !archiveMode && canArchive;
   const hasUnarchiveAction = def.id === 'wk' && archiveMode && canUnarchive;
@@ -404,34 +404,47 @@ function renderResultsTable(def, submissions, { archiveMode = false, canArchive 
       : '';
   const formEnd = hasFormAction ? '</form>' : '';
   const sortableHeaders = columns.headers.map((h, index) => '<th aria-sort="none"><button type="button" class="table-sort-button" data-sort-col="' + index + '">' + esc(h) + '<span class="sort-indicator" aria-hidden="true"></span></button></th>').join('');
+  const metaParts = [metaText, submissions.length + ' Eingabe(n)'].filter(Boolean);
+  const metaHtml = metaParts.map((part) => '<span>' + esc(part) + '</span>').join('<span aria-hidden="true">·</span>');
+
+  if (!submissions.length) {
+    return `
+    <div class="results-toolbar">
+      <div class="results-meta">${metaHtml}</div>
+    </div>
+    <p><em>Noch keine Eingaben.</em></p>`;
+  }
 
   return `
-    <p>${submissions.length} Eingabe(n)</p>
-    ${submissions.length ? `
     ${formStart}
-    <label class="results-filter no-print">Filter<input type="search" data-results-filter placeholder="Tabelle filtern"></label>
-    <div class="result-print-actions no-print">
-      ${printButton}
-      ${archiveButton}
-      ${unarchiveButton}
-      <span class="muted" data-print-count>0 ausgewählt</span>
+    <div class="results-toolbar">
+      <div class="results-meta">${metaHtml}</div>
+      <div class="results-controls no-print">
+        <label class="results-filter"><span>Filter</span><input type="search" data-results-filter placeholder="Tabelle filtern"></label>
+        <div class="result-print-actions">
+          ${printButton}
+          ${archiveButton}
+          ${unarchiveButton}
+          <span class="muted" data-print-count>0 ausgewählt</span>
+        </div>
+      </div>
     </div>
     <div class="tablewrap"><table class="results" data-results-table>
       <thead><tr><th class="select-col"><input type="checkbox" data-print-select-all aria-label="Alle auswählen"></th>${sortableHeaders}</tr></thead>
       <tbody>${rows}</tbody>
     </table></div>
-    ${formEnd}` : '<p><em>Noch keine Eingaben.</em></p>'}`;
+    ${formEnd}`;
 }
-
 export function renderResultsPage(req, def, submissions, { wkLabel, canCreate = false, archiveMode = false, canArchive = false, canUnarchive = false } = {}) {
-  const scopeHint = def.scope === 'global'
+  const metaText = def.scope === 'global'
     ? ''
     : wkLabel
-      ? `<p class="muted">WK-Kontext: ${esc(wkLabel)}</p>`
-      : '<p class="muted">Kein WK aktiv.</p>';
+      ? `WK-Kontext: ${wkLabel}`
+      : 'Kein WK aktiv.';
   const wkParam = wkParamForDef(req, def);
+  const createLabel = def.submitLabel || 'Neuer Eintrag';
   const createButton = !archiveMode && canCreate
-    ? `<a class="secondary-button no-print" data-online-only="true" href="${withWkParam('/forms/' + encodeURIComponent(def.id), wkParam)}">+ ${esc(def.submitLabel || 'Neuer Eintrag')}</a>`
+    ? `<a class="content-add-button no-print" data-online-only="true" href="${withWkParam('/forms/' + encodeURIComponent(def.id), wkParam)}" title="${esc(createLabel)}" aria-label="${esc(createLabel)}">${PLUS_ICON}</a>`
     : '';
   const pageTitle = archiveMode ? `Archiv — ${def.title || def.id}` : `Auswertung — ${def.title || def.id}`;
   const wkArchiveLink = def.id === 'wk'
@@ -446,8 +459,7 @@ export function renderResultsPage(req, def, submissions, { wkLabel, canCreate = 
       <h1>${esc(pageTitle)}</h1>
       ${createButton}
     </div>
-    ${scopeHint}
-    ${renderResultsTable(def, submissions, { archiveMode, canArchive, canUnarchive })}
+    ${renderResultsTable(def, submissions, { archiveMode, canArchive, canUnarchive, metaText })}
     ${wkArchiveLink}
     <p><a href="${esc(formBackUrl(def))}" class="back">← Zurück</a></p>
   </article>`;
