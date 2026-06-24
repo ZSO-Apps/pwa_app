@@ -242,7 +242,7 @@ app.get('/k/:id/*', (req, res) => {
     const urlPrefix = `/k/${kachel.id}/${rel.replace(/\/$/, '')}/`;
     const entries = withWkParamForEntries(listKachelDir(k, rel, urlPrefix, role), req, kachel);
     const parts = rel.split('/').filter(Boolean);
-    const crumbs = [{ label: kachel.title, url: `/k/${kachel.id}` }];
+    const crumbs = [{ label: kachel.title, url: withWkParam(`/k/${kachel.id}`, req, kachel) }];
     let acc = `/k/${kachel.id}`;
     for (const p of parts) { acc += '/' + encodeURIComponent(p); crumbs.push({ label: decodeURIComponent(p), url: withWkParam(acc, req, kachel) }); }
     return res.send(renderListing(req, kachel, entries, crumbs, {

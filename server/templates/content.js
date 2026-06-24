@@ -135,6 +135,10 @@ export function renderListing(req, kachel, entries, breadcrumbs, { contentAction
     .map((crumb) => crumb.label)
     .filter(Boolean)
     .join(' / ') || kachel.title;
+  const crumbs = Array.isArray(breadcrumbs) ? breadcrumbs.filter(Boolean) : [];
+  const parentCrumb = crumbs.length > 1 ? crumbs[crumbs.length - 2] : null;
+  const backUrl = parentCrumb?.url || '/';
+  const backLabel = parentCrumb ? '← Zurück' : '← Zurück zur Übersicht';
   const actions = renderQuizActions(quizActions) + renderContentActions(contentActions);
   const items = entries.map((e) => {
     const icon = LISTING_ICON[e.kind] || (e.kind === 'image' ? '🖼️' : '📄');
@@ -145,13 +149,13 @@ export function renderListing(req, kachel, entries, breadcrumbs, { contentAction
   }).join('');
   const body = `
   <article class="content">
-    <p><a href="/" class="back">← Zurück zur Übersicht</a></p>
+    <p><a href="${esc(backUrl)}" class="back">${esc(backLabel)}</a></p>
     <div class="content-header">
       <h1>${esc(pageTitle)}</h1>
       ${actions}
     </div>
     <ul class="listing">${items || '<li><em>Keine Einträge</em></li>'}</ul>
-    <p><a href="/" class="back">← Zurück zur Übersicht</a></p>
+    <p><a href="${esc(backUrl)}" class="back">${esc(backLabel)}</a></p>
   </article>`;
   return layout(req, { title: pageTitle, body });
 }

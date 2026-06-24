@@ -958,6 +958,7 @@ a { color: inherit; }
 .btn:hover { background: var(--surface-hover); }
 .btn-primary { background: var(--accent); color: var(--accent-contrast); border-color: var(--accent); }
 .btn-small { padding: .3rem .55rem; font-size: .85rem; }
+.btn.icon-button { display: inline-flex; align-items: center; justify-content: center; min-width: 2.35rem; padding: .4rem; }
 
 .appell-controls { display: flex; flex-wrap: wrap; gap: .6rem; align-items: center; margin-bottom: .6rem; }
 .appell-controls .list-select select { padding: .35rem; }

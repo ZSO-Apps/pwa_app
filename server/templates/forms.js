@@ -266,7 +266,7 @@ export function renderFormPage(req, def, { submitted = false, values = {}, detai
     <p><a href="${esc(formBackUrl(def))}" class="back">← Zurück</a></p>
     <div class="content-header">
       <h1>${esc(def.title || def.id)}</h1>
-      <button type="button" class="secondary-button" data-form-print${detailAttr} disabled>Print</button>
+      <button type="button" class="secondary-button icon-button no-print" data-form-print${detailAttr} disabled title="Drucken" aria-label="Drucken">${PRINT_ICON}</button>
     </div>
     ${renderDupNameWarning(def)}
     ${submitted ? `<p class="ok">✓ Eingabe gespeichert. Die Werte bleiben als Vorlage erhalten. Erneutes Speichern erstellt eine neue Eingabe.</p>` : ''}
@@ -504,7 +504,7 @@ export function renderSubmissionPage(req, def, submission, { archiveMode = false
     <div class="content-header print-title-row">
       <h1>${esc(def.title || def.id)}</h1>
       ${renderPrintLogo()}
-      <button type="button" class="secondary-button no-print" onclick="window.print()">Print</button>
+      <button type="button" class="secondary-button icon-button no-print" onclick="window.print()" title="Drucken" aria-label="Drucken">${PRINT_ICON}</button>
     </div>
     <p class="muted">Gesendet am: ${esc(formatDateTime(submission._meta?.submittedAt) || '-')}<br>Gesendet von: ${esc(submission._meta?.submittedBy || '-')} · WK: ${esc(submissionWkLabel(req, def, submission))}</p>
     ${scoreHtml}

@@ -6,7 +6,7 @@
 - [x] Mandanten Fähigkeit (Logos)
 - [x] Print -> WK Hinzufügen
 - [x] Farbe/Design
-- [ ] MD Editor --> Fotos als MD Option
+- [x] MD Editor --> Fotos als MD Option
 - [x] Hinzufügen von Dateien (zB MD, PDF, ...) in eine Kachel (statt den Editor öffnen, einfach file upload)
 - [x] Quiz verbessern (Auswertung, was war richtig/falsch, Punkte)
 - [x] WK-Archivieren
@@ -41,7 +41,7 @@
 - [ ] Auswertungsseite Quiz/Formular ist der Text oben zu of auf neuen Zeilen (WK-Kontext: Uno, 3 Eingabe(n), Filter, 0 ausgewählt ) -> Kompakter darstellen
 - [x] Mobile Ansicht: Umbenennen/Löschen in kompaktes Pfeil-Dropdown pro Eintrag verschieben.
 - [ ] Markdown-Editor alles testen
-- [ ] Wenn man in einem Subfolder ist, zeigt der zurück button zum Home und nicht in die Kachel.
+- [x] Wenn man in einem Subfolder ist, zeigt der zurück button zum Home und nicht in die Kachel.
 - [X] Überlappende WKs in Fahreugzentrale anzeigen, wenn Transporte an diesem Tag sind.
 
 ## Prio 4
