@@ -50,4 +50,4 @@
 ## Prio 4
 - [ ] Auto Rolle (Google/Apple Maps) -> OSRM Project
 - [ ] Feedback Loop von Transport Bestellung zu Dispo und zurück
-- [ ] Essensbestellung und Matbestellung an Fahrzeugauftäge anheften (braucht konsistente Architektur über Formular-Verlinkungen) 
+- [ ] Essensbestellung und Matbestellung an Fahrzeugauftäge anheften (braucht konsistente Architektur über Formular-Verlinkungen)

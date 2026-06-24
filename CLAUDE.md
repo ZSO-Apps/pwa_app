@@ -252,7 +252,10 @@ results view automatically filters to the active WK.
   Kacheln" below). Done in `ensureWkContentFolders` in `server/forms.js`.
 - The server auto-picks the WK whose date range (start..ende) is closest to
   today (0 if today lies inside the range). The pick is persisted via the
-  `wkId` cookie; `POST /wk/select` switches it.
+  `wkId` cookie; `POST /wk/select` switches it. A valid `wkId` cookie is
+  the source of truth during normal navigation. Stale `?wk=...` URLs are
+  redirected to the cookie WK; `?wk=...` only initializes the cookie when no
+  valid cookie exists.
 - Every other form scopes its submissions to the active WK
   (`data/forms/<form-id>/<active-wk-id>/…`). Results views are auto-filtered
   to the active WK.

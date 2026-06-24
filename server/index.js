@@ -10,7 +10,7 @@ import { renderHome, renderListing, renderMarkdownPage, renderLogin, renderOffli
 import { searchContent } from './search.js';
 import { archiveWks, renderArchivedWkSubmission, renderForm, renderResults, renderSubmission, renderWkArchive, submitForm, unarchiveWks } from './forms.js';
 import { buildServiceWorker, offlineUrlsForRequest } from './sw.js';
-import { wkMiddleware, setActiveWk, listWks } from './wk.js';
+import { wkMiddleware, setActiveWk, listWks, wkUrl } from './wk.js';
 import { createUser, deleteUser, renderDeleteUser, renderEditUser, renderNewUser, renderUsers, updateUser } from './user-admin.js';
 import { createKachel, renderNewKachel } from './kachel-admin.js';
 import { resolveLogo } from './branding.js';
@@ -73,8 +73,7 @@ app.get('/api/search', (req, res) => {
 
 function withWkParam(url, req, kachel) {
   if (!kachel?.wkScoped || !req.activeWk?.id) return url;
-  const sep = url.includes('?') ? '&' : '?';
-  return url + sep + 'wk=' + encodeURIComponent(req.activeWk.id);
+  return wkUrl(url, req.activeWk.id);
 }
 
 function withWkParamForEntries(entries, req, kachel) {
@@ -127,9 +126,16 @@ app.post('/wk/select', (req, res) => {
   if (!req.user) return res.redirect('/login');
   const wantedId = String(req.body?.wkId || '');
   const wks = listWks();
-  if (wks.find((w) => w.id === wantedId)) setActiveWk(res, wantedId);
+  const selected = wks.find((w) => w.id === wantedId);
+  if (selected) setActiveWk(res, selected.id);
+  const origin = `${req.protocol}://${req.get('host')}`;
   const back = req.get('referer');
-  res.redirect(back && back.startsWith(`${req.protocol}://${req.get('host')}`) ? back : '/');
+  if (selected && back && back.startsWith(origin)) {
+    const target = new URL(back);
+    res.redirect(303, wkUrl(target.pathname + target.search + target.hash, selected.id));
+    return;
+  }
+  res.redirect(303, selected ? wkUrl('/', selected.id) : '/');
 });
 
 function ensureKachelAccess(req, res, kachel) {

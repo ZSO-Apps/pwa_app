@@ -90,10 +90,10 @@ function urlWithWk(url, wkId) {
 function initWkSelector() {
   const select = document.querySelector('[data-wk-select]');
   if (!select) return;
+  const activeWk = select.value;
   const urlWk = new URLSearchParams(window.location.search).get('wk');
-  if (urlWk && Array.from(select.options).some((option) => option.value === urlWk)) {
-    select.value = urlWk;
-    setWkCookie(urlWk);
+  if (activeWk && urlWk && urlWk !== activeWk) {
+    window.history.replaceState(null, '', urlWithWk(window.location.href, activeWk));
   }
   const apply = () => {
     const wkId = select.value;

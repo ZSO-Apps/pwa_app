@@ -89,37 +89,56 @@ export function getWk(id) {
 }
 
 const COOKIE = 'wkId';
+const COOKIE_OPTIONS = {
+  httpOnly: false,
+  sameSite: 'lax',
+  path: '/',
+  maxAge: 1000 * 60 * 60 * 24 * 365,
+};
+
+function withWkParam(url, wkId) {
+  if (!wkId) return url;
+  const raw = String(url || '');
+  const hashIndex = raw.indexOf('#');
+  const withoutHash = hashIndex >= 0 ? raw.slice(0, hashIndex) : raw;
+  const hash = hashIndex >= 0 ? raw.slice(hashIndex) : '';
+  const queryIndex = withoutHash.indexOf('?');
+  const pathname = queryIndex >= 0 ? withoutHash.slice(0, queryIndex) : withoutHash;
+  const params = new URLSearchParams(queryIndex >= 0 ? withoutHash.slice(queryIndex + 1) : '');
+  params.set('wk', wkId);
+  return pathname + '?' + params.toString() + hash;
+}
 
 export function wkMiddleware(req, res, next) {
   if (!req.user) { req.activeWk = null; return next(); }
   const wks = listWks();
   if (!wks.length) { req.activeWk = null; req.wkList = []; return next(); }
+
   const queryWk = typeof req.query?.wk === 'string' ? req.query.wk : '';
-  const wanted = queryWk || req.cookies?.[COOKIE];
-  let active = wanted ? wks.find((w) => w.id === wanted) : null;
-  if (!active) {
-    active = pickNearestWk(wks);
-    if (active) {
-      res.cookie(COOKIE, active.id, {
-        httpOnly: false, sameSite: 'lax', path: '/',
-        maxAge: 1000 * 60 * 60 * 24 * 365,
-      });
-    }
-  }
-  if (active && queryWk && req.cookies?.[COOKIE] !== active.id) {
-    res.cookie(COOKIE, active.id, {
-      httpOnly: false, sameSite: 'lax', path: '/',
-      maxAge: 1000 * 60 * 60 * 24 * 365,
-    });
-  }
+  const cookieWk = typeof req.cookies?.[COOKIE] === 'string' ? req.cookies[COOKIE] : '';
+  const queryActive = queryWk ? wks.find((w) => w.id === queryWk) : null;
+  const cookieActive = cookieWk ? wks.find((w) => w.id === cookieWk) : null;
+
+  // Der aktive WK ist eine globale Auswahl pro Gerät/Session. Deshalb gewinnt
+  // ein gültiger Cookie gegenüber alten Links mit stale ?wk=... Parametern.
+  const active = cookieActive || queryActive || pickNearestWk(wks);
+  if (active && cookieWk !== active.id) setActiveWk(res, active.id);
+
   req.activeWk = active || null;
   req.wkList = wks;
+
+  if (req.method === 'GET' && queryWk && active && queryWk !== active.id) {
+    res.redirect(302, withWkParam(req.originalUrl || req.url || '/', active.id));
+    return;
+  }
+
   next();
 }
 
 export function setActiveWk(res, id) {
-  res.cookie(COOKIE, id, {
-    httpOnly: false, sameSite: 'lax', path: '/',
-    maxAge: 1000 * 60 * 60 * 24 * 365,
-  });
+  res.cookie(COOKIE, id, COOKIE_OPTIONS);
+}
+
+export function wkUrl(url, wkId) {
+  return withWkParam(url, wkId);
 }

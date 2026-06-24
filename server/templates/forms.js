@@ -21,8 +21,15 @@ function formBackUrl(def) {
 
 function withWkParam(url, wkId) {
   if (!wkId) return url;
-  const sep = url.includes('?') ? '&' : '?';
-  return url + sep + 'wk=' + encodeURIComponent(wkId);
+  const raw = String(url || '');
+  const hashIndex = raw.indexOf('#');
+  const withoutHash = hashIndex >= 0 ? raw.slice(0, hashIndex) : raw;
+  const hash = hashIndex >= 0 ? raw.slice(hashIndex) : '';
+  const queryIndex = withoutHash.indexOf('?');
+  const pathname = queryIndex >= 0 ? withoutHash.slice(0, queryIndex) : withoutHash;
+  const params = new URLSearchParams(queryIndex >= 0 ? withoutHash.slice(queryIndex + 1) : '');
+  params.set('wk', wkId);
+  return pathname + '?' + params.toString() + hash;
 }
 
 function wkParamForDef(req, def) {
