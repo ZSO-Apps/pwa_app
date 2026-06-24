@@ -28,7 +28,7 @@
 - [x] ZSO Logo lädt nicht in der Offline-Version
 - [ ] Auto Refresh (auch in transportzentrale, wenn eine neue bestellung rein kommt oder formulare, wenn jemand ein forms ausfüllt, usw...)
 - [ ] Feldtyp Dropdown, Single Choice, Mehrfachauswahl bei Formular erstellen geht nicht, wirft immer ein Fehler
-- [ ] Bei mir jumpt die auswahl des WK immer wieder hin und her
+- [x] Bei mir jumpt die auswahl des WK immer wieder hin und her
 
 ## Sonstiges
 

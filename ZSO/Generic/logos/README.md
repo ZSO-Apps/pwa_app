@@ -21,4 +21,4 @@ Die Dateien werden öffentlich unter `/logos/<dateiname>` ausgeliefert.
 
 - Header: `org_logo_wide_transparent.png` → `org_logo_wide.png` → `org_logo_square_transparent.png` → `org_logo_square.png` → `zivilschutz_logo.jpg`
 - Print: `org_logo_wide.png` → `org_logo_square.png` → `zivilschutz_logo.jpg`
-- Favicon: `org_logo_square.png` → `zivilschutz_logo.jpg`
+- Favicon: `org_logo_square_transparent.png` → `org_logo_square.png` → `zivilschutz_logo.jpg`

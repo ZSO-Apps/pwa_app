@@ -16,6 +16,7 @@ const LOGO_ORDER = {
     'org_logo_square.png',
   ],
   favicon: [
+    'org_logo_square_transparent.png',
     'org_logo_square.png',
   ],
 };

@@ -320,7 +320,7 @@ results view automatically filters to the active WK.
   - Header order: wide transparent → wide → square transparent → square →
     fallback.
   - Print order: wide → square → fallback.
-  - Favicon order: square → fallback.
+  - Favicon order: square transparent → square → fallback.
 - `/logos/*` serves these files publicly. `/favicon.ico` uses the branding
   resolver. The service worker adds existing logo URLs to its cache/fingerprint
   so the active branding survives offline after a successful online visit.
