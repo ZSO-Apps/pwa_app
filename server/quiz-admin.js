@@ -12,6 +12,8 @@ const QUIZ_CREATOR_ROLE = 'Unteroffizier';
 const ZSO_CONTENT_ROOT = path.resolve('content_zso_specific');
 const CONTENT_ROOTS = [path.resolve('content_generic'), ZSO_CONTENT_ROOT];
 const MAX_IMAGE_BYTES = 5 * 1024 * 1024;
+const FIELD_WIDTHS = new Set(['half', 'third']);
+const DISPLAY_QUESTION_TYPES = new Set(['heading', 'paragraph', 'image']);
 
 function canManageQuiz(req, kachel) {
   return Boolean(kachel?.content && hasAccess(req.user?.role || 'public', QUIZ_CREATOR_ROLE));
@@ -168,12 +170,21 @@ function normalizePayload(body) {
     const text = String(raw?.text || '').trim();
     if (!text) throw new Error('Frage ' + number + ': Bitte eine Frage angeben.');
     const type = String(raw?.type || 'single');
-    if (!['single', 'multiple', 'free_text'].includes(type)) {
-      throw new Error('Frage ' + number + ': Antworttyp ist ungültig.');
+    if (!['single', 'multiple', 'free_text', 'heading', 'paragraph', 'image'].includes(type)) {
+      throw new Error('Frage ' + number + ': Typ ist ungültig.');
+    }
+
+    const width = FIELD_WIDTHS.has(String(raw?.width || '')) ? String(raw.width) : '';
+    const compact = Boolean(raw?.compact);
+    const imageData = raw?.imageData || '';
+
+    if (DISPLAY_QUESTION_TYPES.has(type)) {
+      if (type === 'image' && !imageData) throw new Error('Frage ' + number + ': Bitte ein Bild auswählen.');
+      return { text, type, answers: [], imageData, width };
     }
 
     if (type === 'free_text') {
-      return { text, type, answers: [], imageData: raw?.imageData || '' };
+      return { text, type, answers: [], imageData, width, compact };
     }
 
     const rawAnswers = Array.isArray(raw?.answers) ? raw.answers : [];
@@ -194,7 +205,7 @@ function normalizePayload(body) {
       throw new Error('Frage ' + number + ': Bei Multiple Choice muss mindestens eine richtige Antwort markiert sein.');
     }
 
-    return { text, type, answers, imageData: raw?.imageData || '' };
+    return { text, type, answers, imageData, width, compact };
   });
 
   return { title, questions };
@@ -216,6 +227,21 @@ function quizDefinitionFromPayload(payload, formId, targetDir, kachelId, relDir)
   const fields = [];
   payload.questions.forEach((question, idx) => {
     const number = idx + 1;
+
+    if (DISPLAY_QUESTION_TYPES.has(question.type)) {
+      const field = question.type === 'paragraph'
+        ? { type: 'paragraph', label: question.text, text: question.text }
+        : { type: question.type, label: question.text };
+      if (question.type === 'image') {
+        const image = writeQuestionImage(payload, formId, number, question.imageData, targetDir, kachelId, relDir);
+        if (!image) throw new Error('Frage ' + number + ': Bitte ein Bild auswählen.');
+        field.image = image;
+      }
+      if (FIELD_WIDTHS.has(question.width)) field.width = question.width;
+      fields.push(field);
+      return;
+    }
+
     const field = {
       name: 'frage' + number,
       type: question.type === 'multiple' ? 'checkboxes' : question.type === 'free_text' ? 'textarea' : 'radio',
@@ -224,6 +250,8 @@ function quizDefinitionFromPayload(payload, formId, targetDir, kachelId, relDir)
     };
     const image = writeQuestionImage(payload, formId, number, question.imageData, targetDir, kachelId, relDir);
     if (image) field.image = image;
+    if (FIELD_WIDTHS.has(question.width)) field.width = question.width;
+    if (question.compact) field.compact = true;
     if (question.type !== 'free_text') {
       field.options = question.answers.map((answer) => answer.text);
       const correct = question.answers.filter((answer) => answer.correct).map((answer) => answer.text);

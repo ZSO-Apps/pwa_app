@@ -1,157 +1,197 @@
 # ZSO App
 
-A self-hostable PWA for civil-protection / ZSO organizations: public offline content + protected LAN-only content + simple file-based forms, all WK-scoped. Originally built for ZSO Brugg Region; designed to be forked by any organization.
+ZSO App ist eine selbst hostbare PWA für Zivilschutzorganisationen. Die App kombiniert offline verfügbare Fachinhalte, rollenbasierte Kacheln, WK-bezogene Informationen, Formulare, Quiz, Appell und Transportzentrale. Die Architektur bleibt bewusst flach: Node.js mit Express, statische Client-Dateien und dateibasierte Speicherung ohne Datenbank.
 
-## What's inside
+## Kurzüberblick
 
-- **Public Kacheln** (no login, fully offline-cached): `FU Lage`, `FU Telematik`, `Notfall-Treffpunkt`, `Unterstützung`, `Handkarten`.
-- **Protected Kacheln** (require login on the org's LAN): `WK Organisation` (Soldat+), `Quiz` (Soldat+), `Admin` (Offizier+).
-- **Forms** live inside their host Kachel's content folder and appear in the listing as two entries — `📝 Submit` and `📊 Results`. Every submission is recorded against the currently active WK.
-- 5 role levels: `Admin > Offizier > Unteroffizier > Soldat > public`.
+- **Node/Express ohne Build-Schritt:** `npm start` startet direkt `server/index.js`.
+- **File-based Storage:** Benutzer, Formulare, WKs, Transport- und Appell-Daten werden als YAML/JSON-Dateien gespeichert.
+- **Offline-first für Lesen:** Seiten und Inhalte werden nach dem letzten Onlinezugriff lokal gecacht. Schreibaktionen sind offline deaktiviert.
+- **Rollenmodell:** `Admin > Offizier > Unteroffizier > Fahrer > Soldat > public`.
+- **Mandantenfähigkeit:** Organisationen liegen unter `ZSO/<Organisation>/`; die aktive Organisation wird über `ORG` oder ein Startargument gewählt.
+- **Kacheln statt Dateirechte:** Sichtbarkeit wird über `layout.yaml` pro Kachel geregelt, nicht pro Datei.
 
-## Run it
+## Starten
 
 ```bash
 npm install
-npm run seed-users        # writes local data/users.yaml — only needed the first time
-npm start                 # serves the Generic org on http://localhost:8080
-npm start -- BruggRegion  # serve a specific organization (folder under ZSO/)
-ORG=Weli npm start        # same, via environment variable
+npm run seed-users        # erstellt data/users.yaml beim ersten Setup
+npm run dev               # Entwicklungsmodus mit Auto-Reload via node --watch
+npm start                 # startet die Generic-Organisation auf http://localhost:8080
+npm start -- Weli         # startet eine konkrete Organisation aus ZSO/<Organisation>
+ORG=Weli npm start        # gleiches Verhalten über Umgebungsvariable
 ```
 
-Default users from `data/users.example.yaml` (all password `ZSO1234` — change before deploying!):
+Der Port kann mit `PORT=8080` gesetzt werden. Für produktive Umgebungen sollte `SESSION_SECRET` gesetzt werden; ohne Wert erzeugt die App lokal ein Secret unter `data/.session-secret`.
 
-| Username | Role           |
-|----------|----------------|
-| `Admin`  | Admin          |
-| `Of`     | Offizier       |
-| `Uof`    | Unteroffizier  |
-| `AdZS`   | Soldat         |
+## Standardbenutzer
 
-Override the port with `PORT=80 npm start`. Set `SESSION_SECRET=<32+ random chars>` for production (otherwise auto-generated and persisted to `data/.session-secret`).
+Die Vorlage liegt in `data/users.example.yaml`. Alle Beispielbenutzer verwenden initial das Passwort `ZSO1234` und müssen vor produktiver Nutzung angepasst werden.
 
-## Organizations — `ZSO/<Org>/`
+| Benutzer | Rolle |
+| --- | --- |
+| `Admin` | Admin |
+| `Of` | Offizier |
+| `Uof` | Unteroffizier |
+| `Fahrer` | Fahrer |
+| `AdZS` | Soldat |
 
-The app is multi-tenant: each organization has a folder `ZSO/<Org>/` holding its
-public branding (`logos/`) and public content/Handkarten/documents that other
-orgs don't need. Pick the org at startup with `npm start -- <Org>` or
-`ORG=<Org> npm start` (default: `Generic`).
+Die echte lokale Datei `data/users.yaml` ist absichtlich nicht versioniert.
 
-At startup the server points the fixed path `content_zso_specific_public` at
-`ZSO/<Org>` via a symlink — so logos, `/logos`, and the org's public content all
-resolve to the chosen org without further configuration. The symlink itself is
-generated and git-ignored; `ZSO/` is the tracked source of truth. Each org
-folder must contain its own default `logos/zivilschutz_logo.jpg` fallback.
+## Docker
 
-To add an organization: create `ZSO/<NewOrg>/`, drop in `logos/` (at least the
-fallback logo, optionally `org_logo_*.png` branding) and any public content
-folders (e.g. `Lage/`, `NTP/`, Handkarten), then start with `ORG=<NewOrg>`.
-
-## Deploy on a Raspberry Pi / NAS / old PC
-
-1. Install Node ≥ 18 (`apt install nodejs npm` or the official Node ARM build).
-2. Copy this folder to the device (`rsync`, USB stick, `git clone`).
-3. Production install: `npm ci --omit=dev`.
-4. Seed users once: `npm run seed-users`, then **edit the local `data/users.yaml`** to change passwords.
-5. Run: `npm start`. Open from another LAN device at `http://<pi-ip>:8080`.
-6. (Optional) Make it a systemd service (see commit history for an example unit file).
-
-## Content layout — the three roots
-
-Content lives in **three parallel roots** that are merged at runtime per Kachel
-(later wins on collision):
-
-| Root | Purpose |
-|------|---------|
-| `content_generic/`             | generic content shipped with the project |
-| `content_zso_specific_public/` | the active org's public content (symlink → `ZSO/<Org>`) |
-| `content_zso_specific/`        | org-specific overrides/additions (highest priority) |
-
-A Kachel only names a slug; the server unions all three roots:
-
-```yaml
-- id: handkarten
-  title: "Handkarten"
-  access: public            # access is decided here, not by the folder
-  content: Handkarten       # → content_generic/Handkarten + content_zso_specific/Handkarten
-  color: "#2f80ed"
+```bash
+docker compose up -d --build
 ```
 
-If several roots contain a file at the same path, the later one wins:
-`content_zso_specific/` overrides the org public folder, which overrides
-`content_generic/`. Access is governed **only** by the Kachel's `access:` in
-`layout.yaml` — the same roots serve public and protected Kacheln alike.
+Die wichtigsten Variablen stehen in `.env.example`:
 
-### Per-WK Kacheln (`wkScoped`)
-
-A Kachel with `wkScoped: true` shows content for the **active WK** only; its
-effective slug is `<content>/<active-wk-id>`. The two such Kacheln are
-`WK Infos` (`Soldat`) and `WK Infos Kader` (`Unteroffizier`). Their per-WK
-folders (`content_zso_specific/wk_infos/<wk-id>/` and `…/wk_infos_kader/<wk-id>/`)
-are created automatically when a WK is erfasst. Folders may contain subfolders,
-shown with a folder icon and navigable recursively.
-
-## Forms
-
-A form is a single `.json` file dropped into any content folder. It shows up in that Kachel's listing as **two entries**: 📝 (submit) and 📊 (results).
-
-Example: `content_generic/quiz/quiz-leitungsbau.json`
-
-```json
-{
-  "id": "quiz-leitungsbau",
-  "title": "Quiz Leitungsbau",
-  "submitLabel": "Quiz Leitungsbau",
-  "resultsLabel": "Quiz-Auswertung Leitungsbau",
-  "submitAccess": "Soldat",
-  "resultsAccess": "Unteroffizier",
-  "fields": [
-    { "name": "frage1", "type": "radio", "label": "…", "options": ["A","B"], "correct": "A", "required": true }
-  ]
-}
+```env
+APP_DOMAIN=pwa.example.local
+ORG=Generic
 ```
 
-Field types: `text`, `textarea`, `number`, `date`, `time`, `email`, `checkbox`, `radio` / `select` with `options`. Display-only elements: `heading`, `paragraph`, `signature`. Modifiers: `width` (`half`/`third`/`quarter`), `printOnly` (print-only checklist items), `correct` (quiz auto-scoring).
+`docker-compose.yml` mountet `./data` nach `/app/data`, damit Laufzeitdaten ausserhalb des Containers erhalten bleiben. Die Compose-Datei ist auf Traefik mit externem Netzwerk `proxy-network` vorbereitet.
 
-Optional `"scope": "global"` makes a form WK-independent (used only by the WK form itself).
+## Projektstruktur
 
-**Full authoring reference (German):** see [`docs/formulare.md`](docs/formulare.md) — all element types, modifiers, layout, printing and a complete example.
-
-## WK context
-
-Every logged-in user works inside the context of one **active WK**. The second banner below the top bar shows it and offers a dropdown to switch.
-
-- WKs are created by submitting the `wk` form in **Admin → WK erfassen** (`content_generic/admin/wk.json`). Creating a WK auto-creates its `wk_infos` / `wk_infos_kader` folders under `content_zso_specific/`.
-- WK records are stored at `data/forms/wk/_global/<id>.json`.
-- The server auto-selects the WK whose start/end range is closest to today.
-- Every other form submission is stored at `data/forms/<form-id>/<active-wk-id>/<timestamp>-<uuid>.json`.
-- Results views are automatically scoped to the active WK.
-- If no WK exists yet, forms (except the WK form itself) are blocked until one is created.
-
-## How offline works
-
-The service worker precaches `/`, public `/k/…` pages and their assets. Navigation is network-first; successful page loads are cached as the last online state, so a user who was signed in can still see previously loaded role-visible pages while offline.
-
-Write actions (form submissions, WK creation) require a live connection to the local server and are greyed out when the browser is offline. Public users do not see or submit forms.
-
-A timestamp at the top of every page (`Offline-Inhalte aktualisiert: …`) shows when the service worker last completed a precache pass.
-
-## Project layout
-
-```
-/server                              Express app (auth, layout, content, forms, WK, SW generator)
-/client                              CSS, client JS, manifest, icons
-/content_generic                     generic content (incl. admin/, quiz/, wk_organisation/)
-/ZSO/<Org>/                          per-org public branding (logos/) + public content
-/content_zso_specific_public         symlink → ZSO/<active Org> (generated, git-ignored)
-/content_zso_specific                org-specific overrides/additions (incl. per-WK wk_infos/)
-/data                                local runtime data, not committed
-/data/users.example.yaml             committed template for local users.yaml
-/data/forms/<form-id>/<wk-id>/…      one JSON per submission
-/data/forms/wk/_global/…             WK records themselves (global scope)
-/layout.yaml                         Kachel tree + access levels (content slug only)
+```text
+server/                         Express-App, Auth, Kacheln, Inhalte, Formulare, WK, PWA
+client/                         CSS, Browser-JavaScript, Manifest und Icons
+content_generic/                generische Inhalte und Formular-/Quiz-Definitionen
+ZSO/<Organisation>/             mandantenspezifische öffentliche Inhalte und Logos
+content_zso_specific_public     generierter Symlink auf ZSO/<aktive Organisation>
+content_zso_specific/           lokale organisationsspezifische Inhalte und WK-Inhalte
+data/                           lokale Laufzeitdaten, nicht versioniert
+layout.yaml                     Kacheln, Rollen und Content-Zuordnung
+docs/formulare.md               Referenz für Formular-JSON
 ```
 
-## License
+Die App führt Inhalte aus mehreren Quellen zusammen. Spätere Quellen übersteuern frühere Quellen bei gleichem Pfad:
 
-For now: do what you want, but don't sell it as-is. The old app from which the content was carried over is property of ZSO Brugg Region.
+1. `content_generic/`
+2. `content_zso_specific_public/` als Symlink auf `ZSO/<Organisation>/`
+3. `content_zso_specific/`
+
+## Kacheln
+
+Die Kacheln werden in `layout.yaml` definiert. Der aktuelle Stand ist:
+
+| Kachel | Zugriff | Inhalt/Route |
+| --- | --- | --- |
+| FU Lage | public | `content: Lage` |
+| FU Telematik | public | `content: Telematik` |
+| Notfall-Treffpunkt | public | `content: NTP` |
+| Unterstützung | public | `content: Unterstützung` |
+| WK Organisation | Unteroffizier | `content: wk_organisation` |
+| WK Infos | Soldat | `content: wk_infos`, WK-bezogen |
+| WK Infos Kader | Unteroffizier | `content: wk_infos_kader`, WK-bezogen |
+| Appell | Unteroffizier | `/appell` |
+| Transportzentrale | Fahrer | `/transport` |
+| Admin | Offizier | `content: admin` |
+
+Admin hat immer Zugriff auf alles. Spezialkacheln wie Appell, Transportzentrale und Admin werden optisch am Ende der Kachelübersicht geführt.
+
+## Inhalte bearbeiten
+
+Inhaltskacheln unterstützen Markdown, PDF, Bilder, Ordner, externe Links, Formulare und Quiz. Bearbeitungsaktionen sind erst ab Unteroffizier möglich und nur online verfügbar.
+
+In den Kachelübersichten gibt es ein `+`-Menü für neue Einträge. Innerhalb einzelner Dateien wird dieses Menü nicht angezeigt. Bestehende Einträge können über ein kompaktes Aktionsmenü umbenannt oder gelöscht werden, sofern die Rolle berechtigt ist.
+
+Bilder zu Markdown-Dateien werden in einem versteckten Begleitordner gespeichert:
+
+```text
+Beispiel.md
+Beispiel.content/
+```
+
+`*.content`-Ordner werden in der GUI nicht als normale Ordner angezeigt.
+
+## Formulare
+
+Formulare sind JSON-Dateien in einem Inhaltsordner. In der Übersicht erscheinen sie als Ausfüllmöglichkeit und als Auswertung. Einreichungen werden als einzelne JSON-Dateien unter `data/forms/<formular-id>/<wk-id>/` gespeichert.
+
+Unterstützte Feldtypen im Editor:
+
+- Text, Textbereich, Zahl, Datum, Zeit, Checkbox
+- Dropdown, Single Choice, Mehrfachauswahl
+- Überschrift, Absatz, Bild
+- Layoutoptionen wie halbe/drittel Breite und kompakte Darstellung
+
+Formularbilder werden in `<formular-id>.content/` abgelegt. Die vollständige technische Referenz steht in `docs/formulare.md`.
+
+## Quiz
+
+Quiz können über das `+`-Menü in Inhaltsordnern erstellt werden. Ein Quiz besteht aus Fragen mit Single Choice, Multiple Choice oder Freitext. Optional kann pro Frage ein Bild hinterlegt werden.
+
+Beim Ausfüllen wird nicht angezeigt, welche Antworten richtig oder falsch waren. Die Bewertung ist erst in der Auswertung sichtbar. Quizbilder werden analog zu Formularen in einem Begleitordner `<quiz-titel>.content/` gespeichert.
+
+## WK-Kontext
+
+Angemeldete Benutzer arbeiten in einem aktiven WK. Der aktive WK kann über die WK-Auswahl gewechselt werden. WK-bezogene Inhalte werden dadurch aus den passenden WK-Ordnern gelesen und offline verfügbar gemacht, sobald sie online geladen wurden.
+
+WKs werden über das WK-Formular im Admin-Bereich erfasst. Die WK-Daten liegen global unter:
+
+```text
+data/forms/wk/_global/
+```
+
+WK-bezogene Inhaltsordner werden unter anderem hier erstellt:
+
+```text
+content_zso_specific/wk_infos/<wk-id>/
+content_zso_specific/wk_infos_kader/<wk-id>/
+```
+
+Archivierung wird über Tags bzw. Eigenschaften in den JSON-Dateien geregelt, nicht über separate Archivordner.
+
+## Appell und Transport
+
+Der Appell ist für Unteroffiziere und höher vorgesehen und arbeitet WK-bezogen. Appelllisten können importiert und pro WK geführt werden.
+
+Die Transportzentrale ist ab Rolle Fahrer sichtbar. Transportbestellungen kommen aus Formularen und können in der Transportansicht disponiert und verfolgt werden.
+
+## Offline-Verhalten
+
+Die PWA cached geladene Seiten, Inhalte, Logos und statische Assets. Wenn ein Benutzer online angemeldet war, bleiben die zuletzt verfügbaren Inhalte gemäss damaliger Rolle offline lesbar.
+
+Offline nicht erlaubt sind Transaktionen, zum Beispiel:
+
+- Formulare absenden
+- Inhalte erstellen, importieren, umbenennen oder löschen
+- Quiz oder Formulare erstellen
+- WKs, Appell oder Transportdaten verändern
+- Benutzer verwalten
+
+Online-Funktionen werden offline ausgegraut oder mit Hinweis blockiert.
+
+## Logos und Branding
+
+Organisationslogos liegen unter:
+
+```text
+ZSO/<Organisation>/logos/
+```
+
+Das allgemeine Fallback ist `zivilschutz_logo.jpg`. Optionale Organisationslogos heissen einheitlich:
+
+- `org_logo_wide_transparent.png`
+- `org_logo_wide.png`
+- `org_logo_square_transparent.png`
+- `org_logo_square.png`
+
+Die genaue Reihenfolge für Header, Print und Favicon ist in `ZSO/Generic/logos/README.md` dokumentiert. Organisationsspezifische Logos sollen lokal bleiben und nicht versioniert werden; das Fallback-Logo darf versioniert werden.
+
+## Entwicklungshinweise
+
+- Für lokale Entwicklung `npm run dev` verwenden.
+- Es gibt keinen separaten Frontend-Build.
+- Server-Templates liegen unter `server/templates/`.
+- Client-Verhalten liegt hauptsächlich in `client/app.js`.
+- Styling liegt in `client/styles.css`.
+- Neue Kacheln gehören in `layout.yaml` oder werden über die Admin-/Kachel-Funktion als Ordner unter `content_zso_specific/` erstellt.
+- Git-Aktionen wie Pull, Push oder Commit werden bewusst nicht durch die App benötigt.
+
+## Lizenz
+
+Der übernommene Altinhalt stammt aus dem ZSO-Umfeld und ist projektspezifisch zu prüfen. Die technische App ist als interne, selbst hostbare Lösung für Zivilschutzorganisationen gedacht.

@@ -35,9 +35,12 @@ function renderEntryActions(actions, entry) {
   const kachelId = esc(actions.kachelId);
   const rel = esc(entry.manageRel);
   const name = esc(entry.manageName || entry.label || '');
-  return '<div class="listing-actions no-print">' +
-    '<button type="button" class="secondary-button compact" data-online-only="true" data-content-entry-rename data-content-kachel-id="' + kachelId + '" data-content-rel="' + rel + '" data-content-name="' + name + '">Umbenennen</button>' +
-    '<button type="button" class="danger-button compact" data-online-only="true" data-content-entry-delete data-content-kachel-id="' + kachelId + '" data-content-rel="' + rel + '" data-content-name="' + name + '">Löschen</button>' +
+  return '<div class="listing-actions no-print" data-content-entry-actions>' +
+    '<button type="button" class="entry-actions-toggle secondary-button compact" data-online-only="true" data-content-entry-menu-toggle aria-haspopup="true" aria-expanded="false" aria-label="Aktionen für ' + name + '">▾</button>' +
+    '<div class="entry-actions-menu" data-content-entry-menu hidden>' +
+      '<button type="button" class="entry-action-item" data-online-only="true" data-content-entry-rename data-content-kachel-id="' + kachelId + '" data-content-rel="' + rel + '" data-content-name="' + name + '">Umbenennen</button>' +
+      '<button type="button" class="entry-action-item danger" data-online-only="true" data-content-entry-delete data-content-kachel-id="' + kachelId + '" data-content-rel="' + rel + '" data-content-name="' + name + '">Löschen</button>' +
+    '</div>' +
     '</div>';
 }
 

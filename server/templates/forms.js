@@ -38,9 +38,9 @@ function wkParamForDef(req, def) {
 }
 
 
-function renderFieldImage(f) {
+function renderFieldImage(f, alt = '') {
   if (!f?.image) return '';
-  return '<img class="form-field-image" src="' + esc(f.image) + '" alt="">';
+  return '<img class="form-field-image" src="' + esc(f.image) + '" alt="' + esc(alt) + '">';
 }
 
 function answerArray(value) {
@@ -190,6 +190,12 @@ function renderDisplayElement(f) {
     // wie die .md-Inhalte, die ebenfalls mit marked gerendert werden.
     return `<p class="form-paragraph">${marked.parseInline(String(f.text || f.label || ''))}</p>`;
   }
+  if (f.type === 'image') {
+    const image = renderFieldImage(f, f.label || 'Bild');
+    if (!image) return '';
+    const caption = f.label ? '<figcaption>' + esc(f.label) + '</figcaption>' : '';
+    return '<figure class="form-image-block">' + image + caption + '</figure>';
+  }
   if (f.type === 'signature') {
     return `<div class="form-signature"><span class="sig-line"></span><span class="sig-label">${esc(f.label || 'Unterschrift')}</span></div>`;
   }
@@ -219,15 +225,16 @@ function renderDraftDetailElement(f) {
     }
     return `<div class="sub-check" data-print-check="${esc(f.name)}">${image}<span class="box">☐</span> <span>${label}</span></div>`;
   }
+  const compact = f.compact && f.type !== 'textarea' ? ' sub-field--compact' : '';
   if (f.printOnly) {
     const big = f.type === 'textarea';
-    return `<div class="sub-field${big ? ' sub-field--block' : ''}">
+    return `<div class="sub-field${big ? ' sub-field--block' : compact}">
       ${image}
       <div class="sub-label">${label}</div>
       <div class="sub-write${big ? ' sub-write--block' : ''}"></div>
     </div>`;
   }
-  return `<div class="sub-field">
+  return `<div class="sub-field${compact}">
     ${image}
     <div class="sub-label">${label}</div>
     <div class="sub-value" data-print-value="${esc(f.name)}"></div>

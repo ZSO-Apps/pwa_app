@@ -6,13 +6,13 @@
 //                        column (text, number, date, time, email, textarea,
 //                        radio, select, checkbox)
 //   - display elements → structural / decorative, no stored value, no results
-//                        column (heading, paragraph, signature)
+//                        column (heading, paragraph, image, signature)
 //
 // Any element may carry `printOnly: true`, meaning it is hidden while filling
 // the form and only appears in the submission detail view / printout (e.g. a
 // hand-filled checklist for staff).
 
-const DISPLAY_TYPES = new Set(['heading', 'paragraph', 'signature']);
+const DISPLAY_TYPES = new Set(['heading', 'paragraph', 'image', 'signature']);
 
 export function isDisplay(el) {
   return DISPLAY_TYPES.has(el?.type);
