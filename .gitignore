@@ -14,6 +14,9 @@ data/forms/
 data/appell/
 data/transport/
 
+# Local protected org-specific content
+content_zso_specific/
+
 # Appell source spreadsheets (contain real personal data: names, AHV, phone)
 Appellliste*.xlsx
 Appellliste*.xlsx:Zone.Identifier
