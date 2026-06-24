@@ -1,0 +1,48 @@
+{
+  "id": "quiz-bar",
+  "title": "Quiz bar",
+  "submitLabel": "Quiz bar",
+  "resultsLabel": "Quiz-Auswertung bar",
+  "submitAccess": "Soldat",
+  "resultsAccess": "Unteroffizier",
+  "quiz": true,
+  "fields": [
+    {
+      "name": "frage1",
+      "type": "radio",
+      "label": "Hali Halo",
+      "required": true,
+      "image": "/k/lage/bar.content/quiz-bar-frage-1.png",
+      "options": [
+        "a",
+        "b",
+        "c",
+        "d"
+      ],
+      "correct": "c"
+    },
+    {
+      "name": "frage2",
+      "type": "checkboxes",
+      "label": "die 2te",
+      "required": true,
+      "image": "/k/lage/bar.content/quiz-bar-frage-2.png",
+      "options": [
+        "la",
+        "le",
+        "lu",
+        "lo"
+      ],
+      "correct": [
+        "la",
+        "lo"
+      ]
+    },
+    {
+      "name": "frage3",
+      "type": "textarea",
+      "label": "asdfghjui",
+      "required": true
+    }
+  ]
+}

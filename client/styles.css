@@ -1037,6 +1037,13 @@ a { color: inherit; }
 
 /* timeline */
 .tz-timeline { overflow-x: auto; border: 1px solid var(--border); border-radius: 8px; background: var(--card-bg); }
+/* Cross-WK read-only sections shown below the active WK on the same time axis. */
+.tz-cross { margin-top: 1.25rem; }
+.tz-cross-divider { display: flex; align-items: center; gap: .6rem; margin: .5rem 0 .75rem; color: var(--muted); font-size: .75rem; text-transform: uppercase; letter-spacing: .06em; }
+.tz-cross-divider::before, .tz-cross-divider::after { content: ""; flex: 1; height: 1px; background: var(--border); }
+.tz-cross-sec { margin-bottom: 1rem; }
+.tz-cross-head { font-weight: 600; color: var(--muted); margin: .25rem 0 .35rem; }
+.tz-bar--ro { cursor: default; }
 .tz-ruler-row, .tz-row { display: flex; align-items: stretch; border-bottom: 1px solid var(--border); width: max-content; min-width: 100%; }
 .tz-row:last-child { border-bottom: 0; }
 .tz-row-label { flex: 0 0 8.5rem; width: 8.5rem; padding: .4rem .5rem; box-sizing: border-box; border-right: 1px solid var(--border); position: sticky; left: 0; background: var(--card-bg); z-index: 2; }
