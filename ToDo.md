@@ -33,7 +33,7 @@
 ## Sonstiges
 
 - [ ] "+" Button nach unten links platzieren (oberhalb Lupe) in Home Ansicht
-- [ ] "+ Feld hinzufügen" beim Formular muss unterhalb der Felder sein, sonst muss man immer nach oben scrollen (genau wie beim Quiz)
+- [x] "+ Feld hinzufügen" beim Formular muss unterhalb der Felder sein, sonst muss man immer nach oben scrollen (genau wie beim Quiz)
 - [ ] "Optionen, eine pro Zeile" bei Formular nur einbelden, wenn benötigt vom Feld-Typ
 - [ ] Add width half / third as checkbox to form/quiz (see json of existing forms)
 - [ ] Compact option für Felder in Formular/Quiz Editor (Eingabefeld rechts vom text und nicht darunter) als checkbox einbauen
