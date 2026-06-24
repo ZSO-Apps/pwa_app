@@ -200,6 +200,89 @@ if ('serviceWorker' in navigator) {
 }
 
 
+const AUTO_REFRESH_INTERVAL_MS = 15000;
+const PAGE_AUTO_REFRESH_INTERVAL_MS = 30000;
+const AUTO_REFRESH_IDLE_MS = 5000;
+
+function initAutoRefresh() {
+  if (window.ZSOAutoRefresh) return;
+
+  let lastInteractionAt = 0;
+  const editableSelector = 'input:not([type="hidden"]), textarea, select, [contenteditable="true"]';
+
+  const touch = () => { lastInteractionAt = Date.now(); };
+
+  const markDirty = (target) => {
+    touch();
+    const form = target?.closest?.('form');
+    if (!form) return;
+    if (form.matches('[data-wk-form], .global-search-form, .auth-form')) return;
+    form.dataset.autoRefreshDirty = 'true';
+  };
+
+  const hasActiveInput = () => {
+    const el = document.activeElement;
+    if (!el || el === document.body) return false;
+    return Boolean(el.matches?.(editableSelector) || el.closest?.('.CodeMirror-focused'));
+  };
+
+  const hasOpenEditor = () => Boolean(document.querySelector('dialog[open], .appell-modal-overlay, .CodeMirror-focused'));
+  const hasDirtyState = () => Boolean(document.querySelector('[data-auto-refresh-dirty="true"]'));
+  const isPrinting = () => document.body.classList.contains('print-detail-bundle')
+    || document.body.classList.contains('tz-print-order')
+    || document.body.classList.contains('tz-print-overview');
+
+  const isPaused = () => {
+    if (navigator.onLine === false || document.hidden) return true;
+    if (Date.now() - lastInteractionAt < AUTO_REFRESH_IDLE_MS) return true;
+    return hasActiveInput() || hasOpenEditor() || hasDirtyState() || isPrinting();
+  };
+
+  const register = (callback, { interval = AUTO_REFRESH_INTERVAL_MS } = {}) => {
+    let running = false;
+    const run = async () => {
+      if (running || isPaused()) return;
+      running = true;
+      try {
+        await callback();
+      } catch (error) {
+        console.warn('Auto refresh failed', error);
+      } finally {
+        running = false;
+      }
+    };
+    const id = window.setInterval(run, interval);
+    window.addEventListener('online', () => window.setTimeout(run, AUTO_REFRESH_IDLE_MS));
+    document.addEventListener('visibilitychange', () => {
+      if (!document.hidden) window.setTimeout(run, AUTO_REFRESH_IDLE_MS);
+    });
+    return () => window.clearInterval(id);
+  };
+
+  window.ZSOAutoRefresh = { isPaused, touch, markDirty, register };
+
+  document.addEventListener('input', (event) => markDirty(event.target), true);
+  document.addEventListener('change', (event) => markDirty(event.target), true);
+  document.addEventListener('focusin', touch, true);
+  document.addEventListener('pointerdown', touch, true);
+  document.addEventListener('submit', (event) => {
+    event.target?.removeAttribute?.('data-auto-refresh-dirty');
+  }, true);
+
+  if (shouldAutoRefreshPage()) {
+    register(() => { window.location.reload(); }, { interval: PAGE_AUTO_REFRESH_INTERVAL_MS });
+  }
+}
+
+function shouldAutoRefreshPage() {
+  if (document.querySelector('[data-transport], [data-appell]')) return false;
+  if (document.querySelector('[data-markdown-editor-page], [data-form-builder-page], [data-quiz-builder], [data-appell-import]')) return false;
+  if (document.querySelector('form[data-enhanced-form], form.loginform')) return false;
+  if (document.querySelector('[data-results-print], .home-page, .listing')) return true;
+  return location.pathname.startsWith('/admin/users');
+}
+
+
 function removePrintBundle() {
   document.body.classList.remove('print-detail-bundle');
   document.getElementById('print-bundle')?.remove();
@@ -369,6 +452,7 @@ function initResultsTables() {
     };
 
     filter?.addEventListener('input', () => {
+      container?.setAttribute('data-auto-refresh-dirty', 'true');
       const query = normalize(filter.value);
       rows.forEach((row) => {
         row.hidden = Boolean(query) && !normalize(row.textContent).includes(query);
@@ -378,6 +462,7 @@ function initResultsTables() {
 
     table.querySelectorAll('[data-sort-col]').forEach((button) => {
       button.addEventListener('click', () => {
+        container?.setAttribute('data-auto-refresh-dirty', 'true');
         const dataIndex = Number(button.getAttribute('data-sort-col'));
         if (!Number.isInteger(dataIndex)) return;
         const th = button.closest('th');
@@ -1347,6 +1432,7 @@ function initMarkdownEditor() {
 }
 
 
+initAutoRefresh();
 initThemeSelector();
 initEnhancedForms();
 initContentActions();

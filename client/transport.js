@@ -69,8 +69,11 @@
       vehicle: localStorage.getItem(VEHICLE_KEY) || '',
       canDispatch,
     };
+    let loading = false;
 
-    async function load() {
+    async function load({ silent = false } = {}) {
+      if (loading) return;
+      loading = true;
       try {
         const q = state.date ? '?date=' + encodeURIComponent(state.date) : '';
         const res = await fetch(apiUrl('/api/transport/data' + q));
@@ -82,7 +85,9 @@
         state.canDispatch = data.canDispatch;
         render();
       } catch (e) {
-        mount.innerHTML = `<p class="error">${esc(e.message)}</p>`;
+        if (!silent || !state.data) mount.innerHTML = `<p class="error">${esc(e.message)}</p>`;
+      } finally {
+        loading = false;
       }
     }
 
@@ -700,6 +705,7 @@
 
     window.addEventListener('online', render);
     window.addEventListener('offline', render);
+    window.ZSOAutoRefresh?.register(() => load({ silent: true }));
     load();
   }
 

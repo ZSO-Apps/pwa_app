@@ -26,13 +26,13 @@
 ## Bugs
 
 - [x] ZSO Logo lädt nicht in der Offline-Version
-- [ ] Auto Refresh (auch in transportzentrale, wenn eine neue bestellung rein kommt oder formulare, wenn jemand ein forms ausfüllt, usw...)
+- [x] Auto Refresh (auch in transportzentrale, wenn eine neue bestellung rein kommt oder formulare, wenn jemand ein forms ausfüllt, usw...)
 - [ ] Feldtyp Dropdown, Single Choice, Mehrfachauswahl bei Formular erstellen geht nicht, wirft immer ein Fehler
 - [x] Bei mir jumpt die auswahl des WK immer wieder hin und her
 
 ## Sonstiges
 
-- [ ] "+" Button nach unten links platzieren (oberhalb Lupe) in Home Ansicht
+- [x] "+" Button nach unten links platzieren (oberhalb Lupe) in Home Ansicht
 - [x] "+ Feld hinzufügen" beim Formular muss unterhalb der Felder sein, sonst muss man immer nach oben scrollen (genau wie beim Quiz)
 - [ ] "Optionen, eine pro Zeile" bei Formular nur einbelden, wenn benötigt vom Feld-Typ
 - [ ] Add width half / third as checkbox to form/quiz (see json of existing forms)
@@ -46,8 +46,8 @@
 - [ ] Wenn man in einem Subfolder ist, zeigt der zurück button zum Home und nicht in die Kachel.
 - [X] Überlappende WKs in Fahreugzentrale anzeigen, wenn Transporte an diesem Tag sind.
 
-
 ## Prio 4
+
 - [ ] Auto Rolle (Google/Apple Maps) -> OSRM Project
 - [ ] Feedback Loop von Transport Bestellung zu Dispo und zurück
 - [ ] Essensbestellung und Matbestellung an Fahrzeugauftäge anheften (braucht konsistente Architektur über Formular-Verlinkungen)

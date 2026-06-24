@@ -54,11 +54,14 @@
       filters: { bereich: '', funktion: '', grad: '', tag: '', liste: '', q: '' },
       canEdit: true,
     };
+    let loading = false;
 
     const online = () => navigator.onLine !== false;
 
-    async function load() {
-      mount.innerHTML = '<p class="muted">Wird geladen …</p>';
+    async function load({ silent = false } = {}) {
+      if (loading) return;
+      loading = true;
+      if (!silent) mount.innerHTML = '<p class="muted">Wird geladen …</p>';
       try {
         const url = wkUrl('/api/appell/data' + (state.listId ? '?list=' + encodeURIComponent(state.listId) : ''));
         const res = await fetch(url);
@@ -68,11 +71,16 @@
         state.data = data;
         state.listId = data.list ? data.list.id : '__all';
         state.canEdit = data.canEditTags !== false;
-        if (data.days && data.days.includes(today)) state.day = today;
-        else if (data.days && data.days.length) state.day = data.days[0];
+        if (data.days && data.days.length) {
+          if (!state.day || !data.days.includes(state.day)) {
+            state.day = data.days.includes(today) ? today : data.days[0];
+          }
+        }
         render();
       } catch (e) {
-        mount.innerHTML = `<p class="error">${esc(e.message)}</p>`;
+        if (!silent || !state.data) mount.innerHTML = `<p class="error">${esc(e.message)}</p>`;
+      } finally {
+        loading = false;
       }
     }
 
@@ -438,6 +446,7 @@
 
     window.addEventListener('online', () => render());
     window.addEventListener('offline', () => render());
+    window.ZSOAutoRefresh?.register(() => load({ silent: true }));
     load();
   }
 

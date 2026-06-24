@@ -465,6 +465,13 @@ These resolve the previously open questions and reflect the current code.
 - Unten rechts ist eine rollenbasierte Suche eingebunden. Die API `GET /api/search?q=...` nutzt `visibleKacheln(role)` und durchsucht nur Kacheln, welche für die aktuelle Rolle sichtbar sind.
 - Markdown-Dateien werden nach Dateiname und Inhalt durchsucht. PDF- und URL-Dateien werden über Dateiname bzw. Ziel-URL gefunden, ohne zusätzliche Datenbank oder Index-Datei.
 
+## Auto-Refresh
+
+- Die zentrale Browser-Logik liegt in `client/app.js` als `window.ZSOAutoRefresh`.
+- Transportzentrale und Appell registrieren eigene Daten-Reloads und laden ihre JSON-APIs alle 15 Sekunden neu, statt die ganze Seite zu reloaden.
+- Servergerenderte Übersichten wie Kachellisten, Home, Admin-User und Formular-Auswertungen reloaden die Seite alle 30 Sekunden.
+- Auto-Refresh pausiert bei Offline-Status, verstecktem Tab, aktiven Eingabefeldern, offenen Dialogen/Modals, Druckzuständen und bei allen als geändert markierten Formularen/Tabellen. Dadurch gehen laufende Eingaben, Filter, Sortierungen und ausgewählte Zeilen nicht durch einen Refresh verloren.
+
 ## Quiz Builder
 
 - Quizdefinitionen werden als normale Formular-JSON unter `content_zso_specific/quiz` erstellt. Optional hochgeladene Bilder liegen unter `content_zso_specific/quiz/.assets` und werden über `/k/quiz/.assets/...` ausgeliefert.
