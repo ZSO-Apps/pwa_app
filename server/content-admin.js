@@ -25,10 +25,12 @@ const IMPORT_TYPES = {
   },
 };
 
-const FIELD_TYPES = new Set(['text', 'textarea', 'number', 'date', 'time', 'select', 'radio', 'checkboxes', 'checkbox']);
+const FIELD_TYPES = new Set(['text', 'textarea', 'number', 'date', 'time', 'select', 'radio', 'checkboxes', 'checkbox', 'heading', 'paragraph', 'image']);
 const IMAGE_DATA_PATTERN = /^data:image\/(png|jpe?g|gif|webp);base64,([A-Za-z0-9+/=]+)$/i;
 const MAX_MARKDOWN_IMAGE_BYTES = 5 * 1024 * 1024;
 const OPTION_FIELD_TYPES = new Set(['select', 'radio', 'checkboxes']);
+const FIELD_WIDTHS = new Set(['half', 'third']);
+const DISPLAY_FIELD_TYPES = new Set(['heading', 'paragraph', 'image']);
 const ROLES = new Set(['Soldat', 'Unteroffizier', 'Offizier', 'Admin']);
 
 function canManageContent(req, kachel) {
@@ -312,9 +314,9 @@ function decodeOriginalFilename(req) {
 }
 
 function parseFieldOptions(value) {
-  return String(value || '')
-    .split(/\r?\n/)
-    .map((line) => line.trim())
+  const source = Array.isArray(value) ? value : String(value || '').split(/\r?\n/);
+  return source
+    .map((line) => String(line || '').trim())
     .filter(Boolean);
 }
 
@@ -326,20 +328,84 @@ function uniqueFieldName(label, index, used) {
   return candidate;
 }
 
+function formAssetUrl(kachelId, relDir, assetDirName, fileName) {
+  return folderUrl(kachelId, relDir) + encodedAssetPath(assetDirName, fileName);
+}
+
+function normalizeDisplayField(raw, index, type) {
+  const label = String(raw?.label || '').trim();
+  const text = String(raw?.text || '').trim();
+  let field;
+
+  if (type === 'heading') {
+    if (!label) throw new Error('Feld ' + (index + 1) + ': Bitte einen Header angeben.');
+    field = { type, label };
+  } else if (type === 'paragraph') {
+    const body = text || label;
+    if (!body) throw new Error('Feld ' + (index + 1) + ': Bitte einen Paragraph-Text angeben.');
+    field = { type, label: label || body, text: body };
+  } else if (type === 'image') {
+    const imageData = String(raw?.imageData || '').trim();
+    const image = String(raw?.image || '').trim();
+    if (!imageData && !image) throw new Error('Feld ' + (index + 1) + ': Bitte ein Bild auswählen.');
+    if (imageData) decodeInlineImage(imageData);
+    field = { type, label: label || 'Bild' };
+    if (image) field.image = image;
+    if (imageData) field._imageData = imageData;
+  }
+
+  const width = FIELD_WIDTHS.has(String(raw?.width || '')) ? String(raw.width) : '';
+  if (width) field.width = width;
+  return field;
+}
+
+function finalizeFormImages(definition, targetDir, kachelId, relDir) {
+  const assetDirName = contentFolderName(definition.id);
+  let assetDir = '';
+  const used = new Set();
+
+  (definition.fields || []).forEach((field, index) => {
+    if (field?.type !== 'image') {
+      if (field && field._imageData) delete field._imageData;
+      return;
+    }
+    if (!field._imageData) return;
+    const decoded = decodeInlineImage(field._imageData);
+    if (!assetDir) {
+      assetDir = safeResolve(targetDir, assetDirName);
+      fs.mkdirSync(assetDir, { recursive: true });
+    }
+    const base = safeFileBase(field.label || ('bild-' + (index + 1)));
+    let fileName = base + '.' + decoded.ext;
+    for (let n = 2; used.has(fileName.toLowerCase()) || fs.existsSync(safeResolve(assetDir, fileName)); n++) {
+      fileName = base + '-' + n + '.' + decoded.ext;
+    }
+    used.add(fileName.toLowerCase());
+    fs.writeFileSync(safeResolve(assetDir, fileName), decoded.buffer);
+    field.image = formAssetUrl(kachelId, relDir, assetDirName, fileName);
+    delete field._imageData;
+  });
+}
+
 function normalizeFormFields(rawFields) {
   const source = Array.isArray(rawFields) ? rawFields : [];
   if (!source.length) throw new Error('Bitte mindestens ein Feld erfassen.');
   const used = new Set();
   return source.map((raw, index) => {
+    const type = FIELD_TYPES.has(raw?.type) ? raw.type : 'text';
+    if (DISPLAY_FIELD_TYPES.has(type)) return normalizeDisplayField(raw, index, type);
+
     const label = String(raw?.label || '').trim();
     if (!label) throw new Error('Feld ' + (index + 1) + ': Bitte eine Bezeichnung angeben.');
-    const type = FIELD_TYPES.has(raw?.type) ? raw.type : 'text';
     const field = {
       name: uniqueFieldName(label, index + 1, used),
       type,
       label,
       required: Boolean(raw?.required),
     };
+    const width = FIELD_WIDTHS.has(String(raw?.width || '')) ? String(raw.width) : '';
+    if (width) field.width = width;
+    if (raw?.compact) field.compact = true;
     if (OPTION_FIELD_TYPES.has(type)) {
       const options = parseFieldOptions(raw?.options);
       if (options.length < 2) throw new Error('Feld ' + (index + 1) + ': Bitte mindestens zwei Optionen angeben.');
@@ -503,6 +569,7 @@ export function saveFormDefinition(req, res, kachelId) {
     const definition = normalizeFormDefinition(req.body || {}, targetDir);
     const filePath = uniqueTargetFile(targetDir, definition.id, '.json');
     fs.mkdirSync(targetDir, { recursive: true });
+    finalizeFormImages(definition, targetDir, kachel.id, relDir);
     fs.writeFileSync(filePath, JSON.stringify(definition, null, 2) + '\n');
     loadLayout();
     res.redirect(folderUrl(kachel.id, relDir));

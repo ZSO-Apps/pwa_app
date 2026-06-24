@@ -478,6 +478,13 @@ These resolve the previously open questions and reflect the current code.
 - Quiz hinzufügen ist für `Unteroffizier` und höher verfügbar. Ausfüllen bleibt `Soldat`, Auswertungen bleiben `Unteroffizier`.
 - Single- und Multiple-Choice-Fragen werden erst in der Auswertung bewertet. Freitextfragen werden gespeichert, aber nicht automatisch bepunktet.
 
+## Formular Builder
+
+- Dropdown, Single Choice und Mehrfachauswahl werden im Builder mit einzelnen Optionszeilen gepflegt (`+ Antwort hinzufügen`), nicht mehr als Textarea mit einer Option pro Zeile.
+- Formularfelder und Quiz-Fragen können im Builder `width: "half"`, `width: "third"` und `compact: true` setzen. Die Breiten-Checkboxen sind gegenseitig exklusiv.
+- Formular- und Quiz-Builder unterstützen zusätzlich nicht gespeicherte Anzeigeelemente: Header, Paragraph und Bild. Bilddateien aus Formularen landen im Ordner `<formular-id>.content/`; Quiz-Bilder bleiben im Quiz-Asset-Ordner.
+- Beim Speichern serialisiert der Client `options` als Array; der Server akzeptiert Arrays und zeilenbasierte Altwerte.
+
 ## Appell (Anwesenheit)
 
 Eigenständiges Modul zur täglichen Anwesenheitskontrolle pro WK. Bewusst
@@ -556,6 +563,7 @@ data/appell/<wk-id>/lists/<list-id>/
 - Das Menü erstellt Markdown-Dateien, generische Formular-JSONs, importiert Markdown/PDF/Bilder, verlinkt Webseiten und erstellt Ordner.
 - Bilder zu Markdown-Dateien und Quizfragen werden in sibling asset folders mit Endung `.content` gespeichert, z.B. `Meine Datei.content/`. Diese Ordner sind technische Asset-Ordner und werden in Kachel-Übersichten, Suche und Form-Scan ausgeblendet.
 - Markdown-Dateien können ab `Unteroffizier` direkt bearbeitet werden. Sichtbare Listing-Einträge aus allen Content-Roots (`content_generic`, aktive Organisation via `content_zso_specific_public`, `content_zso_specific`) können ab `Unteroffizier` umbenannt oder gelöscht werden, sofern die Rolle Zugriff auf die Kachel hat.
+- Umbenennen/Löschen in Kachel-Listings liegt in einem kompakten Pfeil-Dropdown pro Eintrag, damit die mobile Ansicht nicht mit selten genutzten Aktionen überladen wird.
 - Der Markdown-Editor verwendet lokal ausgeliefertes EasyMDE (`/vendor/easymde/*`) statt CDN. Spellchecker und FontAwesome-Autodownload sind deaktiviert, damit der Editor auch im lokalen/offlinefähigen Betrieb keine externen Assets nachlädt. Gespeichert wird weiterhin reines Markdown; Bilder laufen über die bestehende `Dateiname.content/`-Ablage.
 - Erstellen, Importieren, Bearbeiten, Umbenennen, Löschen und Speichern sind Online-only. Die UI markiert diese Elemente mit `data-online-only` bzw. `data-online-only-form`, damit gecachte Offline-Seiten keine Schreibaktionen auslösen.
 

@@ -6,6 +6,7 @@
 
   const STATUS_ORDER = ['', 'anwesend', 'abwesend', 'krank'];
   const STATUS_LABEL = { '': 'offen', anwesend: 'anwesend', abwesend: 'abwesend', krank: 'krank' };
+  const PRINT_ICON = `<svg viewBox="0 0 24 24" width="20" height="20" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M6 9V2h12v7"/><path d="M6 18H4a2 2 0 0 1-2-2v-5a2 2 0 0 1 2-2h16a2 2 0 0 1 2 2v5a2 2 0 0 1-2 2h-2"/><path d="M6 14h12v8H6z"/><path d="M18 12h.01"/></svg>`;
 
   const fmtDay = (iso) => {
     const [y, m, d] = iso.split('-');
@@ -117,7 +118,7 @@
             <button data-view="matrix" class="${state.view === 'matrix' ? 'active' : ''}">Übersicht</button>
             <button data-view="day" class="${state.view === 'day' ? 'active' : ''}">Tagesansicht</button>
           </div>
-          <button class="btn btn-small" data-print>🖨 Drucken</button>
+          <button class="btn btn-small icon-button" data-print title="Drucken" aria-label="Drucken">${PRINT_ICON}</button>
         </div>
         <div class="appell-filters no-print">
           ${selectHtml('bereich', 'Bereich', d.filters.bereiche)}

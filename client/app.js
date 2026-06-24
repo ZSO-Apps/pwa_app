@@ -746,6 +746,38 @@ function initContentActions() {
 
 
 function initContentEntryActions() {
+  const closeEntryMenus = (except = null) => {
+    document.querySelectorAll('[data-content-entry-actions]').forEach((root) => {
+      if (except && root === except) return;
+      const menu = root.querySelector('[data-content-entry-menu]');
+      const toggle = root.querySelector('[data-content-entry-menu-toggle]');
+      if (menu) menu.hidden = true;
+      toggle?.setAttribute('aria-expanded', 'false');
+    });
+  };
+
+  document.querySelectorAll('[data-content-entry-menu-toggle]').forEach((button) => {
+    button.addEventListener('click', (event) => {
+      event.preventDefault();
+      event.stopPropagation();
+      const root = button.closest('[data-content-entry-actions]');
+      const menu = root?.querySelector('[data-content-entry-menu]');
+      if (!root || !menu) return;
+      const open = menu.hidden;
+      closeEntryMenus(root);
+      menu.hidden = !open;
+      button.setAttribute('aria-expanded', open ? 'true' : 'false');
+    });
+  });
+
+  document.addEventListener('click', (event) => {
+    if (event.target.closest('[data-content-entry-actions]')) return;
+    closeEntryMenus();
+  });
+  document.addEventListener('keydown', (event) => {
+    if (event.key === 'Escape') closeEntryMenus();
+  });
+
   const postEntryAction = async (button, action, body) => {
     if (navigator.onLine === false) {
       window.alert('Diese Funktion benötigt eine Verbindung zum Server.');
@@ -838,10 +870,29 @@ function initQuizBuilder() {
     });
   };
 
+  const quizDisplayTypes = new Set(['heading', 'paragraph', 'image']);
+
   const answerInputType = (question) => {
     const type = question.querySelector('[data-quiz-type]')?.value || 'single';
     if (type === 'multiple') return 'checkbox';
     return 'radio';
+  };
+
+  const selectedQuestionWidth = (question) => {
+    if (question.querySelector('[data-quiz-width="half"]')?.checked) return 'half';
+    if (question.querySelector('[data-quiz-width="third"]')?.checked) return 'third';
+    return '';
+  };
+
+  const bindQuestionWidthChoices = (question) => {
+    question.querySelectorAll('[data-quiz-width]').forEach((input) => {
+      input.addEventListener('change', () => {
+        if (!input.checked) return;
+        question.querySelectorAll('[data-quiz-width]').forEach((other) => {
+          if (other !== input) other.checked = false;
+        });
+      });
+    });
   };
 
   const addAnswer = (question, text = '', correct = false) => {
@@ -871,9 +922,20 @@ function initQuizBuilder() {
     const answersWrap = question.querySelector('[data-quiz-answers-wrap]');
     const addAnswerButton = question.querySelector('[data-quiz-add-answer]');
     const answers = question.querySelector('[data-quiz-answers]');
+    const label = question.querySelector('[data-quiz-question-label]');
+    const imageLabel = question.querySelector('[data-quiz-image-label]');
     const freeText = type === 'free_text';
-    if (answersWrap) answersWrap.hidden = freeText;
-    if (addAnswerButton) addAnswerButton.hidden = freeText;
+    const display = quizDisplayTypes.has(type);
+    const usesAnswers = !freeText && !display;
+    if (answersWrap) answersWrap.hidden = !usesAnswers;
+    if (addAnswerButton) addAnswerButton.hidden = !usesAnswers;
+    if (label) {
+      label.textContent = type === 'heading' ? 'Header *'
+        : type === 'paragraph' ? 'Paragraph *'
+        : type === 'image' ? 'Bildbeschreibung *'
+        : 'Frage *';
+    }
+    if (imageLabel) imageLabel.textContent = type === 'image' ? 'Bild *' : 'Bild optional';
     answers.querySelectorAll('[data-quiz-correct]').forEach((input, index) => {
       input.type = type === 'multiple' ? 'checkbox' : 'radio';
       input.name = 'correct-' + question.dataset.qid;
@@ -925,9 +987,9 @@ function initQuizBuilder() {
         '<h2>Frage <span data-question-number></span></h2>' +
         '<button type="button" class="secondary-button compact" data-quiz-remove-question>Frage entfernen</button>' +
       '</div>' +
-      '<label class="field">Frage *<textarea data-quiz-question-text rows="3" required></textarea></label>' +
+      '<label class="field"><span data-quiz-question-label>Frage *</span><textarea data-quiz-question-text rows="3" required></textarea></label>' +
       '<div class="field quiz-image-import">' +
-        '<span>Bild optional</span>' +
+        '<span data-quiz-image-label>Bild optional</span>' +
         '<div class="content-dropzone quiz-image-dropzone" data-quiz-image-dropzone tabindex="0">' +
           '<input type="file" accept="image/png,image/jpeg,image/webp,image/gif" data-quiz-image hidden>' +
           '<strong>Bild hier ablegen oder klicken</strong>' +
@@ -936,11 +998,19 @@ function initQuizBuilder() {
         '<p class="muted" data-quiz-image-name>Kein Bild ausgewählt.</p>' +
         '<div class="quiz-image-preview" data-quiz-image-preview hidden></div>' +
       '</div>' +
-      '<label class="field">Antworttyp *<select data-quiz-type>' +
+      '<label class="field">Typ *<select data-quiz-type>' +
         '<option value="single">Single Choice</option>' +
         '<option value="multiple">Multiple Choice</option>' +
         '<option value="free_text">Freitext</option>' +
+        '<option value="heading">Header</option>' +
+        '<option value="paragraph">Paragraph</option>' +
+        '<option value="image">Bild</option>' +
       '</select></label>' +
+      '<div class="builder-field-options">' +
+        '<label class="checkbox"><input type="checkbox" data-quiz-width="half"> Halbe Breite</label>' +
+        '<label class="checkbox"><input type="checkbox" data-quiz-width="third"> Drittelbreite</label>' +
+        '<label class="checkbox"><input type="checkbox" data-quiz-compact> Kompakt (Eingabe rechts)</label>' +
+      '</div>' +
       '<div data-quiz-answers-wrap>' +
         '<div class="quiz-answers" data-quiz-answers></div>' +
         '<button type="button" class="secondary-button compact" data-quiz-add-answer>+ Antwort hinzufügen</button>' +
@@ -955,6 +1025,7 @@ function initQuizBuilder() {
     });
     question.querySelector('[data-quiz-add-answer]')?.addEventListener('click', () => addAnswer(question));
     question.querySelector('[data-quiz-type]')?.addEventListener('change', () => syncQuestionType(question));
+    bindQuestionWidthChoices(question);
     const imageInput = question.querySelector('[data-quiz-image]');
     const imageDropzone = question.querySelector('[data-quiz-image-dropzone]');
     imageInput?.addEventListener('change', (event) => setImageFile(question, event.target.files?.[0], imageInput));
@@ -989,7 +1060,16 @@ function initQuizBuilder() {
       const type = question.querySelector('[data-quiz-type]')?.value || 'single';
       const text = question.querySelector('[data-quiz-question-text]')?.value?.trim() || '';
       if (!text) throw new Error('Frage ' + (index + 1) + ': Bitte eine Frage angeben.');
-      if (type === 'free_text') return { text, type, answers: [], imageData: question._imageData || '' };
+      const layout = {};
+      const width = selectedQuestionWidth(question);
+      if (width) layout.width = width;
+      if (question.querySelector('[data-quiz-compact]')?.checked && !quizDisplayTypes.has(type)) layout.compact = true;
+      const imageData = question._imageData || '';
+      if (quizDisplayTypes.has(type)) {
+        if (type === 'image' && !imageData) throw new Error('Frage ' + (index + 1) + ': Bitte ein Bild auswählen.');
+        return { text, type, answers: [], imageData, ...layout };
+      }
+      if (type === 'free_text') return { text, type, answers: [], imageData, ...layout };
       const answers = Array.from(question.querySelectorAll('[data-quiz-answer]')).map((row) => ({
         text: row.querySelector('[data-quiz-answer-text]')?.value?.trim() || '',
         correct: Boolean(row.querySelector('[data-quiz-correct]')?.checked),
@@ -998,7 +1078,7 @@ function initQuizBuilder() {
       const correct = answers.filter((answer) => answer.correct);
       if (type === 'single' && correct.length !== 1) throw new Error('Frage ' + (index + 1) + ': Genau eine richtige Antwort markieren.');
       if (type === 'multiple' && correct.length < 1) throw new Error('Frage ' + (index + 1) + ': Mindestens eine richtige Antwort markieren.');
-      return { text, type, answers, imageData: question._imageData || '' };
+      return { text, type, answers, imageData, ...layout };
     });
     return { title, dir: relDir, questions };
   };
@@ -1159,10 +1239,157 @@ function initFormBuilder() {
     "'": '&#39;',
   }[char]));
 
+  const optionFieldTypes = new Set(['select', 'radio', 'checkboxes']);
+  const displayFieldTypes = new Set(['heading', 'paragraph', 'image']);
+
+  const optionValues = (value) => {
+    if (Array.isArray(value)) return value.map((item) => String(item || '').trim()).filter(Boolean);
+    return String(value || '').split(/\r?\n/).map((item) => item.trim()).filter(Boolean);
+  };
+
+  const selectedFieldWidth = (row) => {
+    if (row.querySelector('[data-form-field-width="half"]')?.checked) return 'half';
+    if (row.querySelector('[data-form-field-width="third"]')?.checked) return 'third';
+    return '';
+  };
+
+  const bindFieldWidthChoices = (row) => {
+    row.querySelectorAll('[data-form-field-width]').forEach((input) => {
+      input.addEventListener('change', () => {
+        if (!input.checked) return;
+        row.querySelectorAll('[data-form-field-width]').forEach((other) => {
+          if (other !== input) other.checked = false;
+        });
+      });
+    });
+  };
+
+  const setFieldImageFile = (row, file, fileInput = null) => {
+    const preview = row.querySelector('[data-form-field-image-preview]');
+    const imageName = row.querySelector('[data-form-field-image-name]');
+    row._imageData = '';
+    row.removeAttribute('data-form-field-existing-image');
+    if (imageName) imageName.textContent = file ? file.name : 'Kein Bild ausgewählt.';
+    if (!file) {
+      if (preview) preview.hidden = true;
+      return;
+    }
+    if (!file.type.startsWith('image/')) {
+      window.alert('Bitte ein Bild auswählen.');
+      if (fileInput) fileInput.value = '';
+      if (imageName) imageName.textContent = 'Kein Bild ausgewählt.';
+      return;
+    }
+    if (file.size > 5 * 1024 * 1024) {
+      window.alert('Bilder dürfen maximal 5 MB gross sein.');
+      if (fileInput) fileInput.value = '';
+      if (imageName) imageName.textContent = 'Kein Bild ausgewählt.';
+      return;
+    }
+    const reader = new FileReader();
+    reader.onload = () => {
+      row._imageData = String(reader.result || '');
+      if (preview) {
+        preview.hidden = false;
+        preview.innerHTML = '<img src="' + escHtml(row._imageData) + '" alt="Vorschau">';
+      }
+    };
+    reader.readAsDataURL(file);
+  };
+
+  const showInitialFieldImage = (row, initial = {}) => {
+    const src = initial.imageData || initial.image || '';
+    if (!src) return;
+    const preview = row.querySelector('[data-form-field-image-preview]');
+    const imageName = row.querySelector('[data-form-field-image-name]');
+    if (initial.imageData) row._imageData = initial.imageData;
+    if (initial.image) row.setAttribute('data-form-field-existing-image', initial.image);
+    if (imageName) imageName.textContent = initial.imageData ? 'Bild ausgewählt.' : 'Bild bereits hinterlegt.';
+    if (preview) {
+      preview.hidden = false;
+      preview.innerHTML = '<img src="' + escHtml(src) + '" alt="Vorschau">';
+    }
+  };
+
+  const syncOptionRemoveButtons = (row) => {
+    const options = row.querySelectorAll('[data-form-field-option]');
+    options.forEach((option) => {
+      const remove = option.querySelector('[data-form-field-remove-option]');
+      if (remove) remove.hidden = options.length <= 2;
+    });
+  };
+
+  const addOption = (row, value = '') => {
+    const options = row.querySelector('[data-form-field-options]');
+    if (!options) return null;
+    const option = document.createElement('div');
+    option.className = 'form-builder-option';
+    option.setAttribute('data-form-field-option', '');
+    option.innerHTML =
+      '<input data-form-field-option-text placeholder="Option" value="' + escHtml(value) + '">' +
+      '<button type="button" class="secondary-button compact" data-form-field-remove-option>Entfernen</button>';
+    options.appendChild(option);
+    option.querySelector('[data-form-field-remove-option]')?.addEventListener('click', () => {
+      option.remove();
+      if (!options.querySelector('[data-form-field-option]')) {
+        addOption(row);
+        addOption(row);
+      }
+      syncOptionRemoveButtons(row);
+    });
+    syncOptionRemoveButtons(row);
+    return option;
+  };
+
+  const ensureMinimumOptions = (row) => {
+    const options = row.querySelector('[data-form-field-options]');
+    if (!options) return;
+    while (options.querySelectorAll('[data-form-field-option]').length < 2) addOption(row);
+    syncOptionRemoveButtons(row);
+  };
+
   const syncOptionsVisibility = (row) => {
     const type = row.querySelector('[data-form-field-type]')?.value || 'text';
+    const display = displayFieldTypes.has(type);
     const options = row.querySelector('[data-form-field-options-wrap]');
-    if (options) options.hidden = !['select', 'radio', 'checkboxes'].includes(type);
+    const paragraph = row.querySelector('[data-form-field-text-wrap]');
+    const image = row.querySelector('[data-form-field-image-wrap]');
+    const requiredWrap = row.querySelector('[data-form-field-required-wrap]');
+    const compactWrap = row.querySelector('[data-form-field-compact-wrap]');
+    const labelCaption = row.querySelector('[data-form-field-label-caption]');
+    const labelInput = row.querySelector('[data-form-field-label]');
+    const showOptions = optionFieldTypes.has(type);
+
+    if (options) options.hidden = !showOptions;
+    if (paragraph) paragraph.hidden = type !== 'paragraph';
+    if (image) image.hidden = type !== 'image';
+    if (requiredWrap) {
+      requiredWrap.hidden = display;
+      if (display) {
+        const requiredInput = requiredWrap.querySelector('input');
+        if (requiredInput) requiredInput.checked = false;
+      }
+    }
+    if (compactWrap) {
+      compactWrap.hidden = display;
+      if (display) {
+        const compactInput = compactWrap.querySelector('input');
+        if (compactInput) compactInput.checked = false;
+      }
+    }
+    if (labelCaption) {
+      labelCaption.textContent = type === 'heading' ? 'Header *'
+        : type === 'paragraph' ? 'Kurzbezeichnung optional'
+        : type === 'image' ? 'Bildbeschreibung optional'
+        : 'Bezeichnung *';
+    }
+    if (labelInput) {
+      labelInput.placeholder = type === 'heading' ? 'z.B. Besteller'
+        : type === 'paragraph' ? 'optional'
+        : type === 'image' ? 'optional'
+        : '';
+    }
+    if (showOptions) ensureMinimumOptions(row);
   };
 
   const renumber = () => {
@@ -1185,7 +1412,7 @@ function initFormBuilder() {
         '<button type="button" class="secondary-button compact" data-form-builder-remove>Feld entfernen</button>' +
       '</div>' +
       '<div class="field-row">' +
-        '<label class="field">Bezeichnung *<input data-form-field-label required value="' + escHtml(initial.label || '') + '"></label>' +
+        '<label class="field" data-form-field-label-wrap><span data-form-field-label-caption>Bezeichnung *</span><input data-form-field-label value="' + escHtml(initial.label || '') + '"></label>' +
         '<label class="field">Typ<select data-form-field-type>' +
           '<option value="text">Text</option>' +
           '<option value="textarea">Freitext</option>' +
@@ -1196,13 +1423,69 @@ function initFormBuilder() {
           '<option value="radio">Single Choice</option>' +
           '<option value="checkboxes">Mehrfachauswahl</option>' +
           '<option value="checkbox">Checkbox</option>' +
+          '<option value="heading">Header</option>' +
+          '<option value="paragraph">Paragraph</option>' +
+          '<option value="image">Bild</option>' +
         '</select></label>' +
       '</div>' +
-      '<label class="checkbox"><input type="checkbox" data-form-field-required' + (initial.required ? ' checked' : '') + '> Pflichtfeld</label>' +
-      '<label class="field" data-form-field-options-wrap hidden>Optionen, eine pro Zeile<textarea data-form-field-options rows="4">' + escHtml((initial.options || []).join('\n')) + '</textarea></label>';
+      '<label class="checkbox" data-form-field-required-wrap><input type="checkbox" data-form-field-required' + (initial.required ? ' checked' : '') + '> Pflichtfeld</label>' +
+      '<div class="builder-field-options">' +
+        '<label class="checkbox"><input type="checkbox" data-form-field-width="half"' + (initial.width === 'half' ? ' checked' : '') + '> Halbe Breite</label>' +
+        '<label class="checkbox"><input type="checkbox" data-form-field-width="third"' + (initial.width === 'third' ? ' checked' : '') + '> Drittelbreite</label>' +
+        '<label class="checkbox" data-form-field-compact-wrap><input type="checkbox" data-form-field-compact' + (initial.compact ? ' checked' : '') + '> Kompakt (Eingabe rechts)</label>' +
+      '</div>' +
+      '<div class="field" data-form-field-text-wrap hidden>' +
+        '<span>Text *</span>' +
+        '<textarea data-form-field-text rows="3">' + escHtml(initial.text || '') + '</textarea>' +
+      '</div>' +
+      '<div class="field form-builder-image-import" data-form-field-image-wrap hidden>' +
+        '<span>Bild *</span>' +
+        '<div class="content-dropzone quiz-image-dropzone" data-form-field-image-dropzone tabindex="0">' +
+          '<input type="file" accept="image/png,image/jpeg,image/webp,image/gif" data-form-field-image-file hidden>' +
+          '<strong>Bild hier ablegen oder klicken</strong>' +
+          '<span>PNG, JPG, WebP oder GIF · maximal 5 MB</span>' +
+        '</div>' +
+        '<p class="muted" data-form-field-image-name>Kein Bild ausgewählt.</p>' +
+        '<div class="quiz-image-preview form-builder-image-preview" data-form-field-image-preview hidden></div>' +
+      '</div>' +
+      '<div class="field" data-form-field-options-wrap hidden>' +
+        '<span>Optionen</span>' +
+        '<div class="form-builder-options" data-form-field-options></div>' +
+        '<button type="button" class="secondary-button compact" data-form-field-add-option>+ Antwort hinzufügen</button>' +
+      '</div>';
     fieldsRoot.appendChild(row);
     const typeSelect = row.querySelector('[data-form-field-type]');
     if (initial.type) typeSelect.value = initial.type;
+    optionValues(initial.options).forEach((option) => addOption(row, option));
+    showInitialFieldImage(row, initial);
+    row.querySelector('[data-form-field-add-option]')?.addEventListener('click', () => addOption(row));
+    bindFieldWidthChoices(row);
+    const imageInput = row.querySelector('[data-form-field-image-file]');
+    const imageDropzone = row.querySelector('[data-form-field-image-dropzone]');
+    imageInput?.addEventListener('change', (event) => {
+      setFieldImageFile(row, event.target.files?.[0], imageInput);
+      imageInput.value = '';
+    });
+    imageDropzone?.addEventListener('click', () => imageInput?.click());
+    imageDropzone?.addEventListener('keydown', (event) => {
+      if (event.key === 'Enter' || event.key === ' ') {
+        event.preventDefault();
+        imageInput?.click();
+      }
+    });
+    ['dragenter', 'dragover'].forEach((name) => {
+      imageDropzone?.addEventListener(name, (event) => {
+        event.preventDefault();
+        imageDropzone.classList.add('is-dragging');
+      });
+    });
+    ['dragleave', 'drop'].forEach((name) => {
+      imageDropzone?.addEventListener(name, () => imageDropzone.classList.remove('is-dragging'));
+    });
+    imageDropzone?.addEventListener('drop', (event) => {
+      event.preventDefault();
+      setFieldImageFile(row, event.dataTransfer?.files?.[0], imageInput);
+    });
     typeSelect.addEventListener('change', () => syncOptionsVisibility(row));
     row.querySelector('[data-form-builder-remove]')?.addEventListener('click', () => {
       row.remove();
@@ -1214,18 +1497,39 @@ function initFormBuilder() {
   };
 
   const collectFields = () => Array.from(fieldsRoot.querySelectorAll('[data-form-builder-field]')).map((row, index) => {
-    const label = row.querySelector('[data-form-field-label]')?.value?.trim() || '';
-    if (!label) throw new Error('Feld ' + (index + 1) + ': Bitte eine Bezeichnung angeben.');
     const type = row.querySelector('[data-form-field-type]')?.value || 'text';
-    const field = {
-      label,
-      type,
-      required: Boolean(row.querySelector('[data-form-field-required]')?.checked),
-    };
-    if (['select', 'radio', 'checkboxes'].includes(type)) {
-      field.options = (row.querySelector('[data-form-field-options]')?.value || '')
-        .split(/\r?\n/)
-        .map((line) => line.trim())
+    const label = row.querySelector('[data-form-field-label]')?.value?.trim() || '';
+    let field;
+
+    if (type === 'heading') {
+      if (!label) throw new Error('Feld ' + (index + 1) + ': Bitte einen Header angeben.');
+      field = { label, type };
+    } else if (type === 'paragraph') {
+      const body = row.querySelector('[data-form-field-text]')?.value?.trim() || '';
+      if (!body) throw new Error('Feld ' + (index + 1) + ': Bitte einen Paragraph-Text angeben.');
+      field = { label: label || body, type, text: body };
+    } else if (type === 'image') {
+      const imageData = row._imageData || '';
+      const image = row.getAttribute('data-form-field-existing-image') || '';
+      if (!imageData && !image) throw new Error('Feld ' + (index + 1) + ': Bitte ein Bild auswählen.');
+      field = { label: label || 'Bild', type };
+      if (imageData) field.imageData = imageData;
+      if (image) field.image = image;
+    } else {
+      if (!label) throw new Error('Feld ' + (index + 1) + ': Bitte eine Bezeichnung angeben.');
+      field = {
+        label,
+        type,
+        required: Boolean(row.querySelector('[data-form-field-required]')?.checked),
+      };
+    }
+
+    const width = selectedFieldWidth(row);
+    if (width) field.width = width;
+    if (!displayFieldTypes.has(type) && row.querySelector('[data-form-field-compact]')?.checked) field.compact = true;
+    if (optionFieldTypes.has(type)) {
+      field.options = Array.from(row.querySelectorAll('[data-form-field-option-text]'))
+        .map((input) => input.value.trim())
         .filter(Boolean);
       if (field.options.length < 2) throw new Error('Feld ' + (index + 1) + ': Bitte mindestens zwei Optionen angeben.');
     }
@@ -1265,6 +1569,21 @@ function initMarkdownEditor() {
   const imageDropzone = root.querySelector('[data-markdown-image-dropzone]');
   const imageStatus = root.querySelector('[data-markdown-image-status]');
   const imageList = root.querySelector('[data-markdown-image-list]');
+  const imageAltInput = root.querySelector('[data-markdown-image-alt]');
+  const imageWidthInput = root.querySelector('[data-markdown-image-width]');
+  const imageAlignInput = root.querySelector('[data-markdown-image-align]');
+  const rawAssetBase = root.dataset.markdownAssetBase || location.pathname.replace(/[^/]*$/, '');
+  const normalizeAssetBase = (value) => {
+    try {
+      const url = new URL(value || './', location.origin);
+      if (!url.pathname.endsWith('/')) url.pathname += '/';
+      return url.pathname + url.search + url.hash;
+    } catch {
+      const fallback = String(value || './');
+      return fallback.endsWith('/') ? fallback : fallback + '/';
+    }
+  };
+  const assetBase = normalizeAssetBase(rawAssetBase);
   if (!textarea) return;
 
   const pendingImages = [];
@@ -1282,6 +1601,29 @@ function initMarkdownEditor() {
     if (imageStatus) imageStatus.textContent = message || 'Kein Bild ausgewählt.';
   };
   const imageForToken = (token) => pendingImages.find((image) => image.token === token);
+  const isExternalOrAbsoluteAsset = (src) => /^(?:[a-z][a-z0-9+.-]*:|\/\/|#|\/)/i.test(String(src || '').trim());
+  const resolveMarkdownAsset = (src) => {
+    const raw = String(src || '').trim();
+    const tokenImage = imageForToken(raw);
+    if (tokenImage) return tokenImage.data;
+    if (!raw || isExternalOrAbsoluteAsset(raw)) return raw;
+    try {
+      const baseUrl = new URL(assetBase || './', location.origin);
+      const resolved = new URL(raw, baseUrl);
+      if (!resolved.search && baseUrl.search) resolved.search = baseUrl.search;
+      return resolved.pathname + resolved.search + resolved.hash;
+    } catch {
+      return raw;
+    }
+  };
+  const rewritePreviewAssets = (html) => {
+    const template = document.createElement('template');
+    template.innerHTML = String(html || '');
+    template.content.querySelectorAll('img[src]').forEach((img) => {
+      img.setAttribute('src', resolveMarkdownAsset(img.getAttribute('src')));
+    });
+    return template.innerHTML;
+  };
   const replaceImageTokens = (markdown) => {
     let value = String(markdown || '');
     pendingImages.forEach((image) => {
@@ -1297,6 +1639,28 @@ function initMarkdownEditor() {
     } else {
       textarea.value = value;
     }
+  };
+  const markdownAttrEscape = (value) => String(value || '').replace(/[&<>"']/g, (char) => ({
+    '&': '&amp;',
+    '<': '&lt;',
+    '>': '&gt;',
+    '"': '&quot;',
+    "'": '&#39;',
+  }[char]));
+  const imageMarkup = (src, alt, width, align) => {
+    const attrs = ['src="' + markdownAttrEscape(src) + '"'];
+    const cleanAlt = String(alt || '').trim();
+    if (cleanAlt) attrs.push('alt="' + markdownAttrEscape(cleanAlt) + '"');
+    const widthValue = String(width || '').trim();
+    const style = [];
+    if (widthValue && widthValue !== '100') style.push('width: ' + widthValue + '%');
+    style.push('max-width: 100%');
+    const alignValue = String(align || '').trim();
+    if (alignValue === 'left') style.push('float: left', 'margin: 0 .9rem .5rem 0');
+    if (alignValue === 'right') style.push('float: right', 'margin: 0 0 .5rem .9rem');
+    if (alignValue === 'center') style.push('display: block', 'margin: .5rem auto');
+    if (style.length) attrs.push('style="' + markdownAttrEscape(style.join('; ')) + '"');
+    return '<img ' + attrs.join(' ') + ' />';
   };
   const insertIntoEditor = (value) => {
     if (easyMDE?.codemirror) {
@@ -1315,7 +1679,8 @@ function initMarkdownEditor() {
     imageList.innerHTML = pendingImages.map((image, index) =>
       '<div class="markdown-image-item">' +
         '<img src="' + htmlEscape(image.data) + '" alt="Vorschau">' +
-        '<span>' + htmlEscape(image.name) + '</span>' +
+        '<div class="markdown-image-meta"><strong>' + htmlEscape(image.name) + '</strong>' +
+        '<span>Breite: ' + htmlEscape(image.width || '100') + '% · Ausrichtung: ' + htmlEscape(image.align || 'normal') + '</span></div>' +
         '<button type="button" class="secondary-button compact" data-md-remove-image="' + index + '">Entfernen</button>' +
       '</div>'
     ).join('');
@@ -1344,10 +1709,13 @@ function initMarkdownEditor() {
     reader.onload = () => {
       imageSeq += 1;
       const token = '__MARKDOWN_IMAGE_' + Date.now() + '_' + imageSeq + '__';
-      const alt = file.name.replace(/\.[^.]+$/, '') || 'Bild';
-      pendingImages.push({ token, name: file.name, data: String(reader.result || '') });
-      insertIntoEditor('![' + alt + '](' + token + ')');
+      const alt = (imageAltInput?.value || file.name.replace(/\.[^.]+$/, '') || 'Bild').trim();
+      const width = imageWidthInput?.value || '100';
+      const align = imageAlignInput?.value || '';
+      pendingImages.push({ token, name: file.name, data: String(reader.result || ''), width, align });
+      insertIntoEditor(imageMarkup(token, alt, width, align));
       setMarkdownImageStatus(file.name + ' eingefügt.');
+      if (imageAltInput) imageAltInput.value = '';
       renderImageList();
     };
     reader.readAsDataURL(file);
@@ -1364,14 +1732,14 @@ function initMarkdownEditor() {
       minHeight: '460px',
       sideBySideFullscreen: false,
       previewImagesInEditor: true,
-      imagesPreviewHandler: (src) => imageForToken(src)?.data || src,
+      imagesPreviewHandler: (src) => resolveMarkdownAsset(src),
       previewClass: ['editor-preview', 'prose'],
       renderingConfig: {
         singleLineBreaks: false,
       },
       previewRender: (plainText) => {
         const markdown = replaceImageTokens(plainText);
-        if (easyMDE && typeof easyMDE.markdown === 'function') return easyMDE.markdown(markdown);
+        if (easyMDE && typeof easyMDE.markdown === 'function') return rewritePreviewAssets(easyMDE.markdown(markdown));
         return '<pre>' + htmlEscape(markdown) + '</pre>';
       },
       status: ['lines', 'words', 'cursor'],
@@ -1388,9 +1756,9 @@ function initMarkdownEditor() {
         { name: 'link', action: EasyMDE.drawLink, text: 'Link', title: 'Link' },
         { name: 'zso-image', action: () => imageInput?.click(), text: 'Bild', title: 'Bild einfügen' },
         '|',
-        { name: 'preview', action: EasyMDE.togglePreview, text: 'Vorschau', title: 'Vorschau' },
-        { name: 'side-by-side', action: EasyMDE.toggleSideBySide, text: 'Geteilt', title: 'Editor und Vorschau' },
-        { name: 'fullscreen', action: EasyMDE.toggleFullScreen, text: 'Vollbild', title: 'Vollbild' },
+        { name: 'preview', action: EasyMDE.togglePreview, text: 'Vorschau', title: 'Vorschau', noDisable: true },
+        { name: 'side-by-side', action: EasyMDE.toggleSideBySide, text: 'Geteilt', title: 'Editor und Vorschau', noDisable: true },
+        { name: 'fullscreen', action: EasyMDE.toggleFullScreen, text: 'Vollbild', title: 'Vollbild', noDisable: true },
         '|',
         { name: 'undo', action: EasyMDE.undo, text: 'Zurück', title: 'Rückgängig' },
         { name: 'redo', action: EasyMDE.redo, text: 'Wiederholen', title: 'Wiederholen' },

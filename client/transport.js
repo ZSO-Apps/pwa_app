@@ -19,6 +19,7 @@
 
   const TRAILER_TYPES = ['Ersteinsatzanhänger', 'Kofferanhänger', 'Materialanhänger grün', 'Dreiseitenkipper', 'Zeltanhänger', 'Andere'];
   const PHASE_LABEL = { geplant: 'geplant', laufend: 'läuft', abgeschlossen: 'erledigt' };
+  const PRINT_ICON = `<svg viewBox="0 0 24 24" width="20" height="20" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M6 9V2h12v7"/><path d="M6 18H4a2 2 0 0 1-2-2v-5a2 2 0 0 1 2-2h16a2 2 0 0 1 2 2v5a2 2 0 0 1-2 2h-2"/><path d="M6 14h12v8H6z"/><path d="M18 12h.01"/></svg>`;
 
   const esc = (s) => String(s ?? '').replace(/[&<>"']/g, (c) => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c]));
   const hhmm = (min) => {
@@ -128,7 +129,7 @@
             <button data-view="timeline" class="${state.view === 'timeline' ? 'active' : ''}">Zeitstrahl</button>
             <button data-view="list" class="${state.view === 'list' ? 'active' : ''}">Aufträge</button>
           </div>
-          <button class="btn btn-small" data-print-overview>🖨 Drucken</button>
+          <button class="btn btn-small icon-button" data-print-overview title="Übersicht drucken" aria-label="Übersicht drucken">${PRINT_ICON}</button>
           ${state.canDispatch ? '<button class="btn btn-small" data-new-order>+ Auftrag</button><button class="btn btn-small" data-fleet>Fuhrpark</button>' : ''}
         </div>
         <div class="tz-print-head" data-print-head></div>
@@ -468,7 +469,7 @@
       const { ov, close } = modal(`
         <h2>${order ? 'Fahrauftrag' : best ? 'Bestellung disponieren' : 'Neuer Fahrauftrag'}</h2>
         ${best ? `<p class="muted">aus Bestellung von ${esc(best.name || '–')}</p>` : ''}
-        ${order ? `<div class="tz-modal-tools no-print"><button type="button" class="btn btn-small" data-print-order>🖨 Auftrag drucken</button></div>${orderPrintHtml(o)}` : ''}
+        ${order ? `<div class="tz-modal-tools no-print"><button type="button" class="btn btn-small icon-button" data-print-order title="Auftrag drucken" aria-label="Auftrag drucken">${PRINT_ICON}</button></div>${orderPrintHtml(o)}` : ''}
         ${driverBox}
         <form data-order-form class="tz-form">
           <div class="tz-grid2">
