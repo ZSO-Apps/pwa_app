@@ -82,8 +82,13 @@ function readMergedDir(kachel, relPath = '') {
   return [...byName.values()];
 }
 
+function isVersionsDirName(name) {
+  return String(name || '').toLowerCase().endsWith('.versions');
+}
+
 function isHiddenContentDirName(name) {
-  return String(name || '').toLowerCase().endsWith('.content');
+  const n = String(name || '').toLowerCase();
+  return n.endsWith('.content') || n.endsWith('.versions');
 }
 
 function contentRel(relPath, name) {
@@ -271,30 +276,67 @@ function duplicateFieldNames(def) {
   return [...dups];
 }
 
+function annotateFormDef(def, child, slug) {
+  def._slug = slug || null;
+  def._file = child;
+  def._dupNames = duplicateFieldNames(def);
+  if (def._dupNames.length) {
+    console.warn(`form '${def.id}': doppelte Feldnamen: ${def._dupNames.join(', ')}`);
+  }
+  return def;
+}
+
+// Load the revised-version definitions stored in a hidden `<family>.versions/`
+// folder into the versions registry. Family = folder name without `.versions`.
+function loadVersionDefs(dir, slug, versions) {
+  const family = path.basename(dir).replace(/\.versions$/i, '');
+  for (const e of fs.readdirSync(dir, { withFileTypes: true })) {
+    if (!e.isFile() || !e.name.toLowerCase().endsWith('.json')) continue;
+    const def = readFormDef(path.join(dir, e.name));
+    if (!def?.id || def.type === 'admin-page') continue;
+    def.version = { ...(def.version || {}) };
+    if (!def.version.family) def.version.family = family;
+    annotateFormDef(def, path.join(dir, e.name), slug);
+    versions[def.id] = def;
+  }
+}
+
+// Sort key for version defs (base first, then by createdAt / versionId).
+function versionSortKey(def) {
+  return String(def?.version?.createdAt || def?.id || '');
+}
+
+// Discover form definitions across all content roots. Returns `forms` (family
+// base defs keyed by their id, each carrying `_versions[]` with the base first)
+// and `versions` (revised versions keyed by their versionId).
 export function scanForms() {
   const forms = {};
+  const versions = {};
   // `slug` is the top-level content folder a form lives in (e.g. "wk_organisation"),
   // which maps back to its Kachel via layout `content:`.
   const walk = (abs, slug) => {
     if (!fs.existsSync(abs)) return;
     for (const e of fs.readdirSync(abs, { withFileTypes: true })) {
-      if (e.name.startsWith('.') || isHiddenContentDirName(e.name)) continue;
+      if (e.name.startsWith('.')) continue;
       const child = path.join(abs, e.name);
+      if (isVersionsDirName(e.name)) { loadVersionDefs(child, slug, versions); continue; }
+      if (isHiddenContentDirName(e.name)) continue;
       if (e.isDirectory()) walk(child, slug || e.name);
       else if (e.name.toLowerCase().endsWith('.json')) {
         const def = readFormDef(child);
         if (def?.type === 'admin-page') continue;
-        if (def?.id) {
-          def._slug = slug || null;
-          def._dupNames = duplicateFieldNames(def);
-          if (def._dupNames.length) {
-            console.warn(`form '${def.id}': doppelte Feldnamen: ${def._dupNames.join(', ')}`);
-          }
-          forms[def.id] = def;
-        }
+        if (def?.id) forms[def.id] = annotateFormDef(def, child, slug);
       }
     }
   };
   for (const root of Object.values(ROOT_DIRS)) walk(root, '');
-  return forms;
+
+  // Attach each family's version chain: base first, then revisions in order.
+  for (const [family, def] of Object.entries(forms)) {
+    const revisions = Object.values(versions)
+      .filter((v) => v.version?.family === family)
+      .sort((a, b) => versionSortKey(a).localeCompare(versionSortKey(b)));
+    def._versions = [def, ...revisions];
+  }
+  return { forms, versions };
 }

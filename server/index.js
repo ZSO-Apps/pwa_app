@@ -8,7 +8,7 @@ import { listKachelDir, renderMarkdown, mimeOf, resolveKachelPath, kachelRoots, 
 import { contentActionContext, createContentFolder, deleteContentEntry, importContentFile, renameContentEntry, renderEditMarkdownPage, renderNewFormPage, renderNewMarkdownPage, saveContentLink, saveFormDefinition, saveMarkdownContent, saveMarkdownEdit } from './content-admin.js';
 import { renderHome, renderListing, renderMarkdownPage, renderLogin, renderOffline, renderError } from './templates/index.js';
 import { searchContent } from './search.js';
-import { archiveWks, renderArchivedWkSubmission, renderForm, renderResults, renderSubmission, renderWkArchive, submitForm, unarchiveWks } from './forms.js';
+import { archiveWks, pinVersionAction, renderArchivedWkSubmission, renderForm, renderResults, renderRevise, renderSubmission, renderSubmissionEdit, renderWkArchive, serveSubmissionMap, submitForm, submitRevise, submitSubmissionEdit, toggleModifyAllow, unarchiveWks } from './forms.js';
 import { buildServiceWorker, offlineUrlsForRequest } from './sw.js';
 import { wkMiddleware, setActiveWk, listWks, wkUrl } from './wk.js';
 import { createUser, deleteUser, renderDeleteUser, renderEditUser, renderNewUser, renderUsers, updateUser } from './user-admin.js';
@@ -23,6 +23,7 @@ import {
 import {
   renderTransportPage, apiData as apiTransportData, apiSaveFleet, apiCreateOrder,
   apiUpdateOrder, apiDeleteOrder, apiOrderStatus, apiReleaseTrailer,
+  apiLinkOrder, apiUnlinkOrder,
 } from './transport.js';
 
 const PORT = process.env.PORT ? Number(process.env.PORT) : 8080;
@@ -48,6 +49,7 @@ app.use(wkMiddleware);
 
 app.use('/client', express.static(path.resolve('client'), { maxAge: '1h' }));
 app.use('/vendor/easymde', express.static(path.resolve('node_modules/easymde/dist'), { maxAge: '1h' }));
+app.use('/vendor/leaflet', express.static(path.resolve('node_modules/leaflet/dist'), { maxAge: '1h' }));
 app.use('/logos', express.static(path.resolve('content_zso_specific_public/logos'), { maxAge: '1h' }));
 app.get('/favicon.ico', (_req, res) => {
   const logo = resolveLogo('favicon');
@@ -169,6 +171,8 @@ app.post('/api/transport/fleet', (req, res) => apiSaveFleet(req, res));
 app.post('/api/transport/order', (req, res) => apiCreateOrder(req, res));
 app.post('/api/transport/order/:id', (req, res) => apiUpdateOrder(req, res));
 app.post('/api/transport/order/:id/delete', (req, res) => apiDeleteOrder(req, res));
+app.post('/api/transport/order/:id/link', (req, res) => apiLinkOrder(req, res));
+app.post('/api/transport/order/:id/unlink', (req, res) => apiUnlinkOrder(req, res));
 app.post('/api/transport/order/:id/status', (req, res) => apiOrderStatus(req, res));
 app.post('/api/transport/trailer/release', (req, res) => apiReleaseTrailer(req, res));
 
@@ -275,6 +279,13 @@ app.get('/forms/wk/archive/:submissionId', (req, res) => renderArchivedWkSubmiss
 
 app.get('/forms/:id', (req, res) => renderForm(req, res, req.params.id));
 app.post('/forms/:id', (req, res) => submitForm(req, res, req.params.id));
+app.post('/forms/:id/modify-allow', (req, res) => toggleModifyAllow(req, res, req.params.id));
+app.get('/forms/:id/revise', (req, res) => renderRevise(req, res, req.params.id));
+app.post('/forms/:id/revise', (req, res) => submitRevise(req, res, req.params.id));
+app.post('/forms/:id/pin', (req, res) => pinVersionAction(req, res, req.params.id));
+app.get('/forms/:id/results/:submissionId/map.png', (req, res) => serveSubmissionMap(req, res, req.params.id, req.params.submissionId));
+app.get('/forms/:id/results/:submissionId/edit', (req, res) => renderSubmissionEdit(req, res, req.params.id, req.params.submissionId));
+app.post('/forms/:id/results/:submissionId/edit', (req, res) => submitSubmissionEdit(req, res, req.params.id, req.params.submissionId));
 app.get('/forms/:id/results/:submissionId', (req, res) => renderSubmission(req, res, req.params.id, req.params.submissionId));
 app.get('/forms/:id/results', (req, res) => renderResults(req, res, req.params.id));
 

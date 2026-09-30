@@ -158,14 +158,15 @@
     function bestellungenHtml() {
       const list = state.data.openBestellungen || [];
       if (!list.length) return '<div class="tz-bestellungen no-print"><p class="muted">Keine offenen Bestellungen.</p></div>';
-      const cards = list.map((b) => `<div class="tz-best-card">
+      const cards = list.map((b) => `<div class="tz-best-card" draggable="true" data-ref="${esc(b.ref)}" title="Auf einen Auftrag ziehen zum Verknüpfen">
         <div class="tz-best-main">
+          <span class="tz-best-nr">${esc(b.nrLabel)}<span class="tz-best-form">${esc(b.formTitle || '')}</span></span>
           <strong>${esc(b.abfahrtsort || '?')} → ${esc(b.zielort || '?')}</strong>
-          <span class="muted">${esc(b.datum || '')} ${esc(b.zeit || '')} · ${esc(b.fahrtTyp || '')}${b.anzahlPersonen ? ' · ' + esc(b.anzahlPersonen) + ' Pers.' : ''}</span>
+          <span class="muted">${esc(b.datum || '')} ${esc(b.zeit || '')}${b.fahrtTyp ? ' · ' + esc(b.fahrtTyp) : ''}${b.anzahlPersonen ? ' · ' + esc(b.anzahlPersonen) + ' Pers.' : ''}</span>
           <span class="muted">Besteller: ${esc(b.name || '–')}${b.mobile ? ' · ' + esc(b.mobile) : ''}</span>
           ${b.beschreibung ? `<span class="tz-best-desc">${esc(b.beschreibung)}</span>` : ''}
         </div>
-        <button class="btn btn-small" data-dispatch="${esc(b.id)}">Disponieren</button>
+        <button class="btn btn-small" data-dispatch="${esc(b.ref)}">Disponieren</button>
       </div>`).join('');
       return `<details class="tz-bestellungen no-print" open><summary>Offene Bestellungen (${list.length})</summary>${cards}</details>`;
     }
@@ -329,18 +330,61 @@
       const po = mount.querySelector('[data-print-overview]');
       if (po) po.addEventListener('click', printOverview);
       mount.querySelectorAll('[data-dispatch]').forEach((b) => b.addEventListener('click', () => {
-        const best = state.data.openBestellungen.find((x) => x.id === b.dataset.dispatch);
+        const best = state.data.openBestellungen.find((x) => x.ref === b.dataset.dispatch);
         openOrderModal(null, best);
       }));
+      // Drag a Bestellung card onto an order bar/card to link it (Uof+).
+      if (state.canDispatch) mount.querySelectorAll('.tz-best-card[data-ref]').forEach((card) => {
+        card.addEventListener('dragstart', (e) => {
+          e.dataTransfer.setData('text/plain', card.dataset.ref);
+          e.dataTransfer.effectAllowed = 'link';
+        });
+      });
       mount.querySelectorAll('[data-release]').forEach((b) => b.addEventListener('click', () => releaseTrailer(b.dataset.order, b.dataset.trailer)));
       mount.querySelectorAll('[data-unrelease]').forEach((b) => b.addEventListener('click', () => unreleaseTrailer(b.dataset.order, b.dataset.trailer)));
     }
 
     function wireGrid(grid) {
-      grid.querySelectorAll('[data-order]').forEach((el) => el.addEventListener('click', () => {
-        const o = state.data.orders.find((x) => x.id === el.dataset.order);
+      grid.querySelectorAll('[data-order]').forEach((el) => {
+        el.addEventListener('click', () => {
+          const o = state.data.orders.find((x) => x.id === el.dataset.order);
+          if (o) openOrderModal(o, null);
+        });
+        if (!state.canDispatch) return;
+        // Drop target for open-Bestellung drag&drop.
+        el.addEventListener('dragover', (e) => { e.preventDefault(); el.classList.add('tz-drop'); });
+        el.addEventListener('dragleave', () => el.classList.remove('tz-drop'));
+        el.addEventListener('drop', (e) => {
+          e.preventDefault();
+          el.classList.remove('tz-drop');
+          const ref = e.dataTransfer.getData('text/plain');
+          if (ref) linkBestellung(el.dataset.order, ref);
+        });
+      });
+    }
+
+    // Link a Bestellung ref to an order, then reload and reopen the order modal.
+    async function linkBestellung(orderId, ref) {
+      if (!online()) { toast('Offline – nicht möglich.'); return; }
+      try {
+        await postJson(`/api/transport/order/${encodeURIComponent(orderId)}/link`, { ref });
+        document.querySelector('.appell-modal-overlay')?.remove();
+        await load();
+        const o = state.data.orders.find((x) => x.id === orderId);
         if (o) openOrderModal(o, null);
-      }));
+        toast('Bestellung verknüpft.');
+      } catch (e) { toast(e.message); }
+    }
+
+    async function unlinkBestellung(orderId, ref) {
+      if (!online()) { toast('Offline – nicht möglich.'); return; }
+      try {
+        await postJson(`/api/transport/order/${encodeURIComponent(orderId)}/unlink`, { ref });
+        document.querySelector('.appell-modal-overlay')?.remove();
+        await load();
+        const o = state.data.orders.find((x) => x.id === orderId);
+        if (o) openOrderModal(o, null);
+      } catch (e) { toast(e.message); }
     }
 
     async function releaseTrailer(orderId, trailerId) {
@@ -384,12 +428,14 @@
         return n + (t.bleibtAmZielort ? ` (bleibt${t.standort ? ' an ' + t.standort : ''})` : '');
       }).join(', ') || '–';
       const row = (l, v) => `<tr><th>${esc(l)}</th><td>${esc(v || '–')}</td></tr>`;
+      const bestNrs = (o.bestellungen || []).map((b) => b.nrLabel).join(', ');
       return `<div class="tz-print-head">
         <div class="tz-print-title">
           <div><h2>Fahrauftrag</h2><div class="tz-print-wk">${wk ? esc(wk.label) : ''}${wk && wk.range ? ' · ' + esc(wk.range) : ''}</div></div>
           ${printLogoHtml()}
         </div>
         <table class="tz-print-table">
+          ${bestNrs ? row('Bestellungen', bestNrs) : ''}
           ${row('Datum', o.datum)}
           ${row('Geplant', (o.plannedStart || '?') + ' – ' + (o.plannedEnd || '?'))}
           ${row('Von → Nach', (o.abfahrtsort || '?') + ' → ' + (o.zielort || '?'))}
@@ -404,6 +450,7 @@
           ${row('Beschreibung', o.beschreibung)}
           ${row('Fahrt-Kommentar', o.departedComment || o.arrivedComment)}
         </table>
+        ${o.mapUrl ? `<div class="tz-print-map"><img src="${esc(o.mapUrl)}" alt="Kartenausschnitt"></div>` : ''}
       </div>`;
     }
 
@@ -465,11 +512,13 @@
         `<label class="tz-f"><span>${label}</span><input type="${type}" name="${name}" value="${esc(val ?? '')}" ${editable ? '' : 'disabled'} ${extra}></label>`;
 
       const driverBox = order ? driverSectionHtml(o) : '';
+      const bestBox = order ? bestellungenSectionHtml(o) : '';
 
       const { ov, close } = modal(`
         <h2>${order ? 'Fahrauftrag' : best ? 'Bestellung disponieren' : 'Neuer Fahrauftrag'}</h2>
         ${best ? `<p class="muted">aus Bestellung von ${esc(best.name || '–')}</p>` : ''}
         ${order ? `<div class="tz-modal-tools no-print"><button type="button" class="btn btn-small icon-button" data-print-order title="Auftrag drucken" aria-label="Auftrag drucken">${PRINT_ICON}</button></div>${orderPrintHtml(o)}` : ''}
+        ${bestBox}
         ${driverBox}
         <form data-order-form class="tz-form">
           <div class="tz-grid2">
@@ -512,6 +561,14 @@
       wireTrailerRows(trailersBox);
       ov.querySelector('[data-print-order]')?.addEventListener('click', () => printDoc('tz-print-order', 'portrait'));
 
+      // Verknüpfte Bestellungen: lösen (unlink) + verknüpfen (link) (Uof+).
+      ov.querySelectorAll('[data-unlink-ref]').forEach((b) => b.addEventListener('click', () => unlinkBestellung(o.id, b.dataset.unlinkRef)));
+      const linkSel = ov.querySelector('[data-link-select]');
+      const linkBtn = ov.querySelector('[data-link-btn]');
+      if (linkBtn && linkSel) linkBtn.addEventListener('click', () => {
+        if (linkSel.value) linkBestellung(o.id, linkSel.value);
+      });
+
       const del = ov.querySelector('[data-delete]');
       if (del) del.addEventListener('click', async () => {
         if (!confirm('Auftrag wirklich löschen?')) return;
@@ -529,7 +586,7 @@
           if (order) {
             await postJson('/api/transport/order/' + encodeURIComponent(o.id), payload);
           } else {
-            payload.bestellungId = best ? best.id : null;
+            payload.bestellungRef = best ? best.ref : null;
             payload.richtung = form.zwei && form.zwei.checked ? 'hin' : 'einfach';
             await postJson('/api/transport/order', payload);
             if (form.zwei && form.zwei.checked) {
@@ -587,6 +644,31 @@
         anzahlPersonen: form.anzahlPersonen.value, vehicle: form.vehicle.value.trim(),
         dispoKommentar: form.dispoKommentar.value, trailers,
       };
+    }
+
+    // Verknüpfte Bestellungen: linked refs (nrLabel → results detail, with lösen)
+    // plus a dropdown of currently open Bestellungen to link (Uof+).
+    function bestellungenSectionHtml(o) {
+      const disp = state.canDispatch;
+      const linked = o.bestellungen || [];
+      const linkedIds = new Set(linked.map((b) => b.ref));
+      const rows = linked.map((b) => {
+        const label = `${b.nrLabel}${b.zielort ? ' · ' + b.zielort : (b.name ? ' · ' + b.name : '')}`;
+        const link = `/forms/${encodeURIComponent(b.formId)}/results/${encodeURIComponent(b.submissionId)}`;
+        return `<div class="tz-best-link">
+          <a href="${esc(link)}" target="_blank" rel="noopener">${esc(label)}</a>
+          ${disp ? `<button type="button" class="btn btn-small" data-unlink-ref="${esc(b.ref)}">lösen</button>` : ''}
+        </div>`;
+      }).join('') || '<p class="muted">Keine verknüpften Bestellungen.</p>';
+      const open = (state.data.openBestellungen || []).filter((b) => !linkedIds.has(b.ref));
+      const opts = open.map((b) => `<option value="${esc(b.ref)}">${esc(b.nrLabel)} · ${esc(b.abfahrtsort || '?')} → ${esc(b.zielort || '?')}</option>`).join('');
+      const adder = disp && open.length
+        ? `<div class="tz-best-add">
+            <select data-link-select><option value="">Bestellung verknüpfen…</option>${opts}</select>
+            <button type="button" class="btn btn-small" data-link-btn>Verknüpfen</button>
+          </div>`
+        : '';
+      return `<div class="tz-best-links"><h3>Verknüpfte Bestellungen</h3>${rows}${adder}</div>`;
     }
 
     // Driver section: name + mobile (cached in localStorage like other forms),
@@ -656,6 +738,7 @@
       const resRow = (r) => `<div class="tz-fleet-row" data-fid="${esc(r.id)}" data-kind="${esc(r.kind)}">
         <span class="tz-fleet-name">${r.kind === 'trailer' ? '🚛' : '🚐'} ${esc(r.name)}${r.trailerType ? ' <em>' + esc(r.trailerType) + '</em>' : ''}</span>
         <span class="tz-fleet-un">${(r.unavailable || []).length ? '⚠ ' + r.unavailable.map((u) => u.from === u.to ? fmtDate(u.from) : fmtDate(u.from) + '–' + fmtDate(u.to)).join(', ') : ''}</span>
+        <label class="tz-fleet-std" title="In jedem WK verfügbar"><input type="checkbox" data-std ${r.standard ? 'checked' : ''}> Standard</label>
         <input type="date" data-un-from title="nicht verfügbar von">
         <input type="date" data-un-to title="bis">
         <button class="btn btn-small" data-un-add>sperren</button>
@@ -701,6 +784,10 @@
       ov.querySelectorAll('[data-un-clear]').forEach((b) => b.addEventListener('click', () => {
         const row = b.closest('.tz-fleet-row');
         fleet({ action: 'update', kind: row.dataset.kind, id: row.dataset.fid, unavailable: [] });
+      }));
+      ov.querySelectorAll('[data-std]').forEach((c) => c.addEventListener('change', () => {
+        const row = c.closest('.tz-fleet-row');
+        fleet({ action: 'update', kind: row.dataset.kind, id: row.dataset.fid, standard: c.checked });
       }));
     }
 

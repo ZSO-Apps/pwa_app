@@ -6,6 +6,7 @@ import { effectiveKachel, resolveKachelPath, safeResolve } from './content.js';
 import { layout } from './templates/layout.js';
 import { esc } from './templates/shared.js';
 import { renderError } from './templates/index.js';
+import { versionAssetRoot, writeVersionDefinition } from './form-versions.js';
 
 const DEFAULT_QUIZ_KACHEL_ID = 'quiz';
 const QUIZ_CREATOR_ROLE = 'Unteroffizier';
@@ -178,13 +179,16 @@ function normalizePayload(body) {
     const compact = Boolean(raw?.compact);
     const imageData = raw?.imageData || '';
 
+    // On revise, an unchanged question keeps its already-stored image URL.
+    const image = String(raw?.image || '');
+
     if (DISPLAY_QUESTION_TYPES.has(type)) {
-      if (type === 'image' && !imageData) throw new Error('Frage ' + number + ': Bitte ein Bild auswählen.');
-      return { text, type, answers: [], imageData, width };
+      if (type === 'image' && !imageData && !image) throw new Error('Frage ' + number + ': Bitte ein Bild auswählen.');
+      return { text, type, answers: [], imageData, image, width };
     }
 
     if (type === 'free_text') {
-      return { text, type, answers: [], imageData, width, compact };
+      return { text, type, answers: [], imageData, image, width, compact };
     }
 
     const rawAnswers = Array.isArray(raw?.answers) ? raw.answers : [];
@@ -205,7 +209,7 @@ function normalizePayload(body) {
       throw new Error('Frage ' + number + ': Bei Multiple Choice muss mindestens eine richtige Antwort markiert sein.');
     }
 
-    return { text, type, answers, imageData, width, compact };
+    return { text, type, answers, imageData, image, width, compact };
   });
 
   return { title, questions };
@@ -233,7 +237,9 @@ function quizDefinitionFromPayload(payload, formId, targetDir, kachelId, relDir)
         ? { type: 'paragraph', label: question.text, text: question.text }
         : { type: question.type, label: question.text };
       if (question.type === 'image') {
-        const image = writeQuestionImage(payload, formId, number, question.imageData, targetDir, kachelId, relDir);
+        const image = question.imageData
+          ? writeQuestionImage(payload, formId, number, question.imageData, targetDir, kachelId, relDir)
+          : (question.image || '');
         if (!image) throw new Error('Frage ' + number + ': Bitte ein Bild auswählen.');
         field.image = image;
       }
@@ -248,7 +254,9 @@ function quizDefinitionFromPayload(payload, formId, targetDir, kachelId, relDir)
       label: question.text,
       required: true,
     };
-    const image = writeQuestionImage(payload, formId, number, question.imageData, targetDir, kachelId, relDir);
+    const image = question.imageData
+      ? writeQuestionImage(payload, formId, number, question.imageData, targetDir, kachelId, relDir)
+      : (question.image || '');
     if (image) field.image = image;
     if (FIELD_WIDTHS.has(question.width)) field.width = question.width;
     if (question.compact) field.compact = true;
@@ -272,6 +280,30 @@ function quizDefinitionFromPayload(payload, formId, targetDir, kachelId, relDir)
   };
 }
 
+// Shared quiz-builder page markup. `initial` (JSON) prefills the client on
+// revise; empty for a fresh quiz.
+function renderQuizBuilderPage(req, res, kachel, {
+  backUrl, submitUrl, relDir = '', heading = 'Quiz hinzufügen', intro = '',
+  title = '', initial = '', submitText = 'Quiz erstellen',
+}) {
+  const initialAttr = initial ? ' data-quiz-initial="' + esc(initial) + '"' : '';
+  const body = [
+    '<article class="content quiz-builder" data-quiz-builder' + initialAttr + '>',
+    '<p><a href="' + esc(backUrl) + '" class="back">← Zurück</a></p>',
+    '<div class="content-header"><h1>' + esc(heading) + '</h1></div>',
+    intro ? '<p class="muted">' + intro + '</p>' : '',
+    '<form class="quiz-builder-form" data-online-only-form data-quiz-builder-form data-quiz-submit-url="' + esc(submitUrl) + '" data-quiz-dir="' + esc(relDir) + '">',
+    '<label class="field quiz-title-field">Quiz-Titel *<input name="title" data-quiz-title required autocomplete="off" placeholder="z.B. Kabel" value="' + esc(title) + '"></label>',
+    '<div class="quiz-questions" data-quiz-questions></div>',
+    '<button type="button" class="secondary-button" data-quiz-add-question>+ Frage hinzufügen</button>',
+    '<p class="err" data-quiz-error hidden></p>',
+    '<div class="dialog-actions quiz-builder-submit"><a class="secondary-button" href="' + esc(backUrl) + '">Abbrechen</a><button type="submit" data-online-only="true">' + esc(submitText) + '</button></div>',
+    '</form>',
+    '</article>',
+  ].join('');
+  res.send(layout(req, { title: heading, body }));
+}
+
 export function renderNewQuiz(req, res, kachelId = DEFAULT_QUIZ_KACHEL_ID) {
   const kachel = findKachel(kachelId);
   if (!requireManageQuiz(req, res, kachel)) return;
@@ -284,24 +316,57 @@ export function renderNewQuiz(req, res, kachelId = DEFAULT_QUIZ_KACHEL_ID) {
     return res.status(400).send(renderError(req, 400, error.message));
   }
 
-  const backUrl = folderUrl(kachel.id, relDir);
-  const submitUrl = '/content-admin/' + encodeURIComponent(kachel.id) + '/quiz';
   const context = relDir ? ' im Ordner <strong>' + esc(relDir) + '</strong>' : ' in dieser Kachel';
-  const body = [
-    '<article class="content quiz-builder" data-quiz-builder>',
-    '<p><a href="' + esc(backUrl) + '" class="back">← Zurück</a></p>',
-    '<div class="content-header"><h1>Quiz hinzufügen</h1></div>',
-    '<p class="muted">Erstellt eine neue Quiz-Definition' + context + '. Danach erscheinen automatisch die Ausfüllmöglichkeit und die Auswertung in der aktuellen Übersicht.</p>',
-    '<form class="quiz-builder-form" data-online-only-form data-quiz-builder-form data-quiz-submit-url="' + esc(submitUrl) + '" data-quiz-dir="' + esc(relDir) + '">',
-    '<label class="field quiz-title-field">Quiz-Titel *<input name="title" data-quiz-title required autocomplete="off" placeholder="z.B. Kabel"></label>',
-    '<div class="quiz-questions" data-quiz-questions></div>',
-    '<button type="button" class="secondary-button" data-quiz-add-question>+ Frage hinzufügen</button>',
-    '<p class="err" data-quiz-error hidden></p>',
-    '<div class="dialog-actions quiz-builder-submit"><a class="secondary-button" href="' + esc(backUrl) + '">Abbrechen</a><button type="submit" data-online-only="true">Quiz erstellen</button></div>',
-    '</form>',
-    '</article>',
-  ].join('');
-  res.send(layout(req, { title: 'Quiz hinzufügen', body }));
+  renderQuizBuilderPage(req, res, kachel, {
+    backUrl: folderUrl(kachel.id, relDir),
+    submitUrl: '/content-admin/' + encodeURIComponent(kachel.id) + '/quiz',
+    relDir,
+    intro: 'Erstellt eine neue Quiz-Definition' + context + '. Danach erscheinen automatisch die Ausfüllmöglichkeit und die Auswertung in der aktuellen Übersicht.',
+  });
+}
+
+// Turn a stored quiz definition back into the builder's question payload so the
+// client can prefill it for a revision.
+function quizInitialFromDef(def) {
+  const title = String(def.title || '').replace(/^Quiz\s+/, '');
+  const questions = (def.fields || []).map((f) => {
+    const image = String(f.image || '');
+    const width = FIELD_WIDTHS.has(f.width) ? f.width : '';
+    if (f.type === 'heading') return { type: 'heading', text: f.label || '', answers: [], image, width };
+    if (f.type === 'paragraph') return { type: 'paragraph', text: f.text || f.label || '', answers: [], image, width };
+    if (f.type === 'image') return { type: 'image', text: f.label || '', answers: [], image, width };
+    if (f.type === 'textarea') return { type: 'free_text', text: f.label || '', answers: [], image, width, compact: Boolean(f.compact) };
+    const correct = new Set((Array.isArray(f.correct) ? f.correct : f.correct !== undefined ? [f.correct] : []).map(String));
+    const answers = (f.options || []).map((opt) => ({ text: String(opt), correct: correct.has(String(opt)) }));
+    return { type: f.type === 'checkboxes' ? 'multiple' : 'single', text: f.label || '', answers, image, width, compact: Boolean(f.compact) };
+  });
+  return { title, questions };
+}
+
+// GET: render the quiz builder prefilled from the source quiz (base or a revised
+// version), posting to the family's revise route.
+export function renderQuizReviseBuilder(req, res, sourceDef, kachel) {
+  const family = sourceDef.version?.family || sourceDef.id;
+  const initial = quizInitialFromDef(sourceDef);
+  renderQuizBuilderPage(req, res, kachel, {
+    backUrl: '/forms/' + encodeURIComponent(family) + '/results',
+    submitUrl: '/forms/' + encodeURIComponent(family) + '/revise',
+    heading: 'Quiz überarbeiten',
+    intro: 'Speichert eine neue Version dieses Quiz. Bestehende Auswertungen bleiben ihrer Version zugeordnet.',
+    title: initial.title,
+    initial: JSON.stringify(initial),
+    submitText: 'Neue Version speichern',
+  });
+}
+
+// Build + persist a new quiz version definition. Throws on validation error.
+export function writeQuizRevision(req, sourceDef, kachel, versionId) {
+  const family = sourceDef.version?.family || sourceDef.id;
+  const slug = kachel.content;
+  const targetDir = versionAssetRoot(slug);
+  const payload = normalizePayload(req.body || {});
+  const definition = quizDefinitionFromPayload(payload, versionId, targetDir, kachel.id, '');
+  return writeVersionDefinition(slug, family, versionId, definition, req.user?.username);
 }
 
 export function createQuiz(req, res, kachelId = DEFAULT_QUIZ_KACHEL_ID) {

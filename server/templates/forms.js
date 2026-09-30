@@ -4,6 +4,12 @@ import { isDisplay, isStored } from '../form-elements.js';
 import { layout } from './layout.js';
 import { esc, formatDateTime, PLUS_ICON, PRINT_ICON, renderPrintLogo } from './shared.js';
 
+// A form def may be a revised version whose `id` is the versionId; every
+// `/forms/<...>` route and the nr label key on the stable family id.
+function familyId(def) {
+  return def?.version?.family || def?.id;
+}
+
 function submissionWkLabel(req, def, submission) {
   if (def.scope === 'global') return '-';
   const wkId = submission._meta?.wkId || req.activeWk?.id || '';
@@ -133,10 +139,39 @@ function renderFormPrintBootstrap() {
 </script>`;
 }
 
-function renderField(f, value = '') {
+// Text input backed by a <datalist> of Arbeitsplatz names for the active WK.
+// Free text stays allowed; unknown values auto-create an Arbeitsplatz on submit.
+function renderLocationField(f, currentString, common, ctx) {
+  const listId = 'dl-' + esc(f.name);
+  const options = (ctx?.locations || [])
+    .map((name) => `<option value="${esc(name)}"></option>`)
+    .join('');
+  return `<input type="text" ${common} value="${esc(currentString)}" list="${listId}" autocomplete="off">`
+    + `<datalist id="${listId}">${options}</datalist>`;
+}
+
+// Online-only Leaflet map widget + hidden input holding {"lat","lon","zoom"}.
+function renderMapField(f, currentString) {
+  const address = esc(f.addressField || 'adresse');
+  const coord = esc(f.coordField || 'koordinaten');
+  return `<div class="map-field" data-map-field data-address-field="${address}" data-coord-field="${coord}" data-online-only>
+    <input type="hidden" name="${esc(f.name)}" id="f-${esc(f.name)}" data-map-input value="${esc(currentString)}">
+    <div class="map-canvas" data-map-canvas></div>
+    <div class="map-offline muted" data-map-offline hidden>Karte nur online verfügbar.</div>
+    <div class="map-controls no-print">
+      <button type="button" class="secondary-button compact" data-map-address>Adresse suchen</button>
+      <button type="button" class="secondary-button compact" data-map-coords>Koordinaten übernehmen</button>
+      <button type="button" class="secondary-button compact" data-map-clear>Pin entfernen</button>
+    </div>
+  </div>`;
+}
+
+function renderField(f, value = '', ctx = null) {
   const current = value ?? '';
   const currentString = String(current);
   const common = `name="${esc(f.name)}" id="f-${esc(f.name)}"${f.required ? ' required' : ''}`;
+  if (f.type === 'location') return renderLocationField(f, currentString, common, ctx);
+  if (f.type === 'map') return renderMapField(f, currentString);
   if (f.type === 'checkbox') {
     return `<label class="checkbox"><input type="checkbox" ${common}${current ? ' checked' : ''}> ${esc(f.label || f.name)}</label>`;
   }
@@ -202,16 +237,16 @@ function renderDisplayElement(f) {
   return '';
 }
 
-function renderFormElement(f, values) {
+function renderFormElement(f, values, ctx = null) {
   if (isDisplay(f)) return renderDisplayElement(f);
   if (f.type === 'checkbox') {
-    return `<div class="field field-check">${renderField(f, values[f.name])}</div>`;
+    return `<div class="field field-check">${renderField(f, values[f.name], ctx)}</div>`;
   }
   const compact = f.compact ? ' field--compact' : '';
   return `<div class="field${compact}">
     <label for="f-${esc(f.name)}">${esc(f.label || f.name)}${f.required ? ' *' : ''}</label>
     ${renderFieldImage(f)}
-    ${renderField(f, values[f.name])}
+    ${renderField(f, values[f.name], ctx)}
   </div>`;
 }
 
@@ -257,28 +292,39 @@ function renderFormPrintTemplate(def) {
   </template>`;
 }
 
-export function renderFormPage(req, def, { submitted = false, values = {}, detailUrl = '' } = {}) {
+export function renderFormPage(req, def, { submitted = false, values = {}, detailUrl = '', editUrl = '', backUrl = '', locations = [] } = {}) {
   const elements = fieldsForForm(def).filter((f) => !f.printOnly);
-  const submitLabel = submitted ? 'Neue Eingabe mit diesen Daten speichern' : 'Senden';
+  const ctx = { locations };
+  const hasMap = elements.some((f) => f.type === 'map');
+  const isEdit = Boolean(editUrl);
+  const submitLabel = isEdit ? 'Änderungen speichern' : submitted ? 'Neue Eingabe mit diesen Daten speichern' : 'Senden';
   const detailAttr = detailUrl ? ` data-detail-url="${esc(detailUrl)}"` : '';
+  const back = backUrl || formBackUrl(def);
+  const wkParam = wkParamForDef(req, def);
+  const action = isEdit
+    ? editUrl
+    : `/forms/${esc(familyId(def))}${wkParam ? '?wk=' + encodeURIComponent(wkParam) : ''}`;
   const body = `
   <article class="content narrow form-page">
-    <p><a href="${esc(formBackUrl(def))}" class="back">← Zurück</a></p>
+    <p><a href="${esc(back)}" class="back">← Zurück</a></p>
     <div class="content-header">
-      <h1>${esc(def.title || def.id)}</h1>
+      <h1>${esc(def.title || def.id)}${isEdit ? ' — bearbeiten' : ''}</h1>
       <button type="button" class="secondary-button icon-button no-print" data-form-print${detailAttr} disabled title="Drucken" aria-label="Drucken">${PRINT_ICON}</button>
     </div>
     ${renderDupNameWarning(def)}
     ${submitted ? `<p class="ok">✓ Eingabe gespeichert. Die Werte bleiben als Vorlage erhalten. Erneutes Speichern erstellt eine neue Eingabe.</p>` : ''}
-    <form method="POST" action="/forms/${esc(def.id)}${wkParamForDef(req, def) ? '?wk=' + encodeURIComponent(wkParamForDef(req, def)) : ''}" class="genform" data-enhanced-form data-online-only-form>
-      ${elements.map((f) => `<div class="form-el${widthClass(f)}">${renderFormElement(f, values)}</div>`).join('\n')}
+    <form method="POST" action="${esc(action)}" class="genform" data-enhanced-form data-online-only-form>
+      ${elements.map((f) => `<div class="form-el${widthClass(f)}">${renderFormElement(f, values, ctx)}</div>`).join('\n')}
       <button type="submit" data-online-only="true">${esc(submitLabel)}</button>
     </form>
-    <p><a href="${esc(formBackUrl(def))}" class="back">← Zurück</a></p>
+    <p><a href="${esc(back)}" class="back">← Zurück</a></p>
     ${renderFormPrintTemplate(def)}
     ${renderFormPrintBootstrap()}
   </article>`;
-  return layout(req, { title: def.title || 'Formular', body });
+  const extraHead = hasMap
+    ? '<link rel="stylesheet" href="/vendor/leaflet/leaflet.css"><script src="/vendor/leaflet/leaflet.js" defer></script><script src="/client/map-field.js" defer></script>'
+    : '';
+  return layout(req, { title: def.title || 'Formular', body, extraHead });
 }
 
 function submissionTitleField(def) {
@@ -301,8 +347,18 @@ function submissionUrl(def, submission, { archiveMode = false } = {}) {
   const id = submission._meta?.submissionId;
   if (!id) return '#';
   if (archiveMode && def.id === 'wk') return '/forms/wk/archive/' + encodeURIComponent(id);
-  const url = '/forms/' + encodeURIComponent(def.id) + '/results/' + encodeURIComponent(id);
+  const url = '/forms/' + encodeURIComponent(familyId(def)) + '/results/' + encodeURIComponent(id);
   return def.scope === 'global' ? url : withWkParam(url, submission._meta?.wkId || '');
+}
+
+// Display label for a submission's sequential number, e.g. "essensbestellung_3".
+function submissionNrLabel(def, submission) {
+  const nr = submission?._meta?.nr;
+  return Number.isInteger(nr) ? `${familyId(def)}_${nr}` : '';
+}
+
+function isStandardSubmission(submission) {
+  return submission?._meta?.scope === '_standard';
 }
 
 function fmtCell(field, value) {
@@ -316,7 +372,8 @@ function wkNameFor(submission) {
 }
 
 function resultColumnsFor(def, { archiveMode = false } = {}) {
-  const storedFields = (def.fields || []).filter(isStored);
+  // map fields carry a JSON blob, not a tabular value — never a results column.
+  const storedFields = (def.fields || []).filter((f) => isStored(f) && f.type !== 'map');
   if (isQuizDef(def)) {
     return {
       storedFields,
@@ -383,8 +440,11 @@ function renderResultsTable(def, submissions, { archiveMode = false, canArchive 
     const title = submissionTitle(def, s);
     const url = submissionUrl(def, s, { archiveMode });
     const id = s._meta?.submissionId || '';
+    const nrLabel = submissionNrLabel(def, s);
+    const badge = isStandardSubmission(s) ? ' <span class="badge">Standard</span>' : '';
     return `<tr data-print-row data-print-url="${esc(url)}">
       <td class="select-col"><input type="checkbox" data-print-select name="submissionId" value="${esc(id)}" aria-label="${esc(title)} auswählen"></td>
+      <td class="nr-col">${esc(nrLabel)}${badge}</td>
       ${columns.cells(def, s).join('')}
     </tr>`;
   }).join('');
@@ -403,7 +463,8 @@ function renderResultsTable(def, submissions, { archiveMode = false, canArchive 
       ? '<form method="POST" action="/forms/wk/unarchive" data-online-only-form>'
       : '';
   const formEnd = hasFormAction ? '</form>' : '';
-  const sortableHeaders = columns.headers.map((h, index) => '<th aria-sort="none"><button type="button" class="table-sort-button" data-sort-col="' + index + '">' + esc(h) + '<span class="sort-indicator" aria-hidden="true"></span></button></th>').join('');
+  const allHeaders = ['Nr.', ...columns.headers];
+  const sortableHeaders = allHeaders.map((h, index) => '<th aria-sort="none"><button type="button" class="table-sort-button" data-sort-col="' + index + '">' + esc(h) + '<span class="sort-indicator" aria-hidden="true"></span></button></th>').join('');
   const metaParts = [metaText, submissions.length + ' Eingabe(n)'].filter(Boolean);
   const metaHtml = metaParts.map((part) => '<span>' + esc(part) + '</span>').join('<span aria-hidden="true">·</span>');
 
@@ -435,7 +496,50 @@ function renderResultsTable(def, submissions, { archiveMode = false, canArchive 
     </table></div>
     ${formEnd}`;
 }
-export function renderResultsPage(req, def, submissions, { wkLabel, canCreate = false, archiveMode = false, canArchive = false, canUnarchive = false } = {}) {
+function renderModifyToggle(def, wkParam, versionId = '') {
+  const on = Boolean(def.modifyAllow);
+  const family = familyId(def);
+  const params = new URLSearchParams();
+  if (wkParam) params.set('wk', wkParam);
+  // Toggle the version currently in view (its own def carries modifyAllow).
+  if (versionId && versionId !== family) params.set('v', versionId);
+  const qs = params.toString() ? '?' + params.toString() : '';
+  return `<form class="modify-toggle no-print" method="POST" action="/forms/${esc(family)}/modify-allow${qs}" data-online-only-form>
+    <label class="switch">
+      <span class="switch-caption">Bearbeiten erlaubt</span>
+      <input type="checkbox" role="switch"${on ? ' checked' : ''} data-online-only="true" onchange="this.form.submit()">
+      <span class="switch-track" aria-hidden="true"><span class="switch-thumb"></span></span>
+      <span class="switch-state">${on ? 'an' : 'aus'}</span>
+    </label>
+    <noscript><button type="submit" class="secondary-button">${on ? 'ausschalten' : 'einschalten'}</button></noscript>
+  </form>`;
+}
+
+// Version controls above the results table: revise button, view/pin selects and
+// the multi-active warning. Only shown for a family that actually has versions.
+function renderVersionToolbar(version) {
+  if (!version) return '';
+  const { family, viewVersionId, activeVersionId, options, canRevise, canPin, multiActive, hasVersions } = version;
+  const parts = [];
+  if (canRevise) {
+    // Revise starting from the version currently in view (falls back to active).
+    const from = viewVersionId ? '?from=' + encodeURIComponent(viewVersionId) : '';
+    parts.push(`<a class="secondary-button" data-online-only="true" href="/forms/${esc(family)}/revise${from}">Überarbeiten</a>`);
+  }
+  if (hasVersions) {
+    const viewOpts = options.map((o) => `<option value="${esc(o.id)}"${o.id === viewVersionId ? ' selected' : ''}>${esc(o.label)}${o.hasResults ? '' : ' (leer)'}${o.isActive ? ' • aktiv' : ''}</option>`).join('');
+    parts.push(`<form method="GET" class="version-select"><label>Version anzeigen <select name="v" onchange="this.form.submit()">${viewOpts}</select></label></form>`);
+    if (canPin) {
+      const pinOpts = options.map((o) => `<option value="${esc(o.id)}"${o.id === activeVersionId ? ' selected' : ''}>${esc(o.label)}</option>`).join('');
+      parts.push(`<form method="POST" action="/forms/${esc(family)}/pin" class="version-select" data-online-only-form><label>Aktive Version <select name="versionId">${pinOpts}</select></label><button type="submit" class="secondary-button" data-online-only="true">Setzen</button></form>`);
+    }
+  }
+  const warning = multiActive ? '<p class="version-warning">⚠️ Achtung: Mehr als eine Version in diesem WK aktiv!</p>' : '';
+  if (!parts.length && !warning) return '';
+  return `<div class="version-toolbar no-print">${parts.join('')}</div>${warning}`;
+}
+
+export function renderResultsPage(req, def, submissions, { wkLabel, canCreate = false, archiveMode = false, canArchive = false, canUnarchive = false, canToggleModify = false, tableDef = null, version = null } = {}) {
   const metaText = def.scope === 'global'
     ? ''
     : wkLabel
@@ -444,7 +548,7 @@ export function renderResultsPage(req, def, submissions, { wkLabel, canCreate = 
   const wkParam = wkParamForDef(req, def);
   const createLabel = def.submitLabel || 'Neuer Eintrag';
   const createButton = !archiveMode && canCreate
-    ? `<a class="content-add-button no-print" data-online-only="true" href="${withWkParam('/forms/' + encodeURIComponent(def.id), wkParam)}" title="${esc(createLabel)}" aria-label="${esc(createLabel)}">${PLUS_ICON}</a>`
+    ? `<a class="content-add-button no-print" data-online-only="true" href="${withWkParam('/forms/' + encodeURIComponent(familyId(def)), wkParam)}" title="${esc(createLabel)}" aria-label="${esc(createLabel)}">${PLUS_ICON}</a>`
     : '';
   const pageTitle = archiveMode ? `Archiv — ${def.title || def.id}` : `Auswertung — ${def.title || def.id}`;
   const wkArchiveLink = def.id === 'wk'
@@ -459,17 +563,30 @@ export function renderResultsPage(req, def, submissions, { wkLabel, canCreate = 
       <h1>${esc(pageTitle)}</h1>
       ${createButton}
     </div>
-    ${renderResultsTable(def, submissions, { archiveMode, canArchive, canUnarchive, metaText })}
+    ${canToggleModify && !archiveMode ? renderModifyToggle(tableDef || def, wkParam, version?.viewVersionId) : ''}
+    ${!archiveMode ? renderVersionToolbar(version) : ''}
+    ${renderResultsTable(tableDef || def, submissions, { archiveMode, canArchive, canUnarchive, metaText })}
     ${wkArchiveLink}
     <p><a href="${esc(formBackUrl(def))}" class="back">← Zurück</a></p>
   </article>`;
   return layout(req, { title: archiveMode ? 'Archiv' : 'Auswertung', body });
 }
 
-function renderSubmissionElement(def, submission, f) {
+// A stored map snapshot, embedded in the detail view and reused for print.
+function renderMapSnapshotBlock(label, url) {
+  if (!url) return '';
+  const cap = label ? `<div class="sub-label">${label}</div>` : '';
+  return `<div class="sub-field sub-field--block sub-map">${cap}<img class="sub-map-img" src="${esc(url)}" alt="${esc(label || 'Kartenausschnitt')}"></div>`;
+}
+
+function renderSubmissionElement(def, submission, f, opts = {}) {
   if (isDisplay(f)) return renderDisplayElement(f);
   const label = esc(f.label || f.name || '');
   const image = renderFieldImage(f);
+  if (f.type === 'map') {
+    // Never show the raw {lat,lon,zoom} JSON — only the server snapshot, if any.
+    return renderMapSnapshotBlock(label, opts.mapSnapshotUrl);
+  }
   if (f.type === 'checkbox') {
     const checked = !f.printOnly && submission[f.name];
     return '<div class="sub-check">' + image + '<span class="box">' + (checked ? '☑' : '☐') + '</span> <span>' + label + '</span></div>';
@@ -499,28 +616,45 @@ function renderSubmissionElement(def, submission, f) {
   '</div>';
 }
 
-export function renderSubmissionPage(req, def, submission, { archiveMode = false } = {}) {
+export function renderSubmissionPage(req, def, submission, { archiveMode = false, canEdit = false, mapSnapshotUrl = '', arbeitsplatzMapUrl = '', versionLabel = '' } = {}) {
   const heading = isQuizDef(def) ? quizSubmissionTitle(submission) : submissionTitle(def, submission);
   const resultsUrl = archiveMode && def.id === 'wk'
     ? '/forms/wk/archive'
-    : withWkParam(`/forms/${esc(def.id)}/results`, def.scope === 'global' ? '' : submission._meta?.wkId || '');
+    : withWkParam(`/forms/${esc(familyId(def))}/results`, def.scope === 'global' ? '' : submission._meta?.wkId || '');
   const resultsLabel = archiveMode && def.id === 'wk' ? 'Archiv' : 'Auswertung';
   const elements = fieldsForForm(def)
-    .map((f) => `<div class="sub-el${widthClass(f)}">${renderSubmissionElement(def, submission, f)}</div>`)
+    .map((f) => `<div class="sub-el${widthClass(f)}">${renderSubmissionElement(def, submission, f, { mapSnapshotUrl })}</div>`)
     .join('\n');
+  // For forms whose location value names an Arbeitsplatz, show that Arbeitsplatz's
+  // map snapshot (e.g. a Transport-Bestellung's Zielort). Own map fields already
+  // render their own snapshot above.
+  const arbeitsplatzBlock = !mapSnapshotUrl && arbeitsplatzMapUrl
+    ? `<div class="sub-el">${renderMapSnapshotBlock('Arbeitsplatz', arbeitsplatzMapUrl)}</div>`
+    : '';
   const score = isQuizDef(def) ? quizScore(def, submission) : null;
   const scoreHtml = score && score.total ? `<p class="quiz-score">Punkte: ${esc(score.correct + '/' + score.total)} · Richtig: ${esc(score.correct)} · Falsch: ${esc(score.wrong)}</p>` : '';
+  const nrLabel = submissionNrLabel(def, submission);
+  const nrHtml = nrLabel ? `<span class="sub-nr">${esc(nrLabel)}</span>` : '';
+  const standardHtml = isStandardSubmission(submission) ? ' <span class="badge">Standard</span>' : '';
+  const editUrl = withWkParam(`/forms/${esc(familyId(def))}/results/${esc(submission._meta?.submissionId || '')}/edit`, def.scope === 'global' ? '' : submission._meta?.wkId || '');
+  const editButton = canEdit
+    ? `<a class="secondary-button no-print" data-online-only="true" href="${esc(editUrl)}">Bearbeiten</a>`
+    : '';
+  const editedHtml = submission._meta?.editedAt
+    ? `<br>Bearbeitet am: ${esc(formatDateTime(submission._meta.editedAt) || '-')} von ${esc(submission._meta?.editedBy || '-')}`
+    : '';
   const body = `<article class="content sub-detail">
     <nav class="crumbs no-print"><a href="${resultsUrl}">${resultsLabel}</a> / <span>${esc(heading)}</span></nav>
     <p class="no-print"><a href="${resultsUrl}" class="back">← Zurück</a></p>
     <div class="content-header print-title-row">
-      <h1>${esc(def.title || def.id)}</h1>
+      <h1>${esc(def.title || def.id)} ${nrHtml}${standardHtml}</h1>
       ${renderPrintLogo()}
+      ${editButton}
       <button type="button" class="secondary-button icon-button no-print" onclick="window.print()" title="Drucken" aria-label="Drucken">${PRINT_ICON}</button>
     </div>
-    <p class="muted">Gesendet am: ${esc(formatDateTime(submission._meta?.submittedAt) || '-')}<br>Gesendet von: ${esc(submission._meta?.submittedBy || '-')} · WK: ${esc(submissionWkLabel(req, def, submission))}</p>
+    <p class="muted">Nr.: ${esc(nrLabel || '-')}<br>Gesendet am: ${esc(formatDateTime(submission._meta?.submittedAt) || '-')}<br>Gesendet von: ${esc(submission._meta?.submittedBy || '-')} · WK: ${esc(submissionWkLabel(req, def, submission))}${versionLabel ? '<br>Version: ' + esc(versionLabel) : ''}${editedHtml}</p>
     ${scoreHtml}
-    <div class="sub-elements">${elements || '<em>Keine Felder</em>'}</div>
+    <div class="sub-elements">${elements || '<em>Keine Felder</em>'}${arbeitsplatzBlock}</div>
     <p class="no-print"><a href="${resultsUrl}" class="back">← Zurück</a></p>
   </article>`;
   return layout(req, { title: def.title || heading, body });

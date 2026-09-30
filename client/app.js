@@ -947,6 +947,7 @@ function initQuizBuilder() {
     const preview = question.querySelector('[data-quiz-image-preview]');
     const imageName = question.querySelector('[data-quiz-image-name]');
     question._imageData = '';
+    question._existingImage = '';
     if (imageName) imageName.textContent = file ? file.name : 'Kein Bild ausgewählt.';
     if (!file) {
       if (preview) preview.hidden = true;
@@ -975,7 +976,17 @@ function initQuizBuilder() {
     reader.readAsDataURL(file);
   };
 
-  const addQuestion = () => {
+  const showExistingQuizImage = (question, url) => {
+    const preview = question.querySelector('[data-quiz-image-preview]');
+    const imageName = question.querySelector('[data-quiz-image-name]');
+    if (imageName) imageName.textContent = 'Bild bereits hinterlegt.';
+    if (preview) {
+      preview.hidden = false;
+      preview.innerHTML = '<img src="' + escapeHtml(url) + '" alt="Vorschau">';
+    }
+  };
+
+  const addQuestion = (initial = {}) => {
     questionSeq += 1;
     const qid = String(questionSeq);
     const question = document.createElement('section');
@@ -1016,7 +1027,27 @@ function initQuizBuilder() {
         '<button type="button" class="secondary-button compact" data-quiz-add-answer>+ Antwort hinzufügen</button>' +
       '</div>';
     questionsEl.appendChild(question);
-    addAnswer(question, '', true);
+
+    // Prefill (revise): text, type, layout, answers and an existing image.
+    const textEl = question.querySelector('[data-quiz-question-text]');
+    if (textEl && initial.text) textEl.value = initial.text;
+    const typeSel = question.querySelector('[data-quiz-type]');
+    if (typeSel && initial.type) typeSel.value = initial.type;
+    if (initial.width) {
+      const widthInput = question.querySelector('[data-quiz-width="' + initial.width + '"]');
+      if (widthInput) widthInput.checked = true;
+    }
+    if (initial.compact) {
+      const compactInput = question.querySelector('[data-quiz-compact]');
+      if (compactInput) compactInput.checked = true;
+    }
+    const initialAnswers = Array.isArray(initial.answers) ? initial.answers : [];
+    if (initialAnswers.length) initialAnswers.forEach((answer) => addAnswer(question, answer.text, answer.correct));
+    else addAnswer(question, '', true);
+    if (initial.image) {
+      question._existingImage = initial.image;
+      showExistingQuizImage(question, initial.image);
+    }
 
     question.querySelector('[data-quiz-remove-question]')?.addEventListener('click', () => {
       question.remove();
@@ -1065,11 +1096,12 @@ function initQuizBuilder() {
       if (width) layout.width = width;
       if (question.querySelector('[data-quiz-compact]')?.checked && !quizDisplayTypes.has(type)) layout.compact = true;
       const imageData = question._imageData || '';
+      const image = question._existingImage || '';
       if (quizDisplayTypes.has(type)) {
-        if (type === 'image' && !imageData) throw new Error('Frage ' + (index + 1) + ': Bitte ein Bild auswählen.');
-        return { text, type, answers: [], imageData, ...layout };
+        if (type === 'image' && !imageData && !image) throw new Error('Frage ' + (index + 1) + ': Bitte ein Bild auswählen.');
+        return { text, type, answers: [], imageData, image, ...layout };
       }
-      if (type === 'free_text') return { text, type, answers: [], imageData, ...layout };
+      if (type === 'free_text') return { text, type, answers: [], imageData, image, ...layout };
       const answers = Array.from(question.querySelectorAll('[data-quiz-answer]')).map((row) => ({
         text: row.querySelector('[data-quiz-answer-text]')?.value?.trim() || '',
         correct: Boolean(row.querySelector('[data-quiz-correct]')?.checked),
@@ -1078,12 +1110,12 @@ function initQuizBuilder() {
       const correct = answers.filter((answer) => answer.correct);
       if (type === 'single' && correct.length !== 1) throw new Error('Frage ' + (index + 1) + ': Genau eine richtige Antwort markieren.');
       if (type === 'multiple' && correct.length < 1) throw new Error('Frage ' + (index + 1) + ': Mindestens eine richtige Antwort markieren.');
-      return { text, type, answers, imageData, ...layout };
+      return { text, type, answers, imageData, image, ...layout };
     });
     return { title, dir: relDir, questions };
   };
 
-  addQuestionButton?.addEventListener('click', addQuestion);
+  addQuestionButton?.addEventListener('click', () => addQuestion());
   form?.addEventListener('submit', async (event) => {
     event.preventDefault();
     setError('');
@@ -1114,7 +1146,18 @@ function initQuizBuilder() {
     }
   });
 
-  addQuestion();
+  // Prefill from the base definition on revise, otherwise start with one empty question.
+  let initial = null;
+  try {
+    const rawInitial = root.getAttribute('data-quiz-initial') || '';
+    initial = rawInitial ? JSON.parse(rawInitial) : null;
+  } catch { initial = null; }
+  if (initial && Array.isArray(initial.questions) && initial.questions.length) {
+    if (titleInput && initial.title) titleInput.value = initial.title;
+    initial.questions.forEach((question) => addQuestion(question));
+  } else {
+    addQuestion();
+  }
 }
 
 function initGlobalSearch() {
@@ -1241,6 +1284,9 @@ function initFormBuilder() {
 
   const optionFieldTypes = new Set(['select', 'radio', 'checkboxes']);
   const displayFieldTypes = new Set(['heading', 'paragraph', 'image']);
+  // Types the builder can edit inline; anything else (e.g. signature) is shown
+  // as a read-only row on revise and passed through unchanged.
+  const editableTypes = new Set(['text', 'textarea', 'number', 'date', 'time', 'location', 'map', 'select', 'radio', 'checkboxes', 'checkbox', 'heading', 'paragraph', 'image']);
 
   const optionValues = (value) => {
     if (Array.isArray(value)) return value.map((item) => String(item || '').trim()).filter(Boolean);
@@ -1401,11 +1447,40 @@ function initFormBuilder() {
     });
   };
 
+  // A field type the builder can't edit (e.g. signature): render a read-only
+  // placeholder and pass the original field object through untouched.
+  const addPassthroughField = (initial) => {
+    fieldSeq += 1;
+    const row = document.createElement('section');
+    row.className = 'form-builder-field form-builder-field-passthrough';
+    row.setAttribute('data-form-builder-field', '');
+    row.setAttribute('data-form-builder-passthrough', '');
+    row._raw = initial;
+    const label = initial.label || initial.text || '';
+    row.innerHTML =
+      '<div class="quiz-question-head">' +
+        '<h3>Feld <span data-form-builder-field-number></span></h3>' +
+        '<button type="button" class="secondary-button compact" data-form-builder-remove>Feld entfernen</button>' +
+      '</div>' +
+      '<p class="muted">' + escHtml(label ? label + ' — ' : '') + 'Typ „' + escHtml(initial.type || '') + '" wird unverändert übernommen.</p>';
+    fieldsRoot.appendChild(row);
+    row.querySelector('[data-form-builder-remove]')?.addEventListener('click', () => {
+      row.remove();
+      if (!fieldsRoot.querySelector('[data-form-builder-field]')) addField();
+      renumber();
+    });
+    renumber();
+  };
+
   const addField = (initial = {}) => {
+    // print-only / unsupported-type fields are shown read-only and passed through.
+    if (initial && (initial.printOnly || (initial.type && !editableTypes.has(initial.type)))) return addPassthroughField(initial);
     fieldSeq += 1;
     const row = document.createElement('section');
     row.className = 'form-builder-field';
     row.setAttribute('data-form-builder-field', '');
+    if (initial.name) row.dataset.origName = initial.name;
+    row._raw = initial;
     row.innerHTML =
       '<div class="quiz-question-head">' +
         '<h3>Feld <span data-form-builder-field-number></span></h3>' +
@@ -1419,6 +1494,8 @@ function initFormBuilder() {
           '<option value="number">Zahl</option>' +
           '<option value="date">Datum</option>' +
           '<option value="time">Zeit</option>' +
+          '<option value="location">Ort (Arbeitsplatz)</option>' +
+          '<option value="map">Karte</option>' +
           '<option value="select">Dropdown</option>' +
           '<option value="radio">Single Choice</option>' +
           '<option value="checkboxes">Mehrfachauswahl</option>' +
@@ -1497,6 +1574,7 @@ function initFormBuilder() {
   };
 
   const collectFields = () => Array.from(fieldsRoot.querySelectorAll('[data-form-builder-field]')).map((row, index) => {
+    if (row.hasAttribute('data-form-builder-passthrough')) return row._raw;
     const type = row.querySelector('[data-form-field-type]')?.value || 'text';
     const label = row.querySelector('[data-form-field-label]')?.value?.trim() || '';
     let field;
@@ -1533,6 +1611,12 @@ function initFormBuilder() {
         .filter(Boolean);
       if (field.options.length < 2) throw new Error('Feld ' + (index + 1) + ': Bitte mindestens zwei Optionen angeben.');
     }
+    // Preserve the original field name (revise) so name-based config keeps
+    // matching; and carry through attributes the builder doesn't edit.
+    if (row.dataset.origName) field.name = row.dataset.origName;
+    const raw = row._raw || {};
+    if (raw.printOnly && !displayFieldTypes.has(type)) field.printOnly = true;
+    if (raw.min !== undefined && field.min === undefined) field.min = raw.min;
     return field;
   });
 

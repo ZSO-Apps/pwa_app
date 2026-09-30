@@ -126,23 +126,32 @@ function isArchivedSubmission(submission) {
   return tags.includes(ARCHIVE_TAG);
 }
 
+function summarizeSubmissionFile(dir, file, out) {
+  if (!file.endsWith('.json') || file === '_active.json') return;
+  const id = path.basename(file, '.json');
+  if (!safeSubmissionId(id)) return;
+  try {
+    const parsed = JSON.parse(fs.readFileSync(path.join(dir, file), 'utf8'));
+    out.push({ id, archived: isArchivedSubmission(parsed) });
+  } catch { /* skip unreadable */ }
+}
+
+// Submissions live nested per version (data/forms/<family>/<scope>/<versionId>/*.json);
+// the wk form stays flat. Walk both so offline precache lists every detail URL.
 function readSubmissionSummaries(formId, scope) {
   if (!formId || !scope) return [];
-  const dir = path.join(DATA_FORMS_DIR, formId, scope);
-  if (!fs.existsSync(dir)) return [];
-  return fs.readdirSync(dir)
-    .filter((file) => file.endsWith('.json'))
-    .map((file) => {
-      const id = path.basename(file, '.json');
-      if (!safeSubmissionId(id)) return null;
-      try {
-        const parsed = JSON.parse(fs.readFileSync(path.join(dir, file), 'utf8'));
-        return { id, archived: isArchivedSubmission(parsed) };
-      } catch {
-        return null;
-      }
-    })
-    .filter(Boolean);
+  const scopeDir = path.join(DATA_FORMS_DIR, formId, scope);
+  if (!fs.existsSync(scopeDir)) return [];
+  const out = [];
+  for (const e of fs.readdirSync(scopeDir, { withFileTypes: true })) {
+    if (e.isDirectory()) {
+      const versionDir = path.join(scopeDir, e.name);
+      for (const f of fs.readdirSync(versionDir)) summarizeSubmissionFile(versionDir, f, out);
+    } else if (e.isFile()) {
+      summarizeSubmissionFile(scopeDir, e.name, out);
+    }
+  }
+  return out;
 }
 
 function visibleFormUrls(req) {
@@ -321,7 +330,9 @@ self.addEventListener('fetch', (event) => {
     return;
   }
 
-  if (url.pathname.startsWith('/client/')) {
+  // Local client + vendored assets (e.g. Leaflet): network-first, cache the last
+  // good copy so they survive offline. External map hosts are never cached.
+  if (url.pathname.startsWith('/client/') || url.pathname.startsWith('/vendor/')) {
     event.respondWith((async () => {
       const cache = await caches.open(CACHE);
       try {

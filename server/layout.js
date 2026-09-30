@@ -11,18 +11,31 @@ const UTILITY_TILE_IDS = new Set(['appell', 'transportzentrale', 'admin']);
 
 let _layout = null;
 let _forms = null;
+let _formVersions = null;
 
 export function loadLayout() {
   const raw = fs.readFileSync(LAYOUT_FILE, 'utf8');
   const parsed = YAML.parse(raw);
   _layout = { kacheln: parsed?.kacheln || [] };
-  _forms = scanForms();
+  const scanned = scanForms();
+  _forms = scanned.forms;
+  _formVersions = scanned.versions;
   return { layout: _layout, forms: _forms };
 }
 
 export function getLayout() { if (!_layout) loadLayout(); return _layout; }
+// Family base defs keyed by id (each carries `_versions[]`). This is the map
+// iterated for tiles/precache/transport — it never contains revised versions.
 export function getForms() { if (!_forms) loadLayout(); return _forms; }
-export function getForm(id) { return getForms()[id] || null; }
+export function getFormVersionsMap() { if (!_formVersions) loadLayout(); return _formVersions; }
+// Resolve either a family id or a revised version id to its definition.
+export function getForm(id) { return getForms()[id] || getFormVersionsMap()[id] || null; }
+export function getFormVersion(id) { return getFormVersionsMap()[id] || null; }
+// The version chain for a family (base first). Falls back to [base] / [].
+export function getFormVersions(family) {
+  const def = getForms()[family];
+  return def?._versions || (def ? [def] : []);
+}
 
 export function findKachel(id) {
   const layout = getLayout();

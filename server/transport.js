@@ -10,11 +10,14 @@
 //   data/transport/<wk-id>/
 //     fleet.json                 { vehicles:[...], trailers:[...] }
 //     orders/<order-id>.json     one editable Fahrauftrag per file
-//     dispatched.json            { <bestellung-submissionId>: [orderId,...] }
+//     dispatched.json            { "<form-id>:<submissionId>": [orderId,...] }
+//   data/transport/_standard/
+//     fleet.json                 WK-übergreifender Standard-Fuhrpark
 //
 // The fleet is generated on the fly: typing a vehicle/trailer name on an order
-// auto-adds it to the fleet for the whole WK. A lightweight fleet manager lets
-// Uof+ add resources and mark them unavailable on specific dates.
+// auto-adds it to the WK fleet. A lightweight fleet manager lets Uof+ add
+// resources, mark them unavailable, and promote them to the shared standard
+// fleet. Bestellungen come from any form with a `transport` config (see forms).
 
 import fs from 'node:fs';
 import path from 'node:path';
@@ -22,10 +25,12 @@ import crypto from 'node:crypto';
 import { hasAccess } from './auth.js';
 import { layout } from './templates/layout.js';
 import { esc, logoAssetUrl } from './templates/shared.js';
-import { readSubmissions } from './forms.js';
+import { readAllVersionSubmissionsMerged, findArbeitsplatzSnapshot, familyOf } from './forms.js';
+import { getForms, getForm } from './layout.js';
 import { listWks } from './wk.js';
 
 const ROOT = path.resolve('data/transport');
+const STANDARD_FLEET = '_standard';   // WK-übergreifender Fuhrpark
 const BESTELLUNG_FORM = 'transport-bestellung';
 
 const VIEW_ROLE = 'Fahrer';        // see overview + orders
@@ -67,6 +72,10 @@ function orderFile(wkId, orderId) {
 function fleetFile(wkId) {
   const base = wkBase(wkId);
   return base ? path.join(base, 'fleet.json') : null;
+}
+
+function standardFleetFile() {
+  return path.join(ROOT, STANDARD_FLEET, 'fleet.json');
 }
 
 function dispatchedFile(wkId) {
@@ -152,11 +161,43 @@ function emptyFleet() {
   return { vehicles: [], trailers: [] };
 }
 
+function normFleet(f) {
+  const out = f || emptyFleet();
+  out.vehicles = Array.isArray(out.vehicles) ? out.vehicles : [];
+  out.trailers = Array.isArray(out.trailers) ? out.trailers : [];
+  return out;
+}
+
+// Merge the shared standard fleet with a WK's own fleet. Standard resources are
+// visible in every WK and flagged `standard: true`; a WK-own resource with the
+// same name wins (no standard flag).
 function readFleet(wkId) {
-  const f = readJson(fleetFile(wkId)) || emptyFleet();
-  f.vehicles = Array.isArray(f.vehicles) ? f.vehicles : [];
-  f.trailers = Array.isArray(f.trailers) ? f.trailers : [];
-  return f;
+  const std = normFleet(readJson(standardFleetFile()));
+  const wk = normFleet(readJson(fleetFile(wkId)));
+  const merge = (stdList, wkList) => {
+    const wkNames = new Set(wkList.map((r) => String(r.name).trim().toLowerCase()));
+    const promoted = stdList
+      .filter((r) => !wkNames.has(String(r.name).trim().toLowerCase()))
+      .map((r) => ({ ...r, standard: true }));
+    return [...wkList, ...promoted];
+  };
+  return { vehicles: merge(std.vehicles, wk.vehicles), trailers: merge(std.trailers, wk.trailers) };
+}
+
+// Persist a merged fleet by splitting resources back into the WK file and the
+// shared standard file according to their `standard` flag. On-the-fly resources
+// (no flag) land in the WK file.
+function writeFleet(wkId, fleet) {
+  const wk = emptyFleet();
+  const std = emptyFleet();
+  for (const kind of ['vehicles', 'trailers']) {
+    for (const r of fleet[kind]) {
+      const { standard, ...clean } = r;
+      (standard ? std : wk)[kind].push(clean);
+    }
+  }
+  writeJson(fleetFile(wkId), wk);
+  writeJson(standardFleetFile(), std);
 }
 
 function fleetList(fleet, kind) {
@@ -200,10 +241,37 @@ function resourceUnavailableOn(res, day) {
   });
 }
 
+// --- Bestellung refs ------------------------------------------------------
+
+// A Bestellung is referenced as "<form-id>:<submission-id>". Legacy bare keys
+// (dispatched.json / order.bestellungId) are read as transport-bestellung refs.
+function normalizeRef(ref) {
+  const s = String(ref || '');
+  if (!s) return null;
+  return s.includes(':') ? s : `${BESTELLUNG_FORM}:${s}`;
+}
+
+function parseRef(ref) {
+  const s = normalizeRef(ref);
+  if (!s) return null;
+  const i = s.indexOf(':');
+  return { formId: s.slice(0, i), submissionId: s.slice(i + 1) };
+}
+
 // --- orders ---------------------------------------------------------------
 
 function newOrderId() {
   return `${new Date().toISOString().replace(/[:.]/g, '-')}-${crypto.randomUUID().slice(0, 8)}`;
+}
+
+// Ensure an order carries a `bestellungIds` array; migrate the legacy single
+// `bestellungId` into it (as a normalized ref) on read.
+function migrateOrder(order) {
+  if (!order) return order;
+  if (!Array.isArray(order.bestellungIds)) {
+    order.bestellungIds = order.bestellungId ? [normalizeRef(order.bestellungId)] : [];
+  }
+  return order;
 }
 
 function listOrders(wkId) {
@@ -211,13 +279,13 @@ function listOrders(wkId) {
   if (!dir || !fs.existsSync(dir)) return [];
   return fs.readdirSync(dir)
     .filter((f) => f.endsWith('.json') && !f.includes('.tmp'))
-    .map((f) => readJson(path.join(dir, f)))
+    .map((f) => migrateOrder(readJson(path.join(dir, f))))
     .filter(Boolean);
 }
 
 function readOrder(wkId, orderId) {
   const file = orderFile(wkId, orderId);
-  return file ? readJson(file) : null;
+  return file ? migrateOrder(readJson(file)) : null;
 }
 
 function writeOrder(wkId, order) {
@@ -267,9 +335,10 @@ function applyOrderFields(order, body, fleet) {
 
 function createOrder(wkId, body, user) {
   const fleet = readFleet(wkId);
+  const ref = normalizeRef(body.bestellungRef || body.bestellungId);
   const order = {
     id: newOrderId(),
-    bestellungId: safeId(body.bestellungId) || null,
+    bestellungIds: ref ? [ref] : [],
     datum: isDateIso(body.datum) ? body.datum : null,
     plannedStart: toMin(body.plannedStart) !== null ? body.plannedStart : '',
     plannedEnd: toMin(body.plannedEnd) !== null ? body.plannedEnd : '',
@@ -283,9 +352,9 @@ function createOrder(wkId, body, user) {
     _meta: { createdBy: user || null, createdAt: new Date().toISOString(), updatedAt: new Date().toISOString() },
   };
   applyOrderFields(order, body, fleet);
-  writeJson(fleetFile(wkId), fleet);
+  writeFleet(wkId, fleet);
   writeOrder(wkId, order);
-  if (order.bestellungId) linkDispatched(wkId, order.bestellungId, order.id);
+  if (ref) linkDispatched(wkId, ref, order.id);
   return order;
 }
 
@@ -295,7 +364,7 @@ function updateOrder(wkId, orderId, body, user) {
   const fleet = readFleet(wkId);
   applyOrderFields(order, body, fleet);
   order._meta = { ...(order._meta || {}), updatedBy: user || null, updatedAt: new Date().toISOString() };
-  writeJson(fleetFile(wkId), fleet);
+  writeFleet(wkId, fleet);
   writeOrder(wkId, order);
   return order;
 }
@@ -369,19 +438,41 @@ function hhmmStr(min) {
 }
 
 // --- dispatched mapping ---------------------------------------------------
+// dispatched.json maps a Bestellung ref ("<form-id>:<sid>") to the orders it was
+// dispatched into. Legacy bare keys are normalized to transport-bestellung refs.
 
 function readDispatched(wkId) {
-  return readJson(dispatchedFile(wkId)) || {};
+  const raw = readJson(dispatchedFile(wkId)) || {};
+  const map = {};
+  for (const key of Object.keys(raw)) {
+    const ref = normalizeRef(key);
+    map[ref] = [...new Set([...(map[ref] || []), ...(raw[key] || [])])];
+  }
+  return map;
 }
 
-function linkDispatched(wkId, bestellungId, orderId) {
+function linkDispatched(wkId, ref, orderId) {
+  const key = normalizeRef(ref);
+  if (!key) return;
   const map = readDispatched(wkId);
-  const arr = new Set(map[bestellungId] || []);
+  const arr = new Set(map[key] || []);
   arr.add(orderId);
-  map[bestellungId] = [...arr];
+  map[key] = [...arr];
   writeJson(dispatchedFile(wkId), map);
 }
 
+// Remove a single order from a single ref (used by unlink). When no order stays
+// linked to that ref, the Bestellung becomes "open" again.
+function unlinkDispatchedRef(wkId, ref, orderId) {
+  const key = normalizeRef(ref);
+  const map = readDispatched(wkId);
+  if (!key || !map[key]) return;
+  const next = map[key].filter((id) => id !== orderId);
+  if (next.length) map[key] = next; else delete map[key];
+  writeJson(dispatchedFile(wkId), map);
+}
+
+// Remove an order from every ref (used when the whole order is deleted).
 function unlinkDispatched(wkId, orderId) {
   const map = readDispatched(wkId);
   let changed = false;
@@ -391,6 +482,28 @@ function unlinkDispatched(wkId, orderId) {
     if (next.length) map[key] = next; else delete map[key];
   }
   if (changed) writeJson(dispatchedFile(wkId), map);
+}
+
+// Link/unlink a Bestellung ref on an order (order.bestellungIds + dispatched).
+function linkOrderBestellung(wkId, orderId, ref) {
+  const key = normalizeRef(ref);
+  const order = readOrder(wkId, orderId);
+  if (!order) throw new Error('Auftrag nicht gefunden.');
+  if (!key) throw new Error('Ungültige Bestellung.');
+  if (!order.bestellungIds.includes(key)) order.bestellungIds.push(key);
+  writeOrder(wkId, order);
+  linkDispatched(wkId, key, orderId);
+  return order;
+}
+
+function unlinkOrderBestellung(wkId, orderId, ref) {
+  const key = normalizeRef(ref);
+  const order = readOrder(wkId, orderId);
+  if (!order) throw new Error('Auftrag nicht gefunden.');
+  order.bestellungIds = order.bestellungIds.filter((r) => r !== key);
+  writeOrder(wkId, order);
+  unlinkDispatchedRef(wkId, key, orderId);
+  return order;
 }
 
 // --- fail-safe bar computation -------------------------------------------
@@ -429,24 +542,90 @@ function computeBar(order, day, todayIso, nowMin) {
 
 // --- aggregation for the UI ----------------------------------------------
 
+// Families that feed the Dispo: any family with a top-level `transport` config
+// on its base def or any of its revised versions.
+function transportFamilies() {
+  return Object.values(getForms())
+    .filter((def) => (def._versions || [def]).some((v) => v?.transport))
+    .map((def) => def.id);
+}
+
+// Resolve the definition a submission was created under (its own version, or the
+// family base when unversioned/legacy).
+function submissionDef(family, sub) {
+  return getForm(sub?._meta?.versionId) || getForm(family);
+}
+
+// Should this submission appear as a Bestellung? `always` → every submission;
+// `field` → only when the named checkbox is set.
+function isTransportSubmission(def, sub) {
+  const cfg = def.transport;
+  if (cfg.always) return true;
+  if (cfg.field) return sub[cfg.field] === true;
+  return false;
+}
+
+// Turn a form submission into an order-prefill Bestellung using its own
+// version's `map` (order field → form field name). Refs/labels use the stable
+// family id so links and dispatched keys stay version-independent.
+function mapBestellung(def, sub) {
+  const family = familyOf(def);
+  const map = def.transport.map || {};
+  const val = (key) => (map[key] ? (sub[map[key]] ?? '') : '');
+  const nr = sub._meta?.nr;
+  return {
+    id: sub._meta.submissionId,
+    ref: `${family}:${sub._meta.submissionId}`,
+    formId: family,
+    formTitle: def.title || family,
+    nrLabel: Number.isInteger(nr) ? `${family}_${nr}` : family,
+    name: val('name'),
+    datum: val('datum'),
+    zeit: val('zeit'),
+    abfahrtsort: val('abfahrtsort'),
+    zielort: val('zielort'),
+    anzahlPersonen: val('anzahlPersonen'),
+    mobile: val('mobile'),
+    beschreibung: val('beschreibung'),
+    // fahrtTyp is transport-bestellung specific but harmless elsewhere; the Dispo
+    // uses it to preselect "Hin- und Rückfahrt". Not part of the generic map.
+    fahrtTyp: sub.fahrtTyp || '',
+    submittedAt: sub._meta.submittedAt || null,
+  };
+}
+
 function openBestellungen(wkId) {
   const dispatched = readDispatched(wkId);
-  return readSubmissions(BESTELLUNG_FORM, wkId)
-    .filter((s) => !dispatched[s._meta.submissionId])
-    .map((s) => ({
-      id: s._meta.submissionId,
-      name: s.name || '',
-      datum: s.datum || '',
-      zeit: s.zeit || '',
-      abfahrtsort: s.abfahrtsort || '',
-      zielort: s.zielort || '',
-      anzahlPersonen: s.anzahlPersonen || '',
-      fahrtTyp: s.fahrtTyp || '',
-      beschreibung: s.beschreibung || '',
-      mobile: s.mobile || '',
-      submittedAt: s._meta.submittedAt || null,
-    }))
-    .sort((a, b) => String(a.datum).localeCompare(String(b.datum)) || String(a.zeit).localeCompare(String(b.zeit)));
+  const out = [];
+  for (const family of transportFamilies()) {
+    for (const sub of readAllVersionSubmissionsMerged(family, wkId)) {
+      const def = submissionDef(family, sub);
+      if (!def?.transport || !isTransportSubmission(def, sub)) continue;
+      const ref = `${family}:${sub._meta.submissionId}`;
+      if (dispatched[ref]?.length) continue;
+      out.push(mapBestellung(def, sub));
+    }
+  }
+  return out.sort((a, b) => String(a.datum).localeCompare(String(b.datum)) || String(a.zeit).localeCompare(String(b.zeit)));
+}
+
+// Resolve a Bestellung ref to display info for an order's "verknüpfte
+// Bestellungen" list. Tolerates missing submissions (deleted Bestellung).
+function resolveBestellungRef(wkId, ref) {
+  const p = parseRef(ref);
+  if (!p) return null;
+  const family = p.formId;
+  const info = { ref: normalizeRef(ref), formId: family, submissionId: p.submissionId, nrLabel: normalizeRef(ref), name: '', zielort: '' };
+  if (!getForm(family)) return info;
+  const sub = readAllVersionSubmissionsMerged(family, wkId).find((s) => s._meta.submissionId === p.submissionId);
+  if (!sub) return info;
+  const def = submissionDef(family, sub);
+  const map = def?.transport?.map || {};
+  const nr = sub._meta?.nr;
+  info.nrLabel = Number.isInteger(nr) ? `${family}_${nr}` : family;
+  info.name = (map.name ? sub[map.name] : sub.name) || '';
+  info.zielort = (map.zielort ? sub[map.zielort] : sub.zielort) || '';
+  return info;
 }
 
 // Parse a trailer release stamp ("YYYY-MM-DDTHH:MM") into { date, min }.
@@ -498,7 +677,13 @@ function collectWkDay(wid, day, todayIso, nowMin, { onlyInvolved = false } = {})
 
   const dayOrders = orders
     .filter((o) => o.datum === day)
-    .map((o) => ({ ...o, bar: computeBar(o, day, todayIso, nowMin) }));
+    .map((o) => ({
+      ...o,
+      bar: computeBar(o, day, todayIso, nowMin),
+      bestellungen: (o.bestellungIds || []).map((ref) => resolveBestellungRef(wid, ref)).filter(Boolean),
+      // Arbeitsplatz map snapshot for the destination (fallback: departure).
+      mapUrl: findArbeitsplatzSnapshot(wid, o.zielort) || findArbeitsplatzSnapshot(wid, o.abfahrtsort) || null,
+    }));
 
   const trailerParking = {};
   for (const r of fleet.trailers) trailerParking[r.id] = parkingForDay(orders, r.id, day);
@@ -507,6 +692,7 @@ function collectWkDay(wid, day, todayIso, nowMin, { onlyInvolved = false } = {})
     const parking = r.kind === 'trailer' ? (trailerParking[r.id] || null) : null;
     return {
       id: r.id, name: r.name, kind: r.kind, trailerType: r.trailerType || '',
+      standard: !!r.standard,
       unavailable: r.unavailable || [],
       available: !resourceUnavailableOn(r, day),
       // The "auswärts" panel and the grey timeline block are the same segment,
@@ -647,7 +833,7 @@ export function apiSaveFleet(req, res) {
   const wkId = requireWk(req, res);
   if (!wkId) return;
   if (!ensureRole(req, res, EDIT_ROLE)) return;
-  const { action, kind, id, name, trailerType, unavailable } = req.body || {};
+  const { action, kind, id, name, trailerType, unavailable, standard } = req.body || {};
   if (kind !== 'vehicle' && kind !== 'trailer') return res.status(400).json({ error: 'Typ fehlt.' });
   const fleet = readFleet(wkId);
   const list = fleetList(fleet, kind);
@@ -668,8 +854,11 @@ export function apiSaveFleet(req, res) {
           .filter((u) => isDateIso(u.from))
           .map((u) => ({ from: u.from, to: isDateIso(u.to) ? u.to : u.from }));
       }
+      // Toggling this flag moves the resource between the WK and standard fleet
+      // files (writeFleet splits by the flag).
+      if (standard !== undefined) r.standard = !!standard;
     }
-    writeJson(fleetFile(wkId), fleet);
+    writeFleet(wkId, fleet);
     res.json({ ok: true, fleet });
   } catch (e) {
     res.status(400).json({ error: e.message });
@@ -709,6 +898,32 @@ export function apiDeleteOrder(req, res) {
   if (!ensureRole(req, res, EDIT_ROLE)) return;
   deleteOrder(wkId, req.params.id);
   res.json({ ok: true });
+}
+
+// POST /api/transport/order/:id/link — link a Bestellung ref to an order (Uof+)
+export function apiLinkOrder(req, res) {
+  const wkId = requireWk(req, res);
+  if (!wkId) return;
+  if (!ensureRole(req, res, EDIT_ROLE)) return;
+  try {
+    const order = linkOrderBestellung(wkId, safeId(req.params.id), req.body?.ref);
+    res.json({ ok: true, order });
+  } catch (e) {
+    res.status(400).json({ error: e.message });
+  }
+}
+
+// POST /api/transport/order/:id/unlink — remove a Bestellung ref (Uof+)
+export function apiUnlinkOrder(req, res) {
+  const wkId = requireWk(req, res);
+  if (!wkId) return;
+  if (!ensureRole(req, res, EDIT_ROLE)) return;
+  try {
+    const order = unlinkOrderBestellung(wkId, safeId(req.params.id), req.body?.ref);
+    res.json({ ok: true, order });
+  } catch (e) {
+    res.status(400).json({ error: e.message });
+  }
 }
 
 // POST /api/transport/order/:id/status — driver action (Fahrer+)

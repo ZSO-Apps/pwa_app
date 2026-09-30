@@ -1,9 +1,10 @@
 import fs from 'node:fs';
 import path from 'node:path';
-import { findKachel, getForm, loadLayout } from './layout.js';
+import { findKachel, getForm, getFormVersions, loadLayout } from './layout.js';
 import { hasAccess } from './auth.js';
 import { effectiveKachel, resolveKachelPath, safeResolve } from './content.js';
 import { renderError, renderFormBuilderPage, renderMarkdownEditorPage } from './templates/index.js';
+import { versionAssetRoot, writeVersionDefinition } from './form-versions.js';
 
 const CONTENT_EDITOR_ROLE = 'Unteroffizier';
 const ZSO_CONTENT_ROOT = path.resolve('content_zso_specific');
@@ -25,7 +26,7 @@ const IMPORT_TYPES = {
   },
 };
 
-const FIELD_TYPES = new Set(['text', 'textarea', 'number', 'date', 'time', 'select', 'radio', 'checkboxes', 'checkbox', 'heading', 'paragraph', 'image']);
+const FIELD_TYPES = new Set(['text', 'textarea', 'number', 'date', 'time', 'location', 'map', 'select', 'radio', 'checkboxes', 'checkbox', 'heading', 'paragraph', 'image']);
 const IMAGE_DATA_PATTERN = /^data:image\/(png|jpe?g|gif|webp);base64,([A-Za-z0-9+/=]+)$/i;
 const MAX_MARKDOWN_IMAGE_BYTES = 5 * 1024 * 1024;
 const OPTION_FIELD_TYPES = new Set(['select', 'radio', 'checkboxes']);
@@ -236,6 +237,47 @@ function maybeDeleteMarkdownAssets(filePath) {
   fs.rmSync(path.join(path.dirname(filePath), markdownAssetDirName(path.basename(filePath))), { recursive: true, force: true });
 }
 
+// The form family a definition file belongs to (explicit id, else the filename).
+function familyOfDefFile(absFile) {
+  try {
+    const def = JSON.parse(fs.readFileSync(absFile, 'utf8'));
+    return def?.id || path.basename(absFile, '.json');
+  } catch {
+    return null;
+  }
+}
+
+// True if `absPath` is (or a folder that contains) a form definition whose
+// family already has revised versions. Such a family's id is the storage key
+// for its versions + submissions, so renaming/deleting it would orphan them.
+function pathHasVersionedFamily(absPath) {
+  const isVersioned = (file) => {
+    if (path.extname(file).toLowerCase() !== '.json') return false;
+    const family = familyOfDefFile(file);
+    return Boolean(family) && getFormVersions(family).length > 1;
+  };
+  if (!fs.existsSync(absPath)) return false;
+  if (fs.statSync(absPath).isFile()) return isVersioned(absPath);
+  const stack = [absPath];
+  while (stack.length) {
+    const dir = stack.pop();
+    for (const entry of fs.readdirSync(dir, { withFileTypes: true })) {
+      const lower = entry.name.toLowerCase();
+      if (entry.name.startsWith('.') || lower.endsWith('.content') || lower.endsWith('.versions')) continue;
+      const child = path.join(dir, entry.name);
+      if (entry.isDirectory()) stack.push(child);
+      else if (isVersioned(child)) return true;
+    }
+  }
+  return false;
+}
+
+function guardVersionedFamily(absPath, action) {
+  if (pathHasVersionedFamily(absPath)) {
+    throw new Error(`Dieses Formular hat mehrere Versionen und kann nicht ${action} werden. Bitte zuerst die Versionen bereinigen.`);
+  }
+}
+
 function containsJson(absPath) {
   if (!fs.existsSync(absPath)) return false;
   const stat = fs.statSync(absPath);
@@ -432,6 +474,141 @@ function normalizeFormDefinition(body, targetDir) {
     resultsAccess,
     fields,
   };
+}
+
+// --- revise (new version of an existing form) -----------------------------
+// Revising must be *lossless*: the form builder can't natively represent every
+// field a hand-authored generic form uses (signature, printOnly, min, the map
+// field type), so we preserve field names, pass builder-invisible attributes
+// through unchanged, and carry over top-level config the builder doesn't edit.
+
+const REVISE_FIELD_TYPES = new Set([...FIELD_TYPES, 'signature']);
+// Field names only become JSON keys / HTML input names (never file paths), so
+// Unicode letters (e.g. the umlaut in a hand-authored `k_gerüstet`) are fine.
+const VALID_FIELD_NAME = /^[\p{L}\p{N}_-]+$/u;
+// Top-level keys the builder does not manage but a version must keep.
+const CARRY_KEYS = ['transport', 'standardField', 'modifyAllow', 'scope'];
+
+function uniqueGivenName(name, used) {
+  let candidate = name;
+  for (let n = 2; used.has(candidate); n++) candidate = name + '_' + n;
+  used.add(candidate);
+  return candidate;
+}
+
+function normalizeReviseField(raw, index, used) {
+  const type = REVISE_FIELD_TYPES.has(raw?.type) ? raw.type : 'text';
+
+  // print-only (hand-fill) and `signature` elements are passed through
+  // verbatim — the builder never edits them, and their label may be blank.
+  if (raw?.printOnly || type === 'signature') {
+    const field = { type };
+    const name = String(raw?.name || '');
+    if (VALID_FIELD_NAME.test(name)) field.name = uniqueGivenName(name, used);
+    if (raw?.label !== undefined) field.label = String(raw.label);
+    if (type === 'paragraph' && raw?.text !== undefined) field.text = String(raw.text);
+    const width = FIELD_WIDTHS.has(String(raw?.width || '')) ? String(raw.width) : '';
+    if (width) field.width = width;
+    if (OPTION_FIELD_TYPES.has(type)) {
+      const options = parseFieldOptions(raw?.options);
+      if (options.length) field.options = options;
+    }
+    if (raw?.image) field.image = String(raw.image);
+    if (raw?.min !== undefined && raw?.min !== '' && raw?.min !== null) field.min = raw.min;
+    if (raw?.printOnly) field.printOnly = true;
+    return field;
+  }
+
+  if (DISPLAY_FIELD_TYPES.has(type)) {
+    const field = normalizeDisplayField(raw, index, type);
+    // Preserve a hand-authored display name; don't invent a label the base lacked.
+    if (VALID_FIELD_NAME.test(String(raw?.name || ''))) field.name = uniqueGivenName(String(raw.name), used);
+    if (type === 'paragraph' && (raw?.label === undefined || String(raw?.label).trim() === '')) delete field.label;
+    return field;
+  }
+
+  const label = String(raw?.label || '').trim();
+  if (!label) throw new Error('Feld ' + (index + 1) + ': Bitte eine Bezeichnung angeben.');
+  const providedName = String(raw?.name || '');
+  const field = {
+    // Preserve the original field name so name-based config (transport.map,
+    // standardField) keeps matching; only new/invalid names are regenerated.
+    name: VALID_FIELD_NAME.test(providedName) ? uniqueGivenName(providedName, used) : uniqueFieldName(label, index + 1, used),
+    type,
+    label,
+    required: Boolean(raw?.required),
+  };
+  const width = FIELD_WIDTHS.has(String(raw?.width || '')) ? String(raw.width) : '';
+  if (width) field.width = width;
+  if (raw?.compact) field.compact = true;
+  if (raw?.printOnly) field.printOnly = true;
+  if (raw?.min !== undefined && raw?.min !== '' && raw?.min !== null) field.min = raw.min;
+  if (OPTION_FIELD_TYPES.has(type)) {
+    const options = parseFieldOptions(raw?.options);
+    if (options.length < 2) throw new Error('Feld ' + (index + 1) + ': Bitte mindestens zwei Optionen angeben.');
+    field.options = options;
+  }
+  return field;
+}
+
+function normalizeReviseFields(rawFields) {
+  const source = Array.isArray(rawFields) ? rawFields : [];
+  if (!source.length) throw new Error('Bitte mindestens ein Feld erfassen.');
+  const used = new Set();
+  return source.map((raw, index) => normalizeReviseField(raw, index, used));
+}
+
+function buildFormVersionDefinition(baseDef, body) {
+  const title = String(body?.title || '').trim();
+  if (!title) throw new Error('Bitte einen Formular-Titel angeben.');
+  const submitAccess = ROLES.has(body?.submitAccess) ? body.submitAccess : (baseDef.submitAccess || 'Soldat');
+  const resultsAccess = ROLES.has(body?.resultsAccess) ? body.resultsAccess : (baseDef.resultsAccess || 'Unteroffizier');
+  const fields = normalizeReviseFields(JSON.parse(String(body?.fieldsJson || '[]')));
+  const definition = {
+    id: baseDef.id,
+    title,
+    submitLabel: baseDef.submitLabel || title,
+    resultsLabel: baseDef.resultsLabel || ('Auswertung ' + title),
+    submitAccess,
+    resultsAccess,
+    fields,
+  };
+  for (const key of CARRY_KEYS) if (baseDef[key] !== undefined) definition[key] = baseDef[key];
+  return definition;
+}
+
+// GET: render the form builder prefilled with the source form's definition
+// (base or a revised version), posting to the family's revise route.
+// `opts.values`/`opts.error` re-render a failed attempt.
+export function renderFormReviseBuilder(req, res, sourceDef, kachel, opts = {}) {
+  const family = sourceDef.version?.family || sourceDef.id;
+  const values = opts.values || {
+    title: sourceDef.title || '',
+    submitAccess: sourceDef.submitAccess || 'Soldat',
+    resultsAccess: sourceDef.resultsAccess || 'Unteroffizier',
+    fieldsJson: JSON.stringify(sourceDef.fields || []),
+  };
+  res.status(opts.error ? 400 : 200).send(renderFormBuilderPage(req, kachel, {
+    backUrl: '/forms/' + encodeURIComponent(family) + '/results',
+    values,
+    error: opts.error || '',
+    action: '/forms/' + encodeURIComponent(family) + '/revise',
+    heading: 'Formular überarbeiten',
+    submitLabel: 'Neue Version speichern',
+    hideId: true,
+  }));
+}
+
+// Build + persist a new version definition from `sourceDef`. Throws on
+// validation error; returns the written definition. Does not pin / reload layout.
+export function writeFormRevision(req, sourceDef, kachel, versionId) {
+  const family = sourceDef.version?.family || sourceDef.id;
+  const slug = kachel.content;
+  const targetDir = versionAssetRoot(slug);
+  const definition = buildFormVersionDefinition(sourceDef, req.body || {});
+  definition.id = versionId;
+  finalizeFormImages(definition, targetDir, kachel.id, '');
+  return writeVersionDefinition(slug, family, versionId, definition, req.user?.username);
 }
 
 function renderEditorWithError(req, res, kachel, relDir, error, values = {}) {
@@ -639,6 +816,7 @@ export function renameContentEntry(req, res, kachelId) {
   try {
     const { dir, name, rel } = splitRelPath(req.body?.rel);
     const current = managedPathFor(kachel, rel, req.activeWk);
+    guardVersionedFamily(current, 'umbenannt');
     const stat = fs.statSync(current);
     const base = safeFileBase(req.body?.name);
     const newName = stat.isDirectory() ? base : base + path.extname(name);
@@ -661,6 +839,7 @@ export function deleteContentEntry(req, res, kachelId) {
   try {
     const { dir, rel } = splitRelPath(req.body?.rel);
     const current = managedPathFor(kachel, rel, req.activeWk);
+    guardVersionedFamily(current, 'gelöscht');
     const hadJson = containsJson(current);
     const stat = fs.statSync(current);
     if (stat.isDirectory()) fs.rmSync(current, { recursive: true, force: true });

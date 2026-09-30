@@ -237,22 +237,25 @@ export function renderMarkdownEditorPage(req, kachel, { mode = 'new', rel = '', 
 }
 
 
-export function renderFormBuilderPage(req, kachel, { dir = '', backUrl = '', values = {}, error = '' } = {}) {
-  const action = '/content-admin/' + encodeURIComponent(kachel.id) + '/form';
+export function renderFormBuilderPage(req, kachel, { dir = '', backUrl = '', values = {}, error = '', action = '', heading = 'Formular erstellen', submitLabel = 'Formular speichern', hideId = false } = {}) {
+  const resolvedAction = action || ('/content-admin/' + encodeURIComponent(kachel.id) + '/form');
   const submitAccess = values.submitAccess || 'Soldat';
   const resultsAccess = values.resultsAccess || 'Unteroffizier';
   const roleOption = (role, current) => '<option value="' + esc(role) + '"' + (current === role ? ' selected' : '') + '>' + esc(role) + '</option>';
   const roles = ['Soldat', 'Unteroffizier', 'Offizier', 'Admin'];
+  const idField = hideId
+    ? ''
+    : '<div class="form-el w-half"><label class="field">Technischer Name optional<input name="id" autocomplete="off" value="' + esc(values.id || '') + '" placeholder="wird sonst aus dem Titel erzeugt"></label></div>';
   const body = [
     '<article class="content form-builder-page" data-form-builder-page>',
     '<p><a href="' + esc(backUrl || folderUrl(kachel.id, dir)) + '" class="back">← Zurück</a></p>',
-    '<h1>Formular erstellen</h1>',
+    '<h1>' + esc(heading) + '</h1>',
     error ? '<p class="err">' + esc(error) + '</p>' : '',
-    '<form method="POST" action="' + esc(action) + '" class="genform wide form-builder-form" data-online-only-form data-form-builder>',
+    '<form method="POST" action="' + esc(resolvedAction) + '" class="genform wide form-builder-form" data-online-only-form data-form-builder>',
     '<input type="hidden" name="dir" value="' + esc(dir) + '">',
     '<input type="hidden" name="fieldsJson" data-form-builder-fields-json value="' + esc(values.fieldsJson || '') + '">',
     '<div class="form-el w-half"><label class="field">Formular-Titel *<input name="title" required autocomplete="off" value="' + esc(values.title || '') + '"></label></div>',
-    '<div class="form-el w-half"><label class="field">Technischer Name optional<input name="id" autocomplete="off" value="' + esc(values.id || '') + '" placeholder="wird sonst aus dem Titel erzeugt"></label></div>',
+    idField,
     '<div class="form-el w-half"><label class="field">Ausfüllen ab Rolle<select name="submitAccess">' + roles.map((role) => roleOption(role, submitAccess)).join('') + '</select></label></div>',
     '<div class="form-el w-half"><label class="field">Auswertung ab Rolle<select name="resultsAccess">' + roles.map((role) => roleOption(role, resultsAccess)).join('') + '</select></label></div>',
     '<section class="form-el form-builder-fields">',
@@ -260,12 +263,12 @@ export function renderFormBuilderPage(req, kachel, { dir = '', backUrl = '', val
     '<div data-form-builder-fields></div>',
     '<button type="button" class="secondary-button" data-form-builder-add>+ Feld hinzufügen</button>',
     '</section>',
-    '<button type="submit" data-online-only="true">Formular speichern</button>',
+    '<button type="submit" data-online-only="true">' + esc(submitLabel) + '</button>',
     '</form>',
     '<p><a href="' + esc(backUrl || folderUrl(kachel.id, dir)) + '" class="back">← Zurück</a></p>',
     '</article>',
   ].join('');
-  return layout(req, { title: 'Formular erstellen', body });
+  return layout(req, { title: heading, body });
 }
 
 export function renderOffline(req) {

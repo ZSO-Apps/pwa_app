@@ -1,0 +1,19 @@
+{
+  "id": "arbeitsplatz",
+  "title": "Arbeitsplatz",
+  "submitLabel": "Arbeitsplatz erfassen",
+  "resultsLabel": "Arbeitsplatzübersicht",
+  "submitAccess": "Unteroffizier",
+  "resultsAccess": "Unteroffizier",
+  "modifyAllow": true,
+  "standardField": "standard",
+  "fields": [
+    { "name": "name", "type": "text", "label": "Bezeichnung", "required": true },
+    { "name": "kontaktperson", "type": "text", "label": "Kontaktperson", "width": "half" },
+    { "name": "kontaktpersonMobile", "type": "text", "label": "Kontaktperson Mobile", "width": "half" },
+    { "name": "adresse", "type": "text", "label": "Adresse" },
+    { "name": "koordinaten", "type": "text", "label": "Koordinaten (WGS84 \"lat, lon\" oder LV95 \"E, N\")", "width": "half" },
+    { "name": "karte", "type": "map", "label": "Kartenausschnitt" },
+    { "name": "standard", "type": "checkbox", "label": "Standard-Auswahl" }
+  ]
+}

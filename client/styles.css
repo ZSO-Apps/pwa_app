@@ -863,6 +863,87 @@ html[data-theme="dark"] .markdown-editor-shell .cm-s-default .cm-string { color:
   flex-wrap: wrap;
   margin: .55rem 0 .75rem;
 }
+.version-toolbar {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: flex-end;
+  gap: .5rem .9rem;
+  margin: .35rem 0 .5rem;
+}
+.version-toolbar .version-select {
+  display: flex;
+  align-items: flex-end;
+  gap: .4rem;
+}
+.version-toolbar label {
+  display: flex;
+  flex-direction: column;
+  gap: .2rem;
+  font-size: .82rem;
+  color: var(--muted);
+}
+.version-warning {
+  color: #b23320;
+  font-weight: 600;
+  margin: .1rem 0 .7rem;
+}
+.modify-toggle {
+  margin: .35rem 0 .6rem;
+}
+.switch {
+  display: inline-flex;
+  align-items: center;
+  gap: .55rem;
+  cursor: pointer;
+  user-select: none;
+}
+.switch input {
+  position: absolute;
+  opacity: 0;
+  width: 1px;
+  height: 1px;
+}
+.switch-caption {
+  font-weight: 600;
+}
+.switch-track {
+  position: relative;
+  flex: none;
+  width: 44px;
+  height: 24px;
+  border-radius: 999px;
+  background: #b9c0cc;
+  transition: background .15s ease;
+}
+.switch-thumb {
+  position: absolute;
+  top: 2px;
+  left: 2px;
+  width: 20px;
+  height: 20px;
+  border-radius: 50%;
+  background: #fff;
+  box-shadow: 0 1px 2px rgba(0, 0, 0, .3);
+  transition: transform .15s ease;
+}
+.switch input:checked + .switch-track {
+  background: var(--accent);
+}
+.switch input:checked + .switch-track .switch-thumb {
+  transform: translateX(20px);
+}
+.switch input:focus-visible + .switch-track {
+  outline: 2px solid var(--accent);
+  outline-offset: 2px;
+}
+.switch-state {
+  min-width: 2.2ch;
+  font-weight: 600;
+  color: var(--muted);
+}
+.switch input:checked ~ .switch-state {
+  color: var(--accent);
+}
 .results-meta {
   display: flex;
   align-items: center;
@@ -934,6 +1015,14 @@ html[data-theme="dark"] .markdown-editor-shell .cm-s-default .cm-string { color:
 .icon-button { display: inline-flex; align-items: center; justify-content: center; min-width: 2.45rem; padding: .55rem; }
 .icon-button svg { display: block; width: 1.1rem; height: 1.1rem; }
 .result-print-actions { display: flex; align-items: center; gap: .55rem; margin: 0; }
+.badge {
+  display: inline-block; font-size: .72rem; font-weight: 700; line-height: 1;
+  padding: .18rem .4rem; border-radius: 999px; vertical-align: middle;
+  background: var(--surface-strong); color: var(--primary-bg); border: 1px solid var(--border);
+}
+.nr-col { white-space: nowrap; font-variant-numeric: tabular-nums; }
+.sub-nr { font-size: .8rem; font-weight: 600; color: var(--muted); vertical-align: middle; }
+.modify-toggle { display: flex; align-items: center; gap: .6rem; margin: .3rem 0 .8rem; font-size: .9rem; }
 @media (max-width: 640px) {
   .results-toolbar { align-items: stretch; }
   .results-controls { width: 100%; justify-content: flex-start; margin-left: 0; }
@@ -1156,6 +1245,20 @@ html[data-theme="dark"] .markdown-editor-shell .cm-s-default .cm-string { color:
 .tz-best-main { display: flex; flex-direction: column; gap: .1rem; flex: 1; min-width: 0; }
 .tz-best-main .muted { font-size: .85rem; }
 .tz-best-desc { font-size: .85rem; }
+.tz-best-card[draggable="true"] { cursor: grab; }
+.tz-best-card[draggable="true"]:active { cursor: grabbing; }
+.tz-best-nr { font-weight: 700; font-size: .8rem; display: flex; align-items: baseline; gap: .4rem; }
+.tz-best-form { font-weight: 400; font-size: .75rem; color: var(--muted); }
+/* drop feedback while dragging a Bestellung onto an order bar/card */
+.tz-bar.tz-drop, .tz-order-card.tz-drop { outline: 2px dashed var(--primary-bg); outline-offset: 2px; }
+/* verknüpfte Bestellungen in the order modal */
+.tz-best-links { margin: .6rem 0; padding: .5rem .7rem; border: 1px solid var(--border); border-radius: 8px; }
+.tz-best-links h3 { margin: 0 0 .4rem; font-size: .95rem; }
+.tz-best-link { display: flex; align-items: center; gap: .5rem; padding: .15rem 0; }
+.tz-best-link a { font-weight: 600; }
+.tz-best-add { display: flex; gap: .5rem; margin-top: .5rem; }
+.tz-best-add select { flex: 1; min-width: 0; }
+.tz-fleet-std { display: inline-flex; align-items: center; gap: .25rem; font-size: .8rem; white-space: nowrap; }
 
 /* timeline */
 .tz-timeline { overflow-x: auto; border: 1px solid var(--border); border-radius: 8px; background: var(--card-bg); }
@@ -1267,4 +1370,20 @@ html[data-theme="dark"] .markdown-editor-shell .cm-s-default .cm-string { color:
 @media (max-width: 560px) {
   .tz-grid2 { grid-template-columns: 1fr; }
   .tz-row-label { flex-basis: 6rem; width: 6rem; }
+}
+
+/* Map form field (Leaflet widget) + stored map snapshots */
+.map-field { display: flex; flex-direction: column; gap: .5rem; }
+.map-field .map-canvas { width: 100%; height: 320px; border: 1px solid var(--border); border-radius: 6px; z-index: 0; }
+.map-field.is-disabled { opacity: .6; }
+.map-offline { padding: .75rem; border: 1px dashed var(--border); border-radius: 6px; }
+.map-controls { display: flex; flex-wrap: wrap; gap: .4rem; }
+.sub-map { display: block; }
+.sub-map-img { max-width: 100%; height: auto; border: 1px solid var(--border); border-radius: 6px; }
+.tz-print-map { margin-top: .6rem; }
+.tz-print-map img { max-width: 100%; height: auto; border: 1px solid #ccc; }
+
+@media print {
+  .sub-map { display: block !important; break-inside: avoid; }
+  .sub-map-img { max-width: 100%; }
 }

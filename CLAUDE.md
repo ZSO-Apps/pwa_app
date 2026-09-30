@@ -352,6 +352,63 @@ results view automatically filters to the active WK.
   instead of a WK id. Append-only; safe from file-locking; inspectable
   via plain file tools (rsync, etc.).
 - Results views automatically scope to the active WK (or to `_global`).
+
+### Formular-Nummern
+
+- Jede Submission erhält bei der Ablage eine fortlaufende Nummer `_meta.nr`,
+  vergeben **pro Formular-Typ und pro Scope** (WK bzw. `_global`), beginnend
+  bei 1. Anzeige als `<form-id>_<nr>` (z.B. `essensbestellung_3`) in der
+  Auswertungs-Übersicht, der Detailansicht, beim Drucken und in der
+  Transport-Dispo.
+- Bestehende Submissions ohne `_meta.nr` werden beim ersten Lesen des
+  Scopes nach `submittedAt` sortiert rückwirkend nummeriert und persistiert
+  (Lazy-Backfill via `backfillNrs` in `server/forms.js`, danach idempotent;
+  transiente Felder wie `_meta.submissionId`/`_meta.scope` werden vor dem
+  Zurückschreiben entfernt). Neue Nummern = max(vorhandene) + 1.
+- Label-Helper: `submissionNrLabel` in `server/forms.js`; UI-Styles
+  `.nr-col`/`.sub-nr` in `client/styles.css`.
+
+### Bearbeitbare Submissions (`modifyAllow`)
+
+- Formular-JSON-Flag `"modifyAllow": true` schaltet einen Bearbeiten-Modus
+  für Submissions frei (`GET/POST /forms/:id/results/:sid/edit`): der
+  generische Formular-Renderer wird mit den bestehenden Werten vorbefüllt,
+  Speichern validiert wie ein Submit, überschreibt die Submission-Datei und
+  setzt `_meta.editedBy`/`editedAt`. `nr`, `submittedAt`, `submittedBy`,
+  `wkId` und `tags` bleiben unverändert; danach Redirect auf die
+  Detailseite. Bearbeiten dürfen Rollen ab `submitAccess`.
+- Gate ist `isModifiable(def)` in `server/forms.js`: `modifyAllow` truthy
+  **und** kein Quiz (`isQuizDef`) **und** nicht das WK-Formular.
+- `Offizier`+ können `modifyAllow` direkt in der Auswertungs-Übersicht
+  jedes Formulars umschalten (`POST /forms/:id/modify-allow`). Der Toggle
+  schreibt das Flag in die Formular-JSON-Datei in place (2-Space-Pretty,
+  egal in welchem Content-Root sie liegt) und hält den In-Memory-Cache
+  synchron; dafür führt `scanForms` (`server/content.js`) den
+  Definitionspfad als `def._file` mit. Für Quizze und das WK-Formular wird
+  der Toggle nicht angeboten.
+- Quiz und Essensbestellung bleiben bewusst **nicht** editierbar (Küche darf
+  nicht auf altem Stand arbeiten); das Arbeitsplatz-Formular ist editierbar.
+- Alle Schreibaktionen (Toggle, Bearbeiten) sind online-only
+  (`data-online-only`).
+
+### Standard-Scope (`standardField`)
+
+- Formular-JSON-Feld `"standardField": "<checkbox-name>"`: ist diese
+  Checkbox in einer Submission gesetzt, wird die Datei nicht im WK-Ordner,
+  sondern in `data/forms/<form-id>/_standard/` abgelegt — für generische,
+  WK-übergreifende Ressourcen (z.B. Standard-Arbeitsplätze).
+- Auswertungen und `location`-Dropdowns solcher Formulare mischen den
+  aktiven WK-Scope + `_standard` (Standard-Einträge sind in jedem WK
+  sichtbar). Die Nummerierung läuft pro Scope weiter. Helpers in
+  `server/forms.js`: `readSubmissionsMerged(formId, wkScope)` (jede
+  Submission trägt `_meta.scope` als Herkunft; Standard-Zeilen erhalten in
+  der Results-Tabelle ein Badge „Standard") und `readSubmissionAnyScope`
+  (Detail-/Edit-Routen suchen erst im WK, dann in `_standard`).
+- Standard-Submissions haben `_meta.wkId: null`.
+- Beim Bearbeiten einer Submission verschiebt ein Umschalten der Checkbox
+  die Datei per `fs.renameSync` zwischen WK-Ordner und `_standard`,
+  inklusive generischer Sibling-Assets `<submission-id>.*` (z.B.
+  `<id>.map.png`); im Ziel-Scope wird eine neue `nr` vergeben.
 - `users.yaml`: single file containing accounts + assigned role; local
   runtime file ignored by Git. It can be managed through the Admin UI or by
   direct file edits when necessary.
@@ -485,6 +542,79 @@ These resolve the previously open questions and reflect the current code.
 - Formular- und Quiz-Builder unterstützen zusätzlich nicht gespeicherte Anzeigeelemente: Header, Paragraph und Bild. Bilddateien aus Formularen landen im Ordner `<formular-id>.content/`; Quiz-Bilder bleiben im Quiz-Asset-Ordner.
 - Beim Speichern serialisiert der Client `options` als Array; der Server akzeptiert Arrays und zeilenbasierte Altwerte.
 
+## Versionierte Formulare & Quizze
+
+Formular-/Quiz-**Definitionen** sind überarbeitbar (alles ausser dem `wk`-Formular).
+Eine Überarbeitung erzeugt eine **neue Version** mit eigener id; Submissions werden
+**pro Version** abgelegt, damit innerhalb eines WK sichtbar bleibt, welche Einträge
+zu welcher Version gehören. Plan + Phasen-Notizen: `docs/plan-versioned-forms.md`.
+
+### Modell
+- **Family** = stabile Basis-id (`essensbestellung`, `arbeitsplatz`, Quizze, Builder-
+  Formulare). Die Basisversion hat `versionId === family` (kein `version`-Block);
+  neue Versionen tragen `version: { family, createdAt, createdBy }` und die id
+  `<family>_YYYYMMDD_HHMM_<n>`.
+- **Ablage Submissions** (nested, gitignored):
+  `data/forms/<family>/<scope>/<versionId>/*.json`; die Basisversion liegt im
+  Unterordner `<family>/`. `data/forms/<family>/<scope>/_active.json`
+  (`{ versionId, pinnedBy, pinnedAt }`) hält die aktive Version pro Scope. `wk`
+  bleibt flach (`data/forms/wk/_global/*.json`).
+- **Ablage Definitionen**: neue Versionen als
+  `content_zso_specific/<slug>/<family>.versions/<versionId>.json` (verstecktes
+  technisches Verzeichnis wie `.content`; von Listings/Suche/Form-Scan
+  ausgeblendet, aber in die Versions-Registry geladen). Bilder einer Version
+  liegen in `<versionId>.content/`.
+- **Auflösung**: `activeVersionId(family, scope)` = `_active.json` falls gültig,
+  sonst Basis. Nummerierung `_meta.nr` läuft **pro (family, scope)** über alle
+  Versions-Unterordner. **Lazy-Migration** (`ensureMigrated`) verschiebt beim
+  ersten Lesen/Schreiben flache Alt-Submissions idempotent nach
+  `<scope>/<family>/` (inkl. Sibling-Assets).
+
+### Aktive Version (pinned-on-create)
+- Überarbeiten pinnt die neue Version **nur für den aktuellen WK**; andere WK
+  behalten ihren Stand. Ein **neu erstellter WK** übernimmt automatisch die
+  neueste Version jeder Family (`pinNewWkToNewest`). Ohne Pin ⇒ Basis.
+
+### Zwei Lesepfade
+- **Pro Version** (`readVersionSubmissions`): Auswertung, Detail/Bearbeiten —
+  jede Submission wird durch die **eigene** Version interpretiert (Spalten-Drift
+  ist erlaubt).
+- **Versionsübergreifend** (`readAllVersionSubmissions[Merged]`, jede Zeile mit
+  `_meta.versionId`): Transport-Dispo (offene Bestellungen über alle Versionen,
+  je Submission per eigener Version-Def gemappt), Arbeitsplatz-`location`-Datalist
+  und die **Arbeitsplatzübersicht** (aggregiert über Versionen, da Referenzdaten).
+
+### Überarbeiten (Revise) — verlustfrei
+- `GET/POST /forms/:family/revise` (**Unteroffizier+**) öffnet den passenden
+  Builder (Formular vs. Quiz via `isQuizDef`) **vorbefüllt**, schreibt die neue
+  Version, pinnt den aktuellen WK, `loadLayout()`, Redirect auf die Auswertung.
+- **Verlustfrei**: Feldnamen bleiben erhalten (Unicode-ok), `signature`/
+  `printOnly`-Felder werden read-only durchgereicht, Top-Level-Config
+  (`transport`, `standardField`, `modifyAllow`, `scope`) wird übernommen. Der
+  Formular-Builder kennt zusätzlich den Feldtyp `map`. Quiz-Feldnamen bleiben
+  positionsbasiert (`frage<N>`), Optionen/`correct`/Bilder bleiben erhalten.
+
+### Auswertungs-UI
+- `renderResults` wählt eine **Ansichts-Version**: `?v=` → neueste Version mit
+  Ergebnissen → gepinnte/Basis; die Tabelle rendert deren Spalten (`tableDef`).
+- Versions-Toolbar: **„Überarbeiten"** (Uof+, online-only), **„Version anzeigen"**
+  (`<select>`, GET-Navigation), **„Aktive Version"** (`<select>` + `POST
+  /forms/:family/pin`, Uof+, online-only) und die Warnung **„Achtung: Mehr als
+  eine Version in diesem WK aktiv!"** wenn mehrere Versionen im WK Ergebnisse
+  haben. Basis-only-Formulare zeigen nur „Überarbeiten"; Arbeitsplatz zeigt nur
+  „Überarbeiten" (Aggregat-Ansicht).
+- Alle `/forms/...`-URLs und das `nr`-Label nutzen die **family**-id (Helper
+  `familyId` in `server/templates/forms.js`), auch wenn eine Version-Def gerendert
+  wird. Die Detailansicht zeigt bei Nicht-Basis-Versionen eine `Version:`-Zeile.
+
+### Guards
+- Eine Family mit Versionen kann über die Kachel-Verwaltung **nicht umbenannt
+  oder gelöscht** werden (id ist der Speicherschlüssel; sonst würden Versionen +
+  Submissions verwaisen) — `pathHasVersionedFamily`/`guardVersionedFamily` in
+  `server/content-admin.js`.
+- Shared helper in `server/form-versions.js` (`versionsDir`, `nextVersionId`,
+  `writeVersionDefinition`).
+
 ## Appell (Anwesenheit)
 
 Eigenständiges Modul zur täglichen Anwesenheitskontrolle pro WK. Bewusst
@@ -589,11 +719,67 @@ Status, Timestamps).
   Typ als Wunsch), Beschreibung. Submissions wie üblich unter
   `data/forms/transport-bestellung/<wk-id>/`.
 
+### Generische Transport-Anforderung (`transport`-Config)
+- Jedes Formular kann per Top-Level-Config in der Dispo als offene
+  Bestellung auftauchen:
+  `"transport": { "always": true }` (jede Submission, so bei
+  `transport-bestellung`) oder `"transport": { "field": "<checkbox-name>" }`
+  (nur Submissions mit gesetzter Checkbox). Optionales
+  `"map": { datum, zeit, abfahrtsort, zielort, anzahlPersonen, name,
+  mobile, beschreibung → <feld-name> }` mappt Formularfelder auf die
+  Auftrags-Vorbefüllung; nicht gemappte Felder bleiben leer.
+- Die Essensbestellung hat die Checkbox „Transport benötigt"
+  (`transportBenoetigt`) und `transport.field` darauf; `ort` mappt auf
+  `zielort`, `datum`/`name`/`mobile`/`kommentar` entsprechend.
+- Die Dispo scannt alle Formular-Definitionen mit `transport`-Config
+  (`openBestellungen` in `server/transport.js` nutzt `getForms()` +
+  `readSubmissionsMerged`). Jede offene Bestellung trägt `formId`,
+  `formTitle`, `ref` (`<form-id>:<submission-id>`), `nrLabel`
+  (`<form-id>_<nr>`) und die per `map` gemappten Auftragsfelder
+  (`mapBestellung`); `fahrtTyp` wird generisch durchgereicht, damit der
+  „Hin- und Rückfahrt"-Flow (ein oder zwei Aufträge) weiter funktioniert.
+
+### Verknüpfung Bestellung ↔ Fahrauftrag
+- `dispatched.json`-Keys sind `<form-id>:<submission-id>`; alte nackte Keys
+  normalisiert `readDispatched` beim Lesen zu `transport-bestellung:<id>`.
+- Fahraufträge tragen `bestellungIds: []` (Refs `<form-id>:<submission-id>`,
+  mehrere Bestellungen pro Auftrag möglich); `migrateOrder` überführt
+  Legacy-`bestellungId` beim Lesen.
+- Verknüpfen: **Drag & Drop** einer offenen Bestellungskarte
+  (`draggable`, dataTransfer = ref) auf einen Auftrags-Balken im
+  Zeitstrahl oder eine Auftragskarte in der Liste, oder Dropdown
+  „Bestellung verknüpfen" in der Auftrags-Detailansicht (dort auch wieder
+  lösbar). API: `POST /api/transport/order/:id/link` / `/unlink` `{ ref }`
+  (Uof+), serverseitig `linkOrderBestellung`/`unlinkOrderBestellung`
+  (pflegen Order + `dispatched.json`; nach Unlink ohne verbleibende Orders
+  wird die Bestellung wieder als offen gelistet). Nur mit `canDispatch`.
+- `/api/transport/data` liefert pro Auftrag die aufgelösten
+  Bestellungs-Infos (`o.bestellungen` via `resolveBestellungRef`; fehlende
+  Submissions werden toleriert). Detailansicht und Einzelauftrag-Druck
+  zeigen die Nummern der verknüpften Bestellungen, verlinkt auf
+  `/forms/<form-id>/results/<submission-id>`.
+
+### Standard-Fuhrpark
+- `data/transport/_standard/fleet.json` hält WK-übergreifende
+  Fahrzeuge/Anhänger; `readFleet` mischt Standard + WK-Fleet (WK gewinnt
+  bei Namenskollision; gemergte Standard-Ressourcen tragen
+  `standard: true`). `writeFleet` splittet den gemergten Fleet beim
+  Speichern anhand des Flags zurück in die zwei Dateien — dadurch landen
+  on-the-fly (per Tippen im Auftrag) angelegte Ressourcen immer im
+  WK-Fleet, und Updates an Standard-Ressourcen (Name, trailerType,
+  `unavailable`, delete) treffen die richtige Datei.
+- Im Fuhrpark-Modal hat jede Ressource die Checkbox „Standard-Auswahl";
+  `POST /api/transport/fleet` (`action: 'update'`) akzeptiert
+  `standard: true/false` und verschiebt die Ressource zwischen WK- und
+  Standard-Fleet. `unavailable`-Sperren bleiben pro Ressource.
+
 ### Modul (`server/transport.js`, `client/transport.js`)
 - Kachel `transportzentrale`, Route `/transport`, Zugriff `Fahrer`+.
 - Datenmodell (`data/transport/<wk-id>/`, gitignored):
   `fleet.json` (`{vehicles, trailers}`), `orders/<order-id>.json` (editierbarer
-  Fahrauftrag), `dispatched.json` (`{bestellungId: [orderId,...]}`).
+  Fahrauftrag), `dispatched.json`
+  (`{"<form-id>:<submission-id>": [orderId,...]}`), plus WK-übergreifend
+  `data/transport/_standard/fleet.json` (Standard-Fuhrpark).
 - **Fuhrpark pro WK, on-the-fly**: tippt die Dispo beim Auftrag „PTF1", wird das
   Fahrzeug/der Anhänger automatisch angelegt (ganze WK-Dauer). Lightweight
   Fuhrpark-Verwaltung (Modal) für Uof+; Ressourcen lassen sich an einzelnen
@@ -629,3 +815,56 @@ Status, Timestamps).
   network-first geholt und als letzter Online-Stand gecacht (`server/sw.js`),
   damit Fahrer+ Inhalte offline lesen können. Erstellen/Bearbeiten bleibt
   LAN-only und wird offline blockiert.
+
+## Arbeitsplätze
+
+- Arbeitsplätze laufen über den **generischen Formular-Mechanismus**:
+  `content_generic/wk_organisation/arbeitsplatz.json` mit
+  `submitAccess`/`resultsAccess: Unteroffizier`, `"modifyAllow": true` und
+  `"standardField": "standard"`. Felder: Bezeichnung (`name`),
+  Kontaktperson, Kontaktperson Mobile, Adresse, Koordinaten,
+  Kartenausschnitt (`map`-Feld), Checkbox „Standard-Auswahl".
+- Die **Arbeitsplatzübersicht** ist die Results-Ansicht dieses Formulars in
+  der WK-Organisation (zeigt WK-eigene + Standard-Arbeitsplätze, alles ab
+  `Unteroffizier`).
+- **Feldtyp `location`**: Text-Input mit `<datalist>` aller
+  Arbeitsplatz-Bezeichnungen (aktiver WK + `_standard`); Freitext bleibt
+  erlaubt. Ein Freitext-Wert, der keinem bestehenden Arbeitsplatz
+  entspricht (case-insensitiv), legt beim Submit **und** beim Edit
+  automatisch einen minimalen Arbeitsplatz (nur Bezeichnung) im WK-Scope
+  an (in `server/forms.js`, guard `formId !== 'arbeitsplatz'`). `ort`
+  (Essensbestellung) sowie `abfahrtsort`/`zielort` (Transport-Bestellung)
+  sind `location`-Felder. `location` und `map` sind auch im
+  Formular-Builder wählbar (`server/content-admin.js`, `client/app.js`).
+- **Feldtyp `map`** (online-only, offline ausgegraut mit Hinweis): Widget
+  in `client/map-field.js`, nur eingebunden wenn das Formular ein
+  map-Feld hat. Leaflet lokal gebündelt unter `/vendor/leaflet`
+  (npm-Paket, kein CDN) mit Swisstopo-WMTS-Tiles (`wmts.geo.admin.ch`,
+  `ch.swisstopo.pixelkarte-farbe`, Web-Mercator/3857, Zoom 7–18). Pin
+  setzen wahlweise per Geocoding der Adresse (api3.geo.admin.ch
+  SearchServer), per Koordinaten-Eingabe (WGS84 oder LV95/LV03 →
+  WGS84-Näherung im Client) oder per Klick/Ziehen auf der Karte; „Pin
+  entfernen" leert den Wert. Gespeichert wird `{ lat, lon, zoom }` als
+  JSON-String im Submission-Wert (hidden input). In Auswertungs-Spalten
+  wird das map-Feld ausgeblendet, im Detail nie als Roh-JSON gezeigt.
+- **Karten-Snapshot**: `generateSnapshot` in `server/map-snapshot.js` —
+  beim Speichern (Submit oder Edit, fire-and-forget mit Fehler-Log) holt
+  der Server die betroffenen Tiles (~768×512 px, Pin zentriert; Grösse
+  über `OUT_W`/`OUT_H` einstellbar), stitcht sie und zeichnet den Pin —
+  pure JS über `jpeg-js` (Tile-Decode) + `pngjs` (Encode), keine nativen
+  Dependencies. Tile-Fetch über `node:https` (kein global `fetch`, läuft
+  auch auf Node 16). Ablage als `<submission-id>.map.png` neben der
+  Submission-Datei, ausgeliefert über
+  `GET /forms/:id/results/:sid/map.png` (Zugriff = `resultsAccess`, sucht
+  beide Scopes). Detailansicht und Druck binden **nur dieses Bild** ein;
+  ohne Pin/Snapshot wird nichts angezeigt oder gedruckt. Snapshot-Fehler
+  (kein Uplink) brechen das Speichern nicht ab.
+- **Auflösung Ort → Snapshot**: `findArbeitsplatzSnapshot(wkId, name)` in
+  `server/forms.js` (case-insensitiver Namensvergleich, WK + `_standard`,
+  nur mit existierendem PNG). Der **Druck eines Fahrauftrags** nutzt das
+  per `mapUrl` am Order in `/api/transport/data` (Zielort, sonst
+  Abfahrtsort); die Detail-/Druckansicht von Formularen mit
+  `location`-Feldern (z.B. Transport-Bestellung) zeigt den Snapshot des
+  ersten aufgelösten Ort-Werts. Kein Snapshot → kein Kartenblock.
+- Service Worker: `/vendor/*` wird wie `/client/*` behandelt; die
+  externen Karten-Hosts (wmts/api3.geo.admin.ch) werden nie gecacht.
